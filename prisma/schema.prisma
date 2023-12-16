@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  user_id     String    @unique(map: "user_id") @db.VarChar(64)
+  status      Int       @db.TinyInt
+  first_name  String    @db.VarChar(32)
+  last_name   String    @db.VarChar(32)
+  email       String?   @db.VarChar(64)
+  phone       String    @unique(map: "phone") @db.VarChar(11)
+  avatar      String?   @db.VarChar(256)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+}
+
+model user_signin_history {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  user_id     String    @db.VarChar(64)
+  ip          String?   @db.VarChar(64)
+  useragent   String?   @db.VarChar(256)
+  source      Int       @db.TinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([create_date], map: "user_signIn_history_createDate_idx")
+  @@index([user_id], map: "user_signIn_history_userId_idx")
+}
+
+model user_signin_password {
+  id                 Int       @id @default(autoincrement()) @db.UnsignedInt
+  user_id            String    @unique(map: "user_id") @db.VarChar(64)
+  salt               String    @db.VarChar(16)
+  password           String    @db.VarChar(64)
+  failed_login_times Int       @default(0) @db.UnsignedTinyInt
+  locked_date        DateTime? @db.DateTime(0)
+  create_date        DateTime? @default(now()) @db.DateTime(0)
+  update_date        DateTime? @default(now()) @db.DateTime(0)
+}
