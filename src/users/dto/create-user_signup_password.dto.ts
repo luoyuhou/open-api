@@ -2,7 +2,7 @@ import { IsNotEmpty, IsString, IsUUID, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { PickType } from '@nestjs/mapped-types';
 
-export class CreateUser_signin_passwordDto {
+export class CreateUser_signup_passwordDto {
   @IsString()
   @IsUUID()
   @IsNotEmpty()
@@ -23,7 +23,10 @@ export class CreateUser_signin_passwordDto {
   password: string;
 }
 
-export class CreateUser_signin_passwordByInputDto extends PickType(
-  CreateUser_signin_passwordDto,
+export class CreateUser_signup_passwordByInputDto extends PickType(
+  CreateUser_signup_passwordDto,
   ['password'],
-) {}
+) {
+  @ApiProperty()
+  password: string;
+}

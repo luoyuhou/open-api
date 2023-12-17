@@ -5,7 +5,6 @@ import {
   Controller,
   Delete,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Req,
@@ -21,9 +20,9 @@ import { AuthEntity } from './entity/auth.entity';
 import { LoginDto } from './dto/login.dto';
 import { Request } from 'express';
 import { UserEntity } from '../users/entities/user.entity';
-import { CreateUserByInputDto } from '../users/dto/create-user.dto';
-import { CreateUser_signin_passwordByInputDto } from '../users/dto/create-user_signin_password.dto';
+import { CreateUserByPasswordDto } from '../users/dto/create-user.dto';
 import { Public } from '../common/public.decorator';
+import { CreateUser_signup_passwordByInputDto } from '../users/dto/create-user_signup_password.dto';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -35,7 +34,7 @@ export class AuthController {
   @ApiCreatedResponse({ type: UserEntity })
   async createWithPassword(
     @Body()
-    createUserDto: CreateUserByInputDto & CreateUser_signin_passwordByInputDto,
+    createUserDto: CreateUserByPasswordDto,
   ) {
     return new UserEntity(
       await this.authService.createUserByPassword(createUserDto),
@@ -43,7 +42,7 @@ export class AuthController {
   }
 
   @Public()
-  @Post('login/password')
+  @Post('sign-in/password')
   @ApiOkResponse({ type: AuthEntity })
   login(@Body() { phone, password }: LoginDto, @Req() request: Request) {
     const ip = request.ip;
@@ -55,15 +54,27 @@ export class AuthController {
   // @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOkResponse({ type: UserEntity })
-  async remove(@Param('id', ParseIntPipe) id: string) {
+  async remove(@Param('id') id: string) {
     return new UserEntity(await this.authService.frozen(id));
   }
 
-  @Patch('/reactive/:id')
+  @Patch('reactive/:id')
   // @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOkResponse({ type: UserEntity })
-  async reactive(@Param('id', ParseIntPipe) id: string) {
+  async reactive(@Param('id') id: string) {
     return new UserEntity(await this.authService.reactive(id));
+  }
+
+  @Patch('reset/password/:id')
+  @ApiBearerAuth()
+  @ApiOkResponse({ type: UserEntity })
+  async resetPassword(
+    @Param('id') id: string,
+    @Body() { password }: CreateUser_signup_passwordByInputDto,
+  ) {
+    return new UserEntity(
+      await this.authService.resetPassword(id, { password }),
+    );
   }
 }

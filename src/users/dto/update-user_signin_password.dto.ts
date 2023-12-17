@@ -1,7 +1,19 @@
 import { PickType } from '@nestjs/mapped-types';
-import { CreateUser_signin_passwordDto } from './create-user_signin_password.dto';
+import { CreateUser_signup_passwordDto } from './create-user_signup_password.dto';
+import { ApiProperty } from '@nestjs/swagger';
 
-export class UpdateUser_signin_passwordDto extends PickType(
-  CreateUser_signin_passwordDto,
+export class UpdateUser_signup_passwordDto extends PickType(
+  CreateUser_signup_passwordDto,
   ['salt', 'password'],
-) {}
+) {
+  @ApiProperty()
+  password: string;
+}
+
+export class UpdateUser_signup_passwordInputDto extends PickType(
+  CreateUser_signup_passwordDto,
+  ['password'],
+) {
+  @ApiProperty()
+  password: string;
+}

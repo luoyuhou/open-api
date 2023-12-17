@@ -18,9 +18,9 @@ import {
   AddLoginHistoryDto,
 } from './dto/add-login-history.dto';
 import { UsersService } from '../users/users.service';
-import { CreateUserByInputDto } from '../users/dto/create-user.dto';
-import { CreateUser_signin_passwordByInputDto } from '../users/dto/create-user_signin_password.dto';
+import { CreateUserByPasswordDto } from '../users/dto/create-user.dto';
 import { UserEntity } from '../users/entities/user.entity';
+import { UpdateUser_signup_passwordInputDto } from '../users/dto/update-user_signin_password.dto';
 
 @Injectable()
 export class AuthService {
@@ -29,9 +29,7 @@ export class AuthService {
   @Inject(forwardRef(() => UsersService))
   private readonly usersService: UsersService;
 
-  public async createUserByPassword(
-    createUserDto: CreateUserByInputDto & CreateUser_signin_passwordByInputDto,
-  ) {
+  public async createUserByPassword(createUserDto: CreateUserByPasswordDto) {
     return this.usersService.createUserByPassword(createUserDto);
   }
 
@@ -64,6 +62,18 @@ export class AuthService {
     return {
       accessToken: this.jwtService.sign(user),
     };
+  }
+
+  private async getUserAuthPassword(user_id: string) {
+    const userAuth = await this.prisma.user_signin_password.findUnique({
+      where: { user_id },
+    });
+
+    if (!userAuth) {
+      throw new NotFoundException(`No user auth found for user_id: ${user_id}`);
+    }
+
+    return userAuth;
   }
 
   public async loginByPassword(
@@ -129,8 +139,16 @@ export class AuthService {
     return this.login(user);
   }
 
+  public async resetPassword(
+    user_id: string,
+    data: UpdateUser_signup_passwordInputDto,
+  ) {
+    await this.getUserAuthPassword(user_id);
+    return this.usersService.resetPassword(user_id, data);
+  }
+
   public async frozen(user_id: string) {
-    return this.usersService.findOne(user_id);
+    return this.usersService.frozen(user_id);
   }
 
   public async reactive(user_id: string) {

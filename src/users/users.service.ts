@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { CreateUserByInputDto, CreateUserDto } from './dto/create-user.dto';
+import { CreateUserByPasswordDto, CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  CreateUser_signin_passwordByInputDto,
-  CreateUser_signin_passwordDto,
-} from './dto/create-user_signin_password.dto';
+import { CreateUser_signup_passwordDto } from './dto/create-user_signup_password.dto';
 import { v4 } from 'uuid';
 import bcrypt from 'bcrypt';
+import {
+  UpdateUser_signup_passwordDto,
+  UpdateUser_signup_passwordInputDto,
+} from './dto/update-user_signin_password.dto';
 
 @Injectable()
 export class UsersService {
@@ -19,9 +20,7 @@ export class UsersService {
     return { pwd, salt };
   }
 
-  async createUserByPassword(
-    createUserDto: CreateUserByInputDto & CreateUser_signin_passwordByInputDto,
-  ) {
+  async createUserByPassword(createUserDto: CreateUserByPasswordDto) {
     const { first_name, last_name, password, phone } = createUserDto;
     const user_id = v4();
     const user: CreateUserDto = {
@@ -34,7 +33,7 @@ export class UsersService {
       avatar: null,
     };
     const { pwd, salt } = this.bcryptPassword(password);
-    const userAuth: CreateUser_signin_passwordDto = {
+    const userAuth: CreateUser_signup_passwordDto = {
       user_id,
       salt,
       password: pwd,
@@ -69,5 +68,17 @@ export class UsersService {
 
   async reactive(user_id: string) {
     return this.prisma.user.update({ where: { user_id }, data: { status: 0 } });
+  }
+
+  async resetPassword(
+    user_id: string,
+    resetPasswordDto: UpdateUser_signup_passwordInputDto,
+  ) {
+    const { salt, pwd } = this.bcryptPassword(resetPasswordDto.password);
+    const data: UpdateUser_signup_passwordDto = { salt, password: pwd };
+    return this.prisma.user_signin_password.update({
+      where: { user_id },
+      data: data,
+    });
   }
 }

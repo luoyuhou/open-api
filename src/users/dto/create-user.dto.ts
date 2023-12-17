@@ -14,13 +14,11 @@ export class CreateUserDto {
   @IsUUID()
   @IsNotEmpty()
   @MaxLength(64)
-  @ApiProperty()
   user_id: string;
 
   @IsInt()
   @IsNotEmpty()
   @MaxLength(4)
-  @ApiProperty()
   status: number;
 
   @IsString()
@@ -53,8 +51,20 @@ export class CreateUserDto {
   avatar: string;
 }
 
-export class CreateUserByInputDto extends PickType(CreateUserDto, [
+export class CreateUserByPasswordDto extends PickType(CreateUserDto, [
   'first_name',
   'last_name',
   'phone',
-]) {}
+]) {
+  @ApiProperty()
+  first_name: string;
+
+  @ApiProperty()
+  last_name: string;
+
+  @ApiProperty()
+  phone: string;
+
+  @ApiProperty()
+  password: string;
+}
