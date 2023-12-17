@@ -43,3 +43,58 @@ model user_signin_password {
   create_date        DateTime? @default(now()) @db.DateTime(0)
   update_date        DateTime? @default(now()) @db.DateTime(0)
 }
+
+model store {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  store_id    String    @unique(map: "store_id") @db.VarChar(64)
+  id_code     String    @db.VarChar(32)
+  id_name     String    @db.VarChar(32)
+  user_id     String    @db.VarChar(64)
+  store_name  String    @db.VarChar(64)
+  phone       String    @db.VarChar(11)
+  province    String    @db.VarChar(8)
+  city        String    @db.VarChar(8)
+  district    String    @db.VarChar(16)
+  address     String    @db.VarChar(128)
+  status      Int       @default(0) @db.TinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([store_name], map: "store_name_idx")
+  @@index([user_id], map: "store_user_idx")
+}
+
+model store_history {
+  id                Int       @id @default(autoincrement()) @db.UnsignedInt
+  store_id          String    @db.VarChar(64)
+  action_type       Int       @db.UnsignedTinyInt
+  action_content    String    @db.VarChar(256)
+  applicant_user_id String    @db.VarChar(64)
+  applicant_date    DateTime  @db.Date
+  replient_user_id  String?   @db.VarChar(64)
+  replient_date     DateTime? @db.DateTime(0)
+  replient_content  String?   @db.VarChar(256)
+  create_date       DateTime? @default(now()) @db.DateTime(0)
+  update_date       DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([action_type], map: "store_action_type_idx")
+  @@index([store_id], map: "store_history_idx")
+}
+
+model user_address {
+  id              Int       @id @default(autoincrement()) @db.UnsignedInt
+  user_address_id String    @unique(map: "user_address_id") @db.VarChar(64)
+  user_id         String    @db.VarChar(64)
+  recipient       String    @db.VarChar(64)
+  phone           String    @db.VarChar(16)
+  province        String    @db.VarChar(8)
+  city            String    @db.VarChar(8)
+  district        String    @db.VarChar(16)
+  address         String    @db.VarChar(128)
+  is_default      Boolean   @default(false)
+  tag             String?   @db.VarChar(8)
+  create_date     DateTime? @default(now()) @db.DateTime(0)
+  update_date     DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([user_id], map: "user_address_user_idx")
+}

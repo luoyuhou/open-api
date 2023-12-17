@@ -3,7 +3,6 @@ import {
   IsNotEmpty,
   IsPhoneNumber,
   IsString,
-  IsUUID,
   MaxLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
@@ -11,7 +10,6 @@ import { PickType } from '@nestjs/mapped-types';
 
 export class CreateUserDto {
   @IsString()
-  @IsUUID()
   @IsNotEmpty()
   @MaxLength(64)
   user_id: string;

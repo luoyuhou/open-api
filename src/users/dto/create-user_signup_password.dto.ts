@@ -4,7 +4,6 @@ import { PickType } from '@nestjs/mapped-types';
 
 export class CreateUser_signup_passwordDto {
   @IsString()
-  @IsUUID()
   @IsNotEmpty()
   @MaxLength(64)
   @ApiProperty()

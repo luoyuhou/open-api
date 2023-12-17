@@ -22,7 +22,7 @@ export class UsersService {
 
   async createUserByPassword(createUserDto: CreateUserByPasswordDto) {
     const { first_name, last_name, password, phone } = createUserDto;
-    const user_id = v4();
+    const user_id = 'user-' + v4();
     const user: CreateUserDto = {
       user_id,
       first_name,
