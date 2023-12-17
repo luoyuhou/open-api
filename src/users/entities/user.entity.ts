@@ -31,9 +31,6 @@ export class UserEntity {
   avatar: string | null;
 
   @ApiProperty()
-  createdAt: Date;
-
-  @ApiProperty()
   create_date: Date;
 
   @ApiProperty()

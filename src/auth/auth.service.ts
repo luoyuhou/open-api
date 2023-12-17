@@ -1,6 +1,8 @@
 //src/auth/auth.service.ts
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -15,12 +17,25 @@ import {
   AddLoginHistoryByInputDto,
   AddLoginHistoryDto,
 } from './dto/add-login-history.dto';
+import { UsersService } from '../users/users.service';
+import { CreateUserByInputDto } from '../users/dto/create-user.dto';
+import { CreateUser_signin_passwordByInputDto } from '../users/dto/create-user_signin_password.dto';
+import { UserEntity } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
   constructor(private prisma: PrismaService, private jwtService: JwtService) {}
 
-  public async loginFail(user_id: string) {
+  @Inject(forwardRef(() => UsersService))
+  private readonly usersService: UsersService;
+
+  public async createUserByPassword(
+    createUserDto: CreateUserByInputDto & CreateUser_signin_passwordByInputDto,
+  ) {
+    return this.usersService.createUserByPassword(createUserDto);
+  }
+
+  private async loginFail(user_id: string) {
     const userAuth = await this.prisma.user_signin_password.findFirst({
       where: { user_id },
     });
@@ -41,11 +56,17 @@ export class AuthService {
     });
   }
 
-  public async createLoginHistory(data: AddLoginHistoryDto) {
+  private async createLoginHistory(data: AddLoginHistoryDto) {
     return this.prisma.user_signin_history.create({ data });
   }
 
-  async loginByPassword(
+  private async login(user: UserEntity) {
+    return {
+      accessToken: this.jwtService.sign(user),
+    };
+  }
+
+  public async loginByPassword(
     phone: string,
     password: string,
     req: AddLoginHistoryByInputDto,
@@ -105,8 +126,14 @@ export class AuthService {
       ),
     );
     // Step 3: Generate a JWT containing the user's ID and return it
-    return {
-      accessToken: this.jwtService.sign({ userId: user.id }),
-    };
+    return this.login(user);
+  }
+
+  public async frozen(user_id: string) {
+    return this.usersService.findOne(user_id);
+  }
+
+  public async reactive(user_id: string) {
+    return this.usersService.reactive(user_id);
   }
 }
