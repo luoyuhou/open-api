@@ -10,8 +10,10 @@ import {
 import { StoreService } from './store.service';
 import { CreateStoreInputDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { ApiTags } from '@nestjs/swagger';
 
 @Controller('store')
+@ApiTags('store')
 export class StoreController {
   constructor(private readonly storeService: StoreService) {}
 
