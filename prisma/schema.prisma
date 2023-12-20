@@ -98,3 +98,91 @@ model user_address {
 
   @@index([user_id], map: "user_address_user_idx")
 }
+
+model category_goods {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  category_id String    @unique(map: "category_id") @db.VarChar(64)
+  store_id    String    @db.VarChar(64)
+  pid         String?   @db.VarChar(64)
+  name        String    @db.VarChar(16)
+  status      Int       @db.TinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([store_id, name], map: "store_id")
+  @@index([store_id, pid], map: "category_goods_idx")
+  @@index([name], map: "category_goods_name")
+}
+
+model store_goods {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  goods_id    String    @unique(map: "goods_id") @db.VarChar(64)
+  store_id    String    @db.VarChar(64)
+  category_id String    @db.VarChar(64)
+  name        String    @db.VarChar(16)
+  description String?   @db.VarChar(256)
+  status      Int       @db.TinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([store_id, category_id, name], map: "store_id")
+  @@index([name], map: "goods_name_idx")
+  @@index([store_id], map: "store_idx")
+}
+
+model store_goods_version {
+  id             Int       @id @default(autoincrement()) @db.UnsignedInt
+  version_id     String    @unique(map: "version_id") @db.VarChar(64)
+  goods_id       String    @db.VarChar(64)
+  version_number String?   @db.VarChar(32)
+  bar_code       String?   @db.VarChar(32)
+  count          Int       @db.UnsignedInt
+  price          Int       @db.UnsignedInt
+  supplier       String?   @db.VarChar(64)
+  create_date    DateTime? @default(now()) @db.DateTime(0)
+  update_date    DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([goods_id, version_number], map: "goods_id")
+  @@unique([goods_id, bar_code], map: "goods_id_2")
+  @@index([bar_code], map: "goods_bar_code_idx")
+  @@index([goods_id], map: "goods_idx")
+  @@index([supplier], map: "goods_suppler_idx")
+  @@index([version_number], map: "goods_version_number_idx")
+}
+
+model user_order {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  order_id    String    @unique(map: "order_id") @db.VarChar(64)
+  user_id     String    @db.VarChar(64)
+  store_id    String    @db.VarChar(64)
+  status      Int       @db.TinyInt
+  recipient   String    @db.VarChar(16)
+  money       Int       @db.UnsignedInt
+  phone       String    @db.VarChar(16)
+  province    String    @db.VarChar(8)
+  city        String    @db.VarChar(8)
+  district    String    @db.VarChar(16)
+  address     String    @db.VarChar(128)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([user_id, store_id], map: "user_order_idx")
+  @@index([store_id], map: "user_order_store_idx")
+  @@index([user_id], map: "user_order_user_idx")
+}
+
+model user_order_info {
+  id               Int       @id @default(autoincrement()) @db.UnsignedInt
+  order_info_id    String    @unique(map: "order_info_id") @db.VarChar(64)
+  order_id         String    @db.VarChar(64)
+  goods_id         String    @db.VarChar(64)
+  goods_name       String    @db.VarChar(16)
+  goods_version_id String    @db.VarChar(64)
+  count            Int       @db.UnsignedInt
+  price            Int       @db.UnsignedInt
+  create_date      DateTime? @default(now()) @db.DateTime(0)
+  update_date      DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([order_id], map: "order_Info_order_idx")
+  @@index([goods_id], map: "order_info_goods_idx")
+}
