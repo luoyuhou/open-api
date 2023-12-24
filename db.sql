@@ -28,6 +28,8 @@ CREATE TABLE user_signIn_password (
     UNIQUE KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+ALTER TABLE user_signIn_password MODIFY salt varchar(32) NOT NULL;
+
 
 CREATE TABLE user_signIn_history(
     id int unsigned NOT NULL AUTO_INCREMENT,
@@ -175,6 +177,8 @@ CREATE TABLE user_order (
     INDEX `user_order_store_idx` (`store_id`) USING BTREE,
     INDEX `user_order_idx` (`user_id`, `store_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE user_order ADD Column delivery_date datetime NOT NULL after address;
 
 CREATE TABLE user_order_info (
     id int unsigned NOT NULL AUTO_INCREMENT,

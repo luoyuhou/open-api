@@ -36,7 +36,7 @@ model user_signin_history {
 model user_signin_password {
   id                 Int       @id @default(autoincrement()) @db.UnsignedInt
   user_id            String    @unique(map: "user_id") @db.VarChar(64)
-  salt               String    @db.VarChar(16)
+  salt               String    @db.VarChar(32)
   password           String    @db.VarChar(64)
   failed_login_times Int       @default(0) @db.UnsignedTinyInt
   locked_date        DateTime? @db.DateTime(0)
@@ -151,20 +151,21 @@ model store_goods_version {
 }
 
 model user_order {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  order_id    String    @unique(map: "order_id") @db.VarChar(64)
-  user_id     String    @db.VarChar(64)
-  store_id    String    @db.VarChar(64)
-  status      Int       @db.TinyInt
-  recipient   String    @db.VarChar(16)
-  money       Int       @db.UnsignedInt
-  phone       String    @db.VarChar(16)
-  province    String    @db.VarChar(8)
-  city        String    @db.VarChar(8)
-  district    String    @db.VarChar(16)
-  address     String    @db.VarChar(128)
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
+  id            Int       @id @default(autoincrement()) @db.UnsignedInt
+  order_id      String    @unique(map: "order_id") @db.VarChar(64)
+  user_id       String    @db.VarChar(64)
+  store_id      String    @db.VarChar(64)
+  status        Int       @db.TinyInt
+  recipient     String    @db.VarChar(16)
+  money         Int       @db.UnsignedInt
+  phone         String    @db.VarChar(16)
+  province      String    @db.VarChar(8)
+  city          String    @db.VarChar(8)
+  district      String    @db.VarChar(16)
+  address       String    @db.VarChar(128)
+  delivery_date DateTime  @db.DateTime(0)
+  create_date   DateTime? @default(now()) @db.DateTime(0)
+  update_date   DateTime? @default(now()) @db.DateTime(0)
 
   @@index([user_id, store_id], map: "user_order_idx")
   @@index([store_id], map: "user_order_store_idx")

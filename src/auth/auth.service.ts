@@ -10,8 +10,8 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { AuthEntity } from './entity/auth.entity';
-import bcrypt from 'bcrypt';
-import moment from 'moment';
+import bcrypt = require('bcrypt');
+import * as moment from 'moment';
 import { FILED_LOGIN_TIMES, Login_SOURCE_TYPES } from './const';
 import {
   AddLoginHistoryByInputDto,

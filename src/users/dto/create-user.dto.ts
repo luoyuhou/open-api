@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsPhoneNumber,
   IsString,
+  IsStrongPassword,
   MaxLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
@@ -37,7 +38,7 @@ export class CreateUserDto {
   email: string;
 
   @IsString()
-  @IsPhoneNumber()
+  @IsPhoneNumber('CN')
   @IsNotEmpty()
   @MaxLength(11)
   @ApiProperty()
@@ -63,6 +64,9 @@ export class CreateUserByPasswordDto extends PickType(CreateUserDto, [
   @ApiProperty()
   phone: string;
 
+  @IsString()
+  @IsNotEmpty()
+  @IsStrongPassword()
   @ApiProperty()
   password: string;
 }

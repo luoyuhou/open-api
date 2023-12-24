@@ -4,10 +4,12 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Param,
   Patch,
   Post,
   Req,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -18,11 +20,12 @@ import {
 } from '@nestjs/swagger';
 import { AuthEntity } from './entity/auth.entity';
 import { LoginDto } from './dto/login.dto';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { UserEntity } from '../users/entities/user.entity';
 import { CreateUserByPasswordDto } from '../users/dto/create-user.dto';
-import { Public } from '../common/public.decorator';
+import { Public } from '../common/decorator/public.decorator';
 import { CreateUser_signup_passwordByInputDto } from '../users/dto/create-user_signup_password.dto';
+import Utils from '../common/utils';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -44,10 +47,30 @@ export class AuthController {
   @Public()
   @Post('sign-in/password')
   @ApiOkResponse({ type: AuthEntity })
-  login(@Body() { phone, password }: LoginDto, @Req() request: Request) {
+  async login(
+    @Body() { phone, password }: LoginDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const ip = request.ip;
-    const userAgent = request.headers['user-agent'];
-    return this.authService.loginByPassword(phone, password, { ip, userAgent });
+    const useragent = request.headers['user-agent'];
+    const { accessToken: token } = await this.authService.loginByPassword(
+      phone,
+      password,
+      {
+        ip: Utils.formatIp(ip),
+        useragent,
+      },
+    );
+    response.cookie('sid.token', token, { httpOnly: true });
+    return { token };
+  }
+
+  @Get('sign-in')
+  @ApiBearerAuth()
+  @ApiOkResponse({ type: UserEntity })
+  async getSignedUser() {
+    return {};
   }
 
   @Delete(':id')

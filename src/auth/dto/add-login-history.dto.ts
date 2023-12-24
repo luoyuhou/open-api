@@ -24,7 +24,7 @@ export class AddLoginHistoryDto {
 
   @IsString()
   @ApiProperty()
-  userAgent: string;
+  useragent: string;
 
   @IsInt()
   @IsNotEmpty()
@@ -34,5 +34,5 @@ export class AddLoginHistoryDto {
 
 export class AddLoginHistoryByInputDto extends PickType(AddLoginHistoryDto, [
   'ip',
-  'userAgent',
+  'useragent',
 ]) {}

@@ -4,18 +4,19 @@ import {
   IsNotEmpty,
   IsPhoneNumber,
   IsString,
-  MinLength,
+  IsStrongPassword,
 } from 'class-validator';
 
 export class LoginDto {
-  @IsPhoneNumber()
+  @IsString()
   @IsNotEmpty()
+  @IsPhoneNumber('CN')
   @ApiProperty()
   phone: string;
 
   @IsString()
   @IsNotEmpty()
-  @MinLength(6)
+  @IsStrongPassword()
   @ApiProperty()
   password: string;
 }
