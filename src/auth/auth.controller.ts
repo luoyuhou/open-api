@@ -2,14 +2,19 @@
 
 import {
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
   Req,
   Res,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -23,17 +28,21 @@ import { LoginDto } from './dto/login.dto';
 import { Request, Response } from 'express';
 import { UserEntity } from '../users/entities/user.entity';
 import { CreateUserByPasswordDto } from '../users/dto/create-user.dto';
-import { Public } from '../common/decorator/public.decorator';
 import { CreateUser_signup_passwordByInputDto } from '../users/dto/create-user_signup_password.dto';
 import Utils from '../common/utils';
+import { LocalAuthGuard } from './guards/local-auth.guard';
+import { SessionAuthGuard } from './guards/session-auth.guard';
+import { Login_SOURCE_TYPES } from './const';
+import { TokenInterceptor } from './interceptors/token.interceptor';
 
 @Controller('auth')
 @ApiTags('auth')
+@UseInterceptors(ClassSerializerInterceptor)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Public()
-  @Post('sign-up/password')
+  @Post('local/sign-up')
+  @HttpCode(HttpStatus.CREATED)
   @ApiCreatedResponse({ type: UserEntity })
   async createWithPassword(
     @Body()
@@ -44,8 +53,10 @@ export class AuthController {
     );
   }
 
-  @Public()
-  @Post('sign-in/password')
+  @Post('local/sign-in')
+  @UseGuards(LocalAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(TokenInterceptor)
   @ApiOkResponse({ type: AuthEntity })
   async login(
     @Body() { phone, password }: LoginDto,
@@ -54,20 +65,19 @@ export class AuthController {
   ) {
     const ip = request.ip;
     const useragent = request.headers['user-agent'];
-    const { accessToken: token } = await this.authService.loginByPassword(
-      phone,
-      password,
-      {
-        ip: Utils.formatIp(ip),
-        useragent,
-      },
+    const { user } = request;
+    console.log('user', user);
+    this.authService.addLoginHistory(
+      (user as UserEntity).user_id,
+      Login_SOURCE_TYPES.password,
+      { ip: Utils.formatIp(ip), useragent },
     );
-    response.cookie('sid.token', token, { httpOnly: true });
-    return { token };
+    // response.cookie('sid.token', token, { httpOnly: true });
+    return { message: 'ok' };
   }
 
   @Get('sign-in')
-  @ApiBearerAuth()
+  @UseGuards(SessionAuthGuard)
   @ApiOkResponse({ type: UserEntity })
   async getSignedUser() {
     return {};

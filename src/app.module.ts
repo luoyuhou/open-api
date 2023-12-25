@@ -4,13 +4,13 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AppService } from './app.service';
 import { AppController } from './app.controller';
-import { APP_GUARD } from '@nestjs/core';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { StoreModule } from './store/store.module';
+import { HealthController } from './health.controller';
+import { TerminusModule } from '@nestjs/terminus';
 
 @Module({
-  imports: [PrismaModule, UsersModule, AuthModule, StoreModule],
-  controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
+  imports: [PrismaModule, TerminusModule, UsersModule, AuthModule, StoreModule],
+  controllers: [AppController, HealthController],
+  providers: [AppService],
 })
 export class AppModule {}

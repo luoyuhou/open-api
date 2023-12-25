@@ -58,10 +58,8 @@ export class AuthService {
     return this.prisma.user_signin_history.create({ data });
   }
 
-  private async login(user: UserEntity) {
-    return {
-      accessToken: this.jwtService.sign(user),
-    };
+  public signToken(user: UserEntity) {
+    return this.jwtService.sign(user);
   }
 
   private async getUserAuthPassword(user_id: string) {
@@ -76,11 +74,28 @@ export class AuthService {
     return userAuth;
   }
 
+  public addLoginHistory(
+    user_id: string,
+    source: Login_SOURCE_TYPES,
+    req: AddLoginHistoryByInputDto,
+  ) {
+    this.createLoginHistory({
+      user_id,
+      source,
+      ...req,
+    }).catch((err) =>
+      console.log(
+        `[createLoginHistory] user_id: ${user_id}, req: ${JSON.stringify(
+          req,
+        )}. Error: ${err}`,
+      ),
+    );
+  }
+
   public async loginByPassword(
     phone: string,
     password: string,
-    req: AddLoginHistoryByInputDto,
-  ): Promise<AuthEntity> {
+  ): Promise<UserEntity> {
     // Step 1: Fetch a user with the given email
     const user = await this.prisma.user.findUnique({ where: { phone } });
 
@@ -124,19 +139,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid password');
     }
 
-    this.createLoginHistory({
-      user_id: user.user_id,
-      source: Login_SOURCE_TYPES.password,
-      ...req,
-    }).catch((err) =>
-      console.log(
-        `[createLoginHistory] user_id: ${user.user_id}, req: ${JSON.stringify(
-          req,
-        )}. Error: ${err}`,
-      ),
-    );
     // Step 3: Generate a JWT containing the user's ID and return it
-    return this.login(user);
+    // return this.login(user);
+    return user;
   }
 
   public async resetPassword(
