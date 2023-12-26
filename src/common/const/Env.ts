@@ -11,8 +11,20 @@ class Env {
     return env.ENV !== 'production';
   }
 
+  static get REDIS_HOST() {
+    return env.REDIS_HOST!;
+  }
+
+  static get REDIS_PORT() {
+    return Number(env.REDIS_PORT!);
+  }
+
+  static get REDIS_DB() {
+    return Number(env.REDIS_DB!);
+  }
+
   static get REDIS_URL() {
-    return env.REDIS_URL!;
+    return `redis://${env.REDIS_HOST}:${env.REDIS_PORT}/${env.REDIS_DB}`;
   }
 
   static get SERVER_PORT() {

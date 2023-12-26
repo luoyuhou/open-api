@@ -8,11 +8,15 @@ import { useContainer } from 'class-validator';
 import * as cookieParser from 'cookie-parser';
 import * as session from 'express-session';
 import * as passport from 'passport';
-import * as connectPgSimple from 'connect-pg-simple';
-
 import { AppModule } from './app.module';
 import Env from './common/const/Env';
 import { Reflector } from '@nestjs/core';
+import redisClient from './common/client/redisClient';
+import RedisStore from 'connect-redis';
+import e from 'express';
+import uid = require('uid-safe');
+import { UserEntity } from './users/entities/user.entity';
+import customLogger from './common/logger';
 
 export function setup(app: INestApplication): INestApplication {
   // app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
@@ -27,19 +31,41 @@ export function setup(app: INestApplication): INestApplication {
 
   app.use(cookieParser(process.env.APP_SECRET));
 
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const redisStore = new RedisStore({ client: redisClient });
+
   app.use(
     session({
       secret: Env.APP_SECRET,
       resave: false,
       saveUninitialized: false,
-      store: Env.IS_PROD
-        ? new (connectPgSimple(session))()
-        : new session.MemoryStore(),
+      store: redisStore,
       cookie: {
         httpOnly: true,
         signed: true,
         sameSite: 'strict',
         secure: process.env.NODE_ENV === 'production',
+      },
+      genid(req: e.Request): string {
+        const _sid = uid.sync(32);
+        const { user } = (
+          req.session as unknown as { passport: { user: UserEntity } }
+        ).passport;
+        const sid = `sess:${_sid}`;
+        redisClient
+          .hset('user-session-map', user.user_id, sid)
+          .then(() =>
+            customLogger.log(
+              `Successful set user_id [${user.user_id}] value [${sid}] on user-session-map`,
+            ),
+          )
+          .catch((e) =>
+            customLogger.error(
+              `Failed set user_id [${user.user_id}] value [${sid}] on user-session-map. ${e}`,
+            ),
+          );
+        return _sid;
       },
     }),
   );

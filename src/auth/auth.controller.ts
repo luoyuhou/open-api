@@ -58,22 +58,16 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(TokenInterceptor)
   @ApiOkResponse({ type: AuthEntity })
-  async login(
-    @Body() { phone, password }: LoginDto,
-    @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-  ) {
+  async login(@Req() request: Request) {
     const ip = request.ip;
     const useragent = request.headers['user-agent'];
     const { user } = request;
-    console.log('user', user);
     this.authService.addLoginHistory(
       (user as UserEntity).user_id,
       Login_SOURCE_TYPES.password,
       { ip: Utils.formatIp(ip), useragent },
     );
-    // response.cookie('sid.token', token, { httpOnly: true });
-    return { message: 'ok' };
+    return { message: 'ok', data: user };
   }
 
   @Get('sign-in')
