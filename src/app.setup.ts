@@ -13,10 +13,6 @@ import Env from './common/const/Env';
 import { Reflector } from '@nestjs/core';
 import redisClient from './common/client/redisClient';
 import RedisStore from 'connect-redis';
-import e from 'express';
-import uid = require('uid-safe');
-import { UserEntity } from './users/entities/user.entity';
-import customLogger from './common/logger';
 
 export function setup(app: INestApplication): INestApplication {
   // app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
@@ -45,28 +41,28 @@ export function setup(app: INestApplication): INestApplication {
         httpOnly: true,
         signed: true,
         sameSite: 'strict',
-        secure: process.env.NODE_ENV === 'production',
+        secure: Env.IS_PROD,
       },
-      genid(req: e.Request): string {
-        const _sid = uid.sync(32);
-        const { user } = (
-          req.session as unknown as { passport: { user: UserEntity } }
-        ).passport;
-        const sid = `sess:${_sid}`;
-        redisClient
-          .hset('user-session-map', user.user_id, sid)
-          .then(() =>
-            customLogger.log(
-              `Successful set user_id [${user.user_id}] value [${sid}] on user-session-map`,
-            ),
-          )
-          .catch((e) =>
-            customLogger.error(
-              `Failed set user_id [${user.user_id}] value [${sid}] on user-session-map. ${e}`,
-            ),
-          );
-        return _sid;
-      },
+      // genid(req: e.Request): string {
+      //   const _sid = uid.sync(32);
+      //   const { user } = (
+      //     req.session as unknown as { passport: { user: UserEntity } }
+      //   ).passport;
+      //   const sid = `sess:${_sid}`;
+      //   redisClient
+      //     .hset('user-session-map', user.user_id, sid)
+      //     .then(() =>
+      //       customLogger.log(
+      //         `Successful set user_id [${user.user_id}] value [${sid}] on user-session-map`,
+      //       ),
+      //     )
+      //     .catch((e) =>
+      //       customLogger.error(
+      //         `Failed set user_id [${user.user_id}] value [${sid}] on user-session-map. ${e}`,
+      //       ),
+      //     );
+      //   return _sid;
+      // },
     }),
   );
 

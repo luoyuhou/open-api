@@ -12,7 +12,6 @@ import {
   Patch,
   Post,
   Req,
-  Res,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -24,8 +23,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthEntity } from './entity/auth.entity';
-import { LoginDto } from './dto/login.dto';
-import { Request, Response } from 'express';
+import { Request } from 'express';
 import { UserEntity } from '../users/entities/user.entity';
 import { CreateUserByPasswordDto } from '../users/dto/create-user.dto';
 import { CreateUser_signup_passwordByInputDto } from '../users/dto/create-user_signup_password.dto';
@@ -73,8 +71,8 @@ export class AuthController {
   @Get('sign-in')
   @UseGuards(SessionAuthGuard)
   @ApiOkResponse({ type: UserEntity })
-  async getSignedUser() {
-    return {};
+  async getSignedUser(@Req() request: Request) {
+    return { message: 'ok', data: request.user };
   }
 
   @Delete(':id')
