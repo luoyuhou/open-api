@@ -13,6 +13,7 @@ import Env from './common/const/Env';
 import { Reflector } from '@nestjs/core';
 import redisClient from './common/client/redisClient';
 import RedisStore from 'connect-redis';
+import rTracer = require('cls-rtracer');
 
 export function setup(app: INestApplication): INestApplication {
   // app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
@@ -26,6 +27,7 @@ export function setup(app: INestApplication): INestApplication {
   );
 
   app.use(cookieParser(process.env.APP_SECRET));
+  app.use(rTracer.expressMiddleware());
 
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore

@@ -1,0 +1,7 @@
+{
+  "*.{js,ts}": [
+    "eslint -c .eslintrc.js --fix",
+    "prettier --write",
+    "npm run ts-check"
+  ]
+}

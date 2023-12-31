@@ -32,6 +32,7 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 import { SessionAuthGuard } from './guards/session-auth.guard';
 import { Login_SOURCE_TYPES } from './const';
 import { TokenInterceptor } from './interceptors/token.interceptor';
+import customLogger from '../common/logger';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -73,6 +74,17 @@ export class AuthController {
   @ApiOkResponse({ type: UserEntity })
   async getSignedUser(@Req() request: Request) {
     return { message: 'ok', data: request.user };
+  }
+
+  @Delete('logout')
+  @UseGuards(SessionAuthGuard)
+  @ApiOkResponse({})
+  async logout(@Req() request: Request) {
+    const user_id = (request.user as UserEntity)?.user_id;
+    request.logout(() =>
+      customLogger.log({ user_id, message: 'success logout' }),
+    );
+    return { message: 'ok', data: null };
   }
 
   @Delete(':id')
