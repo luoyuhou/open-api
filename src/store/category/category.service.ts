@@ -1,26 +1,84 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { PrismaService } from '../../prisma/prisma.service';
+import { v4 } from 'uuid';
+import { E_CATEGORY_STATUS_TYPE } from './const';
+import { FindAllCategoryDto } from './dto/findAll-category.dto';
 
 @Injectable()
 export class CategoryService {
-  create(createCategoryDto: CreateCategoryDto) {
-    return 'This action adds a new category';
+  constructor(private prisma: PrismaService) {}
+
+  async create({ store_id, pid, name }: CreateCategoryDto) {
+    const category = await this.prisma.category_goods.findFirst({
+      where: { store_id, name },
+    });
+
+    if (category) {
+      throw new BadRequestException(`${name} 分类已经创建`);
+    }
+
+    const categoryId = `category-${v4()}`;
+
+    return this.prisma.category_goods.create({
+      data: {
+        category_id: categoryId,
+        store_id,
+        pid,
+        name,
+        status: E_CATEGORY_STATUS_TYPE.active,
+      },
+    });
   }
 
-  findAll() {
-    return `This action returns all category`;
+  findAll({ store_id, pid }: FindAllCategoryDto) {
+    return this.prisma.category_goods.findMany({ where: { store_id, pid } });
   }
 
   findOne(id: number) {
     return `This action returns a #${id} category`;
   }
 
-  update(id: number, updateCategoryDto: UpdateCategoryDto) {
-    return `This action updates a #${id} category`;
+  async update(id: string, updateCategoryDto: UpdateCategoryDto) {
+    const category = await this.prisma.category_goods.findUnique({
+      where: { category_id: id, status: E_CATEGORY_STATUS_TYPE.active },
+    });
+
+    if (!category) {
+      throw new BadRequestException('');
+    }
+    return this.prisma.category_goods.update({
+      where: { category_id: id },
+      data: updateCategoryDto,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} category`;
+  async remove(id: string) {
+    const category = await this.prisma.category_goods.findUnique({
+      where: { category_id: id, status: E_CATEGORY_STATUS_TYPE.active },
+    });
+
+    if (!category) {
+      throw new BadRequestException('');
+    }
+    return this.prisma.category_goods.update({
+      where: { category_id: id },
+      data: { status: E_CATEGORY_STATUS_TYPE.inactive },
+    });
+  }
+
+  async reactive(id: string) {
+    const category = await this.prisma.category_goods.findUnique({
+      where: { category_id: id, status: E_CATEGORY_STATUS_TYPE.inactive },
+    });
+
+    if (!category) {
+      throw new BadRequestException('');
+    }
+    return this.prisma.category_goods.update({
+      where: { category_id: id },
+      data: { status: E_CATEGORY_STATUS_TYPE.active },
+    });
   }
 }

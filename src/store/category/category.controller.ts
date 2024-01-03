@@ -6,11 +6,15 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
+  Query,
 } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiProperty, ApiTags } from '@nestjs/swagger';
+import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
+import { FindAllCategoryDto } from './dto/findAll-category.dto';
 
 @Controller('store/category')
 @ApiTags('store/category')
@@ -18,13 +22,17 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
-  create(@Body() createCategoryDto: CreateCategoryDto) {
+  @UseGuards(SessionAuthGuard)
+  @ApiProperty()
+  async create(@Body() createCategoryDto: CreateCategoryDto) {
     return this.categoryService.create(createCategoryDto);
   }
 
   @Get()
-  findAll() {
-    return this.categoryService.findAll();
+  @UseGuards(SessionAuthGuard)
+  @ApiProperty()
+  async findAll(@Query() args: FindAllCategoryDto) {
+    return this.categoryService.findAll(args);
   }
 
   @Get(':id')
@@ -33,15 +41,26 @@ export class CategoryController {
   }
 
   @Patch(':id')
-  update(
+  @UseGuards(SessionAuthGuard)
+  @ApiProperty()
+  async update(
     @Param('id') id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ) {
-    return this.categoryService.update(+id, updateCategoryDto);
+    return this.categoryService.update(id, updateCategoryDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.categoryService.remove(+id);
+  @UseGuards(SessionAuthGuard)
+  @ApiProperty()
+  async remove(@Param('id') id: string) {
+    return this.categoryService.remove(id);
+  }
+
+  @Patch('reactive/:id')
+  @UseGuards(SessionAuthGuard)
+  @ApiProperty()
+  async reactive(@Param('id') id: string) {
+    return this.categoryService.reactive(id);
   }
 }

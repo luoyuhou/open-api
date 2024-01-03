@@ -1,4 +1,14 @@
-import { PartialType } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { CreateCategoryDto } from './create-category.dto';
+import { PickType } from '@nestjs/mapped-types';
 
-export class UpdateCategoryDto extends PartialType(CreateCategoryDto) {}
+export class UpdateCategoryDto extends PickType(CreateCategoryDto, [
+  'name',
+  'pid',
+]) {
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  pid: string;
+}

@@ -156,6 +156,9 @@ CREATE TABLE store_goods_version (
     INDEX `goods_bar_code_idx` (`bar_code`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+ALTER TABLE store_goods_version ADD COLUMN unit_name varchar(8) NOT NULL after price;
+ALTER TABLE store_goods_version ADD COLUMN status tinyint(4) NOT NULL after supplier;
+
 CREATE TABLE user_order (
     id int unsigned NOT NULL AUTO_INCREMENT,
     order_id varchar(64) NOT NULL,

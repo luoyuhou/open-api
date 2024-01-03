@@ -138,7 +138,9 @@ model store_goods_version {
   bar_code       String?   @db.VarChar(32)
   count          Int       @db.UnsignedInt
   price          Int       @db.UnsignedInt
+  unit_name      String    @db.VarChar(8)
   supplier       String?   @db.VarChar(64)
+  status         Int       @db.TinyInt
   create_date    DateTime? @default(now()) @db.DateTime(0)
   update_date    DateTime? @default(now()) @db.DateTime(0)
 
