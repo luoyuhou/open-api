@@ -63,6 +63,8 @@ CREATE TABLE user_address (
     INDEX `user_address_user_idx` (`user_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+ALTER TABLE user_address ADD COLUMN status tinyint(1) NOT NULL DEFAULT 1 after tag;
+
 CREATE TABLE store (
     id int unsigned NOT NULL AUTO_INCREMENT,
     store_id varchar(64) NOT NULL,

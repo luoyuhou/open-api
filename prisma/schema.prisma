@@ -93,6 +93,7 @@ model user_address {
   address         String    @db.VarChar(128)
   is_default      Boolean   @default(false)
   tag             String?   @db.VarChar(8)
+  status          Boolean   @default(true)
   create_date     DateTime? @default(now()) @db.DateTime(0)
   update_date     DateTime? @default(now()) @db.DateTime(0)
 
