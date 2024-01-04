@@ -8,9 +8,17 @@ import { StoreModule } from './store/store.module';
 import { HealthController } from './health.controller';
 import { TerminusModule } from '@nestjs/terminus';
 import { LoggerMiddleware } from './common/middlewares/logger.middleware';
+import { OrderModule } from './order/order.module';
 
 @Module({
-  imports: [PrismaModule, TerminusModule, UsersModule, AuthModule, StoreModule],
+  imports: [
+    PrismaModule,
+    TerminusModule,
+    UsersModule,
+    AuthModule,
+    StoreModule,
+    OrderModule,
+  ],
   controllers: [AppController, HealthController],
   providers: [AppService],
 })

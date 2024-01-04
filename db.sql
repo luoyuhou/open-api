@@ -199,3 +199,16 @@ CREATE TABLE user_order_info (
     INDEX `order_Info_order_idx` (`order_id`) USING BTREE,
     INDEX `order_info_goods_idx` (`goods_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE user_order_action (
+    id int unsigned NOT NULL AUTO_INCREMENT,
+    order_action_id varchar(64) NOT NULL,
+    user_id varchar(64) NOT NULL,
+    order_id varchar(64) NOT NULL,
+    status tinyint(4) NOT NULL,
+    create_date datetime DEFAULT CURRENT_TIMESTAMP,
+    update_date datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY (`order_action_id`),
+    INDEX `order_idx` (`order_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

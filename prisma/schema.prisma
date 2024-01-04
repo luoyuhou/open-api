@@ -189,3 +189,15 @@ model user_order_info {
   @@index([order_id], map: "order_Info_order_idx")
   @@index([goods_id], map: "order_info_goods_idx")
 }
+
+model user_order_action {
+  id              Int       @id @default(autoincrement()) @db.UnsignedInt
+  order_action_id String    @unique(map: "order_action_id") @db.VarChar(64)
+  user_id         String    @db.VarChar(64)
+  order_id        String    @db.VarChar(64)
+  status          Int       @db.TinyInt
+  create_date     DateTime? @default(now()) @db.DateTime(0)
+  update_date     DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([order_id], map: "order_idx")
+}
