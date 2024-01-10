@@ -12,18 +12,24 @@ export class ProvinceService {
     const [province, city, area] = pid.match(/(.{2})/g);
     if (area !== '00') {
       return this.prisma.province.findMany({
-        where: { province, city, area, NOT: { area: '0' } },
+        where: { province, city, area, NOT: { town: '0' } },
       });
     }
 
     if (city !== '00') {
       return this.prisma.province.findMany({
-        where: { province, city, NOT: { area: '0' } },
+        where: { province, city, town: '0', NOT: { area: '0' } },
+      });
+    }
+
+    if (['11', '12', '50', '81', '82'].includes(province)) {
+      return this.prisma.province.findMany({
+        where: { province, town: '0', NOT: { area: '0' } },
       });
     }
 
     return this.prisma.province.findMany({
-      where: { province, NOT: { city: '0' } },
+      where: { province, town: '0', area: '0', NOT: { city: '0' } },
     });
   }
 
