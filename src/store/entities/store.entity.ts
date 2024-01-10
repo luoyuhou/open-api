@@ -59,7 +59,12 @@ export class StoreEntity {
   @IsString()
   @IsNotEmpty()
   @MaxLength(16)
-  district: string;
+  area: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(16)
+  town: string;
 
   @IsString()
   @IsNotEmpty()

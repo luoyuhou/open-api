@@ -168,7 +168,7 @@ export class StoreService {
         return;
       }
 
-      if (['province', 'city', 'district'].includes(id)) {
+      if (['province', 'city', 'area'].includes(id)) {
         where[id] = Array.isArray(value) ? `IN (${value})` : value;
         return;
       }
@@ -215,7 +215,7 @@ export class StoreService {
         status: STORE_STATUS_TYPES.APPROVED,
         province: arr[0],
         city: arr[1],
-        district: arr[2],
+        area: arr[2],
       };
       if (arr.length > 4) {
         where['address'] = `%${arr[3]}%`;

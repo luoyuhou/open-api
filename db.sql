@@ -64,6 +64,8 @@ CREATE TABLE user_address (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 ALTER TABLE user_address ADD COLUMN status tinyint(1) NOT NULL DEFAULT 1 after tag;
+ALTER TABLE user_address CHANGE COLUMN district area varchar(8) NOT NULL;
+ALTER TABLE user_address ADD COLUMN town varchar(8) NOT NULL after area;
 
 CREATE TABLE store (
     id int unsigned NOT NULL AUTO_INCREMENT,
@@ -85,6 +87,9 @@ CREATE TABLE store (
     INDEX `store_name_idx` (`store_name`) USING BTREE,
     INDEX `store_user_idx` (`user_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE store CHANGE COLUMN district area varchar(8) NOT NULL;
+ALTER TABLE store ADD COLUMN town varchar(8) NOT NULL after area;
 
 CREATE TABLE store_history (
     id int unsigned NOT NULL AUTO_INCREMENT,
@@ -184,6 +189,8 @@ CREATE TABLE user_order (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 ALTER TABLE user_order ADD Column delivery_date datetime NOT NULL after address;
+ALTER TABLE user_order CHANGE COLUMN district area varchar(8) NOT NULL;
+ALTER TABLE user_order ADD COLUMN town varchar(8) NOT NULL after area;
 
 CREATE TABLE user_order_info (
     id int unsigned NOT NULL AUTO_INCREMENT,
@@ -213,4 +220,18 @@ CREATE TABLE user_order_action (
     PRIMARY KEY (`id`),
     UNIQUE KEY (`order_action_id`),
     INDEX `order_idx` (`order_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `province` (
+    id int unsigned NOT NULL AUTO_INCREMENT,
+    code bigint(8) NOT NULL,
+    name varchar(32) NOT NULL,
+    province varchar(8) NOT NULL,
+    city varchar(8) NOT NULL,
+    area varchar(8) NOT NULL,
+    town varchar(8) NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `code_idx` (`code`) USING BTREE,
+    INDEX `city_idx` (`city`) USING BTREE,
+    INDEX `province_idx` (`province`, `city`, `area`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

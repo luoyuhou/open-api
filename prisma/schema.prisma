@@ -54,7 +54,8 @@ model store {
   phone       String    @db.VarChar(11)
   province    String    @db.VarChar(8)
   city        String    @db.VarChar(8)
-  district    String    @db.VarChar(16)
+  area        String    @db.VarChar(8)
+  town        String    @db.VarChar(8)
   address     String    @db.VarChar(128)
   status      Int       @default(0) @db.TinyInt
   create_date DateTime? @default(now()) @db.DateTime(0)
@@ -89,7 +90,8 @@ model user_address {
   phone           String    @db.VarChar(16)
   province        String    @db.VarChar(8)
   city            String    @db.VarChar(8)
-  district        String    @db.VarChar(16)
+  area            String    @db.VarChar(8)
+  town            String    @db.VarChar(8)
   address         String    @db.VarChar(128)
   is_default      Boolean   @default(false)
   tag             String?   @db.VarChar(8)
@@ -164,7 +166,8 @@ model user_order {
   phone         String    @db.VarChar(16)
   province      String    @db.VarChar(8)
   city          String    @db.VarChar(8)
-  district      String    @db.VarChar(16)
+  area          String    @db.VarChar(8)
+  town          String    @db.VarChar(8)
   address       String    @db.VarChar(128)
   delivery_date DateTime  @db.DateTime(0)
   create_date   DateTime? @default(now()) @db.DateTime(0)
@@ -201,4 +204,19 @@ model user_order_action {
   update_date     DateTime? @default(now()) @db.DateTime(0)
 
   @@index([order_id], map: "order_idx")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model province {
+  id       Int    @id @default(autoincrement()) @db.UnsignedInt
+  code     BigInt
+  name     String @db.VarChar(32)
+  province String @db.VarChar(8)
+  city     String @db.VarChar(8)
+  area     String @db.VarChar(8)
+  town     String @db.VarChar(8)
+
+  @@index([city], map: "city_idx")
+  @@index([code], map: "code_idx")
+  @@index([province, city, area], map: "province_idx")
 }

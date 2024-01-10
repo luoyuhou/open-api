@@ -7,7 +7,7 @@ export class UpdateAddressDto extends PickType(CreateAddressDto, [
   'phone',
   'province',
   'city',
-  'district',
+  'area',
   'address',
   'is_default',
   'tag',
@@ -25,7 +25,7 @@ export class UpdateAddressDto extends PickType(CreateAddressDto, [
   city: string;
 
   @ApiProperty()
-  district: string;
+  area: string;
 
   @ApiProperty()
   address: string;

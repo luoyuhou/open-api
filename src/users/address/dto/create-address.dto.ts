@@ -38,7 +38,13 @@ export class CreateAddressDto {
   @IsNotEmpty()
   @MaxLength(16)
   @ApiProperty()
-  district: string;
+  area: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(16)
+  @ApiProperty()
+  town: string;
 
   @IsString()
   @IsNotEmpty()

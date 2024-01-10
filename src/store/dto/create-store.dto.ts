@@ -54,7 +54,12 @@ export class CreateStoreDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(16)
-  district: string;
+  area: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(16)
+  town: string;
 
   @IsString()
   @IsNotEmpty()
@@ -73,7 +78,8 @@ export class CreateStoreInputDto extends PickType(CreateStoreDto, [
   'phone',
   'province',
   'city',
-  'district',
+  'area',
+  'town',
   'address',
 ]) {
   @ApiProperty()
@@ -95,7 +101,10 @@ export class CreateStoreInputDto extends PickType(CreateStoreDto, [
   city: string;
 
   @ApiProperty()
-  district: string;
+  area: string;
+
+  @ApiProperty()
+  town: string;
 
   @ApiProperty()
   address: string;

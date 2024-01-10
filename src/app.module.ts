@@ -9,6 +9,7 @@ import { HealthController } from './health.controller';
 import { TerminusModule } from '@nestjs/terminus';
 import { LoggerMiddleware } from './common/middlewares/logger.middleware';
 import { OrderModule } from './order/order.module';
+import { GeneralModule } from './general/general.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { OrderModule } from './order/order.module';
     AuthModule,
     StoreModule,
     OrderModule,
+    GeneralModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

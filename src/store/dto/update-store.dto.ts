@@ -11,7 +11,7 @@ export class UpdateStoreDto extends PickType(CreateStoreDto, [
   'phone',
   'province',
   'city',
-  'district',
+  'area',
   'address',
 ]) {
   @ApiProperty()
@@ -36,7 +36,7 @@ export class UpdateStoreDto extends PickType(CreateStoreDto, [
   city: string;
 
   @ApiProperty()
-  district: string;
+  area: string;
 
   @ApiProperty()
   address: string;

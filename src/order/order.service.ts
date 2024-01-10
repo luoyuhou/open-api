@@ -26,7 +26,8 @@ export class OrderService {
       throw new BadRequestException('');
     }
 
-    const { province, city, district, address, phone, recipient } = userAddress;
+    const { province, city, area, town, address, phone, recipient } =
+      userAddress;
 
     await this.prisma.$transaction([
       this.prisma.user_order.create({
@@ -37,7 +38,8 @@ export class OrderService {
           money,
           province,
           city,
-          district,
+          area,
+          town,
           address,
           phone,
           recipient,
