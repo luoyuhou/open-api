@@ -209,7 +209,7 @@ model user_order_action {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model province {
   id       Int    @id @default(autoincrement()) @db.UnsignedInt
-  code     BigInt
+  code     String @db.VarChar(8)
   name     String @db.VarChar(32)
   province String @db.VarChar(8)
   city     String @db.VarChar(8)

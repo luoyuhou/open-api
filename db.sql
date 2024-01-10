@@ -235,3 +235,5 @@ CREATE TABLE `province` (
     INDEX `city_idx` (`city`) USING BTREE,
     INDEX `province_idx` (`province`, `city`, `area`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE province MODIFY COLUMN code varchar(8) NOT NULL;
