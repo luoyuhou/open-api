@@ -36,9 +36,10 @@ export class CreateStoreDto {
   user_id: string;
 
   @IsString()
+  @IsPhoneNumber('CN')
   @IsNotEmpty()
-  @IsPhoneNumber()
   @MaxLength(11)
+  @ApiProperty()
   phone: string;
 
   @IsString()

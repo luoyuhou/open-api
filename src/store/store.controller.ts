@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Req,
 } from '@nestjs/common';
 import { StoreService } from './store.service';
 import { CreateStoreInputDto } from './dto/create-store.dto';
@@ -17,18 +18,20 @@ import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { StoreEntity } from './entities/store.entity';
 import { Pagination } from '../common/dto/pagination';
 import { SearchStoreDto } from './dto/search-store.dto';
+import { UserEntity } from 'src/users/entities/user.entity';
+import { Request } from 'express';
 
+@UseGuards(SessionAuthGuard)
 @Controller('store')
 @ApiTags('store')
 export class StoreController {
   constructor(private readonly storeService: StoreService) {}
 
   @Post()
-  @UseGuards(SessionAuthGuard)
   @ApiProperty()
   @ApiOkResponse({ type: StoreEntity })
-  create(@Body() createStoreDto: CreateStoreInputDto) {
-    const user: any = {};
+  create(@Req() req: Request, @Body() createStoreDto: CreateStoreInputDto) {
+    const user = req.user as UserEntity;
     return this.storeService.create(user, createStoreDto);
   }
 
