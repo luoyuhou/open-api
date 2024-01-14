@@ -67,6 +67,25 @@ ALTER TABLE user_address ADD COLUMN status tinyint(1) NOT NULL DEFAULT 1 after t
 ALTER TABLE user_address CHANGE COLUMN district area varchar(8) NOT NULL;
 ALTER TABLE user_address ADD COLUMN town varchar(8) NOT NULL after area;
 
+CREATE TABLE store_apply (
+    id int unsigned NOT NULL AUTO_INCREMENT,
+    store_id varchar(64) NOT NULL,
+    type tinyint(4) unsigned NOT NULL,
+    applicant_user_id varchar(64) NOT NULL,
+    applicant_date datetime NOT NULL,
+    applicant_summary varchar(128) NOT NULL,
+    applicant_content varchar(1024) NOT NULL,
+    status tinyint(2) NOT NULL default 0,
+    replient_user_id varchar(64),
+    replient_date datetime,
+    replient_content varchar(256),
+    create_date datetime DEFAULT CURRENT_TIMESTAMP,
+    update_date datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `store_apply_idx` (`store_id`) USING BTREE,
+    INDEX `store_apply_type_idx` (`type`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE store (
     id int unsigned NOT NULL AUTO_INCREMENT,
     store_id varchar(64) NOT NULL,
@@ -98,15 +117,17 @@ CREATE TABLE store_history (
     action_content varchar(256) NOT NULL,
     applicant_user_id varchar(64) NOT NULL,
     applicant_date date NOT NULL,
-    replient_user_id varchar(64),
-    replient_date datetime,
-    replient_content varchar(256),
     create_date datetime DEFAULT CURRENT_TIMESTAMP,
     update_date datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     INDEX `store_history_idx` (`store_id`) USING BTREE,
     INDEX `store_action_type_idx` (`action_type`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE store_history MODIFY applicant_date datetime NOT NULL;
+ALTER TABLE store_history ADD COLUMN payload varchar(1024) after action_content;
+ALTER TABLE store_history CHANGE COLUMN applicant_user_id action_user_id varchar(64) NOT NULL;
+ALTER TABLE store_history CHANGE COLUMN applicant_date action_date datetime NOT NULL;
 
 CREATE TABLE category_goods (
     id int unsigned NOT NULL AUTO_INCREMENT,

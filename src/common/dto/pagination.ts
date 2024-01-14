@@ -1,12 +1,27 @@
 import {
   IsArray,
+  IsBoolean,
   IsInt,
   IsNotEmpty,
+  IsString,
   Max,
-  MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+
+class Sorted {
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty()
+  id: string;
+
+  @IsBoolean()
+  @IsNotEmpty()
+  @ApiProperty()
+  desc: boolean;
+}
 
 export class Pagination {
   @IsInt()
@@ -23,9 +38,10 @@ export class Pagination {
   pageSize: number;
 
   @IsArray()
-  @MaxLength(1)
+  @ValidateNested({ each: true })
+  @Type(() => Sorted)
   @ApiProperty()
-  sorted: { id: string; desc: boolean }[];
+  sorted: Sorted[];
 
   @IsArray()
   @ApiProperty()

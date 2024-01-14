@@ -20,6 +20,7 @@ import { Pagination } from '../common/dto/pagination';
 import { SearchStoreDto } from './dto/search-store.dto';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { Request } from 'express';
+import { SearchHistoryDto } from './dto/search-history.dto';
 
 @UseGuards(SessionAuthGuard)
 @Controller('store')
@@ -30,20 +31,38 @@ export class StoreController {
   @Post()
   @ApiProperty()
   @ApiOkResponse({ type: StoreEntity })
-  create(@Req() req: Request, @Body() createStoreDto: CreateStoreInputDto) {
+  async create(
+    @Req() req: Request,
+    @Body() createStoreDto: CreateStoreInputDto,
+  ) {
     const user = req.user as UserEntity;
     return this.storeService.create(user, createStoreDto);
   }
 
-  @Post()
-  @UseGuards(SessionAuthGuard)
+  @Post('apply-list')
   @ApiProperty()
-  pagination(@Body() pagination: Pagination) {
+  async applyList(@Req() req: Request, @Body() pagination: Pagination) {
+    const user = req.user as UserEntity;
+    pagination.filtered.push({ id: 'user_id', value: user.user_id });
     return this.storeService.pagination(pagination);
   }
 
+  @Post('pagination')
+  @ApiProperty()
+  async pagination(@Body() pagination: Pagination) {
+    return this.storeService.pagination(pagination);
+  }
+
+  @Get('history/:id')
+  @ApiProperty()
+  async findHistory(
+    @Param('id') id: string,
+    @Query() { type }: SearchHistoryDto,
+  ) {
+    return this.storeService.findHistory(id, type);
+  }
+
   @Get('search')
-  @UseGuards(SessionAuthGuard)
   @ApiProperty()
   async search(@Query() args: SearchStoreDto) {
     return this.storeService.searchMany(args);

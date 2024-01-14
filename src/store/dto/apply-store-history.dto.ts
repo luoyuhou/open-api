@@ -25,24 +25,11 @@ export class ApplyStoreHistoryDto {
 
   @IsString()
   @IsNotEmpty()
-  applicant_user_id: string;
+  action_user_id: string;
 
   @IsString()
   @IsNotEmpty()
-  applicant_date: Date;
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(64)
-  replient_user_id: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(256)
-  replient_content: string;
-
-  @IsDate()
-  replient_date: Date;
+  action_date: Date;
 }
 
 export class ApplicantStoreHistoryInputDto extends PickType(
@@ -51,7 +38,7 @@ export class ApplicantStoreHistoryInputDto extends PickType(
     'store_id',
     'action_type',
     'action_content',
-    'applicant_user_id',
-    'applicant_date',
+    'action_user_id',
+    'action_date',
   ],
 ) {}

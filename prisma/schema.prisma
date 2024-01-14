@@ -66,17 +66,15 @@ model store {
 }
 
 model store_history {
-  id                Int       @id @default(autoincrement()) @db.UnsignedInt
-  store_id          String    @db.VarChar(64)
-  action_type       Int       @db.UnsignedTinyInt
-  action_content    String    @db.VarChar(256)
-  applicant_user_id String    @db.VarChar(64)
-  applicant_date    DateTime  @db.Date
-  replient_user_id  String?   @db.VarChar(64)
-  replient_date     DateTime? @db.DateTime(0)
-  replient_content  String?   @db.VarChar(256)
-  create_date       DateTime? @default(now()) @db.DateTime(0)
-  update_date       DateTime? @default(now()) @db.DateTime(0)
+  id             Int       @id @default(autoincrement()) @db.UnsignedInt
+  store_id       String    @db.VarChar(64)
+  action_type    Int       @db.UnsignedTinyInt
+  action_content String    @db.VarChar(256)
+  payload        String?   @db.VarChar(1024)
+  action_user_id String    @db.VarChar(64)
+  action_date    DateTime  @db.DateTime(0)
+  create_date    DateTime? @default(now()) @db.DateTime(0)
+  update_date    DateTime? @default(now()) @db.DateTime(0)
 
   @@index([action_type], map: "store_action_type_idx")
   @@index([store_id], map: "store_history_idx")
@@ -219,4 +217,23 @@ model province {
   @@index([city], map: "city_idx")
   @@index([code], map: "code_idx")
   @@index([province, city, area], map: "province_idx")
+}
+
+model store_apply {
+  id                Int       @id @default(autoincrement()) @db.UnsignedInt
+  store_id          String    @db.VarChar(64)
+  type              Int       @db.UnsignedTinyInt
+  applicant_user_id String    @db.VarChar(64)
+  applicant_date    DateTime  @db.DateTime(0)
+  applicant_summary String    @db.VarChar(128)
+  applicant_content String    @db.VarChar(1024)
+  status            Int       @default(0) @db.TinyInt
+  replient_user_id  String?   @db.VarChar(64)
+  replient_date     DateTime? @db.DateTime(0)
+  replient_content  String?   @db.VarChar(256)
+  create_date       DateTime? @default(now()) @db.DateTime(0)
+  update_date       DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([store_id], map: "store_apply_idx")
+  @@index([type])
 }

@@ -34,10 +34,10 @@ export class StoreService {
 
     const history: ApplicantStoreHistoryInputDto = {
       store_id,
-      action_type: STORE_ACTION_TYPES.apply,
+      action_type: STORE_ACTION_TYPES.APPLY,
       action_content: `${user.first_name} ${user.last_name} apply store name is ${createStoreDto.store_name}`,
-      applicant_user_id: user.user_id,
-      applicant_date: new Date(),
+      action_user_id: user.user_id,
+      action_date: new Date(),
     };
 
     await this.prisma.$transaction([
@@ -65,10 +65,10 @@ export class StoreService {
       this.prisma.store_history.create({
         data: {
           store_id: id,
-          action_type: STORE_ACTION_TYPES.review,
+          action_type: STORE_ACTION_TYPES.PREVIEW,
           action_content: `${user.first_name} ${user.last_name} has been preview ${store.store_name} (${store.store_id})`,
-          applicant_user_id: user.user_id,
-          applicant_date: new Date(),
+          action_user_id: user.user_id,
+          action_date: new Date(),
         },
       }),
     ]);
@@ -88,11 +88,14 @@ export class StoreService {
     }
 
     const storeHistory = await this.prisma.store_history.findFirst({
-      where: { store_id: id, action_type: STORE_ACTION_TYPES.review },
+      where: { store_id: id },
       orderBy: { create_date: 'desc' },
     });
 
-    if (previewStore.status === STORE_STATUS_TYPES.PENDING || !storeHistory) {
+    if (
+      previewStore.status === STORE_STATUS_TYPES.PENDING ||
+      storeHistory?.action_type !== STORE_ACTION_TYPES.PREVIEW
+    ) {
       throw new BadRequestException('请确定你是否预览并刷新页面，重新提交');
     }
 
@@ -101,12 +104,13 @@ export class StoreService {
         where: { store_id: id },
         data: { status: STORE_STATUS_TYPES.REVIEWED },
       }),
-      this.prisma.store_history.update({
-        where: { id: storeHistory.id },
+      this.prisma.store_history.create({
         data: {
-          replient_user_id: user.user_id,
-          replient_content: `${user.first_name} ${user.last_name} has been review ${previewStore.store_name} (${storeHistory.store_id})`,
-          replient_date: new Date(),
+          store_id: id,
+          action_type: STORE_ACTION_TYPES.REVIEWED,
+          action_content: `${user.first_name} ${user.last_name} has been review ${previewStore.store_name} (${storeHistory.store_id})`,
+          action_user_id: user.user_id,
+          action_date: new Date(),
         },
       }),
     ]);
@@ -121,30 +125,25 @@ export class StoreService {
       where: {
         store_id: id,
       },
+      orderBy: { create_date: 'desc' },
     });
-    if (!lastStoreHistory) {
-      throw new BadRequestException('');
-    }
-
-    if (lastStoreHistory.action_type !== STORE_ACTION_TYPES.apply) {
-      throw new BadRequestException('');
-    }
-
-    if (lastStoreHistory.replient_content) {
-      throw new BadRequestException('');
+    if (lastStoreHistory?.action_type !== STORE_ACTION_TYPES.REVIEWED) {
+      throw new BadRequestException('请确定你是否预览完成');
     }
 
     await this.prisma.$transaction([
       this.prisma.store.update({
         where: { store_id: id },
-        data: { status: 1 },
+        data: { status: STORE_STATUS_TYPES.APPROVED },
       }),
-      this.prisma.store_history.update({
-        where: { id: lastStoreHistory.id },
+      this.prisma.store_history.create({
         data: {
-          replient_date: new Date(),
-          replient_user_id: user.user_id,
-          replient_content: `${user.first_name} ${user.last_name} approved this store. content: ${data.replient_content}`,
+          store_id: id,
+          action_user_id: user.user_id,
+          action_date: new Date(),
+          action_type: STORE_ACTION_TYPES.APPROVED,
+          action_content: `${user.first_name} ${user.last_name} approved this store.`,
+          payload: data.replient_content,
         },
       }),
     ]);
@@ -153,23 +152,30 @@ export class StoreService {
   public async pagination(pagination: Pagination) {
     const { pageNum, pageSize, sorted, filtered } = pagination;
     const where = {};
-    filtered.forEach(({ id, value }) => {
+    filtered.map(({ id, value }) => {
       if (
-        ['store_id', 'id_code', 'id_name', 'user_id', 'status'].includes(id)
+        [
+          'store_id',
+          'id_code',
+          'id_name',
+          'user_id',
+          'status',
+          'province',
+          'city',
+          'area',
+          'town',
+        ].includes(id)
       ) {
-        where[id] = Array.isArray(value) ? `IN (${value})` : value;
-        return;
+        return Array.isArray(value)
+          ? `s.${id} IN (${value})`
+          : `s.${id} = '${value}'`;
       }
 
       if (id === 'store_name' || id === 'address') {
-        where[id] = Array.isArray(value)
-          ? `IN (${value})`
-          : `LIKE '%${value}%'`;
-        return;
+        return `s.${id} LIKE '%${value}%'`;
       }
 
       if (['province', 'city', 'area'].includes(id)) {
-        where[id] = Array.isArray(value) ? `IN (${value})` : value;
         return;
       }
     });
@@ -187,8 +193,8 @@ export class StoreService {
     });
     const data = await this.prisma.store.findMany({
       where: where,
-      take: pageNum,
-      skip: (pageNum + 1) * pageSize,
+      take: pageSize,
+      skip: pageNum * pageSize,
       orderBy: { [orderByKey]: orderByValue },
     });
 
@@ -197,6 +203,29 @@ export class StoreService {
 
   public async findOne(id: string) {
     return this.prisma.store.findUnique({ where: { store_id: id } });
+  }
+
+  public async findHistory(id: string, type?: string) {
+    if (type) {
+      return this.prisma.store_history.findMany({
+        where: {
+          store_id: id,
+          action_type: { lte: STORE_ACTION_TYPES.APPROVED },
+        },
+        orderBy: { create_date: 'desc' },
+      });
+    }
+
+    return this.prisma.store_history.findMany({
+      where: { store_id: id },
+      orderBy: { create_date: 'desc' },
+    });
+
+    // return this.prisma.$queryRaw`SELECT st.* FROM store_history as st
+    //     LEFT JOIN store as s
+    //     ON st.store_id = s.store_id
+    //     WHERE st.store_id = '${id}'
+    //     ORDER BY st.create_date desc`;
   }
 
   public async searchMany({ type, value }: SearchStoreDto) {
@@ -238,10 +267,10 @@ export class StoreService {
     return this.prisma.store_history.create({
       data: {
         store_id: id,
-        action_type: STORE_ACTION_TYPES.transform,
+        action_type: STORE_ACTION_TYPES.TRANSFORM,
         action_content: '',
-        applicant_user_id: user.user_id,
-        applicant_date: new Date(),
+        action_user_id: user.user_id,
+        action_date: new Date(),
       },
     });
   }
@@ -260,9 +289,9 @@ export class StoreService {
         data: {
           store_id: id,
           action_content: ``,
-          action_type: STORE_ACTION_TYPES.apply,
-          applicant_date: new Date(),
-          applicant_user_id: user.user_id,
+          action_type: STORE_ACTION_TYPES.UPDATED,
+          action_date: new Date(),
+          action_user_id: user.user_id,
         },
       }),
     ]);
