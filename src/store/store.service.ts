@@ -9,6 +9,7 @@ import { UserEntity } from '../users/entities/user.entity';
 import { StoreEntity } from './entities/store.entity';
 import { Pagination } from '../common/dto/pagination';
 import { SearchStoreDto } from './dto/search-store.dto';
+import { ApproverStoreDto } from './dto/approver-store.dto';
 
 @Injectable()
 export class StoreService {
@@ -74,11 +75,7 @@ export class StoreService {
     ]);
   }
 
-  public async reviewApply(
-    id: string,
-    data: { message: string },
-    user: UserEntity,
-  ) {
+  public async reviewApply(id: string, user: UserEntity) {
     const previewStore = await this.prisma.store.findUnique({
       where: { store_id: id },
     });
@@ -121,13 +118,13 @@ export class StoreService {
     data: { replient_content: string },
     user: UserEntity,
   ) {
-    const lastStoreHistory = await this.prisma.store_history.findFirst({
+    const store = await this.prisma.store.findFirst({
       where: {
         store_id: id,
+        status: STORE_ACTION_TYPES.REVIEWED,
       },
-      orderBy: { create_date: 'desc' },
     });
-    if (lastStoreHistory?.action_type !== STORE_ACTION_TYPES.REVIEWED) {
+    if (!store) {
       throw new BadRequestException('请确定你是否预览完成');
     }
 
@@ -301,7 +298,57 @@ export class StoreService {
     return `This action removes a #${id} store`;
   }
 
-  public async frozen() {
-    return '';
+  public async frozen(id: string, user: UserEntity) {
+    const store = await this.prisma.store.findUnique({
+      where: { store_id: id },
+    });
+    if (!store) {
+      throw new BadRequestException('未找到 store');
+    }
+
+    if (store.status === STORE_STATUS_TYPES.FROZEN) {
+      return;
+    }
+
+    return this.prisma.$transaction([
+      this.prisma.store.update({
+        where: { store_id: id },
+        data: { status: STORE_STATUS_TYPES.FROZEN },
+      }),
+      this.prisma.store_history.create({
+        data: {
+          store_id: id,
+          action_type: STORE_ACTION_TYPES.FROZEN,
+          action_user_id: user.user_id,
+          action_date: new Date(),
+          action_content: `${user.first_name} ${user.last_name} has been frozen store`,
+        },
+      }),
+    ]);
+  }
+
+  public async adapter(
+    { store_id, status }: ApproverStoreDto,
+    user: UserEntity,
+  ) {
+    if (status === STORE_STATUS_TYPES.PREVIEW) {
+      return this.previewApply(store_id, user);
+    }
+
+    if (status === STORE_STATUS_TYPES.REVIEWED) {
+      return this.reviewApply(store_id, user);
+    }
+
+    if (status === STORE_STATUS_TYPES.APPROVED) {
+      return this.approvedForApply(
+        store_id,
+        { replient_content: `approved` },
+        user,
+      );
+    }
+
+    if (status === STORE_STATUS_TYPES.FROZEN) {
+      return this.frozen(store_id, user);
+    }
   }
 }

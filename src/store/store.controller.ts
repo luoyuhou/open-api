@@ -21,6 +21,7 @@ import { SearchStoreDto } from './dto/search-store.dto';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { Request } from 'express';
 import { SearchHistoryDto } from './dto/search-history.dto';
+import { ApproverStoreDto } from './dto/approver-store.dto';
 
 @UseGuards(SessionAuthGuard)
 @Controller('store')
@@ -69,7 +70,12 @@ export class StoreController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string) {
     return this.storeService.findOne(id);
+  }
+
+  @Post('/approver')
+  async adapter(@Body() args: ApproverStoreDto, @Req() req: Request) {
+    return this.storeService.adapter(args, req.user as UserEntity);
   }
 }
