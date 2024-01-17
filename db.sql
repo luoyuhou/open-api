@@ -145,6 +145,8 @@ CREATE TABLE category_goods (
     INDEX `category_goods_idx` (`store_id`, `pid`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+ALTER TABLE category_goods ADD COLUMN `rank` tinyint(5) NOT NULL DEFAULT 0 after pid;
+
 
 CREATE TABLE store_goods (
     id int unsigned NOT NULL AUTO_INCREMENT,

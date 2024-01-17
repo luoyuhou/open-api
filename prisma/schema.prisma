@@ -105,6 +105,7 @@ model category_goods {
   category_id String    @unique(map: "category_id") @db.VarChar(64)
   store_id    String    @db.VarChar(64)
   pid         String?   @db.VarChar(64)
+  rank        Int       @default(0) @db.TinyInt
   name        String    @db.VarChar(16)
   status      Int       @db.TinyInt
   create_date DateTime? @default(now()) @db.DateTime(0)

@@ -16,6 +16,7 @@ import { ApiProperty, ApiTags } from '@nestjs/swagger';
 import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
 import { FindAllCategoryDto } from './dto/findAll-category.dto';
 
+@UseGuards(SessionAuthGuard)
 @Controller('store/category')
 @ApiTags('store/category')
 export class CategoryController {

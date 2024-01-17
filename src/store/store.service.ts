@@ -10,6 +10,7 @@ import { StoreEntity } from './entities/store.entity';
 import { Pagination } from '../common/dto/pagination';
 import { SearchStoreDto } from './dto/search-store.dto';
 import { ApproverStoreDto } from './dto/approver-store.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class StoreService {
@@ -121,7 +122,7 @@ export class StoreService {
     const store = await this.prisma.store.findFirst({
       where: {
         store_id: id,
-        status: STORE_ACTION_TYPES.REVIEWED,
+        status: STORE_STATUS_TYPES.REVIEWED,
       },
     });
     if (!store) {
@@ -149,7 +150,7 @@ export class StoreService {
   public async pagination(pagination: Pagination) {
     const { pageNum, pageSize, sorted, filtered } = pagination;
     const where = {};
-    filtered.map(({ id, value }) => {
+    filtered.forEach(({ id, value }) => {
       if (
         [
           'store_id',
@@ -163,17 +164,11 @@ export class StoreService {
           'town',
         ].includes(id)
       ) {
-        return Array.isArray(value)
-          ? `s.${id} IN (${value})`
-          : `s.${id} = '${value}'`;
+        where[id] = Array.isArray(value) ? { in: value } : value;
       }
 
       if (id === 'store_name' || id === 'address') {
-        return `s.${id} LIKE '%${value}%'`;
-      }
-
-      if (['province', 'city', 'area'].includes(id)) {
-        return;
+        where[id] = { contains: value };
       }
     });
 
@@ -195,11 +190,64 @@ export class StoreService {
       orderBy: { [orderByKey]: orderByValue },
     });
 
-    return { data, rows: count, pages: Math.ceil(count / pageSize) };
+    const storeIds = data.map(({ store_id }) => store_id);
+    const names = await this.formatAreaName(storeIds);
+
+    const formatData = data.map((d) => {
+      const find = (names as { store_id: string }[]).find(
+        ({ store_id }) => d.store_id === store_id,
+      );
+      return {
+        ...d,
+        ...(find || {}),
+      };
+    });
+
+    return {
+      data: formatData,
+      rows: count,
+      pages: Math.ceil(count / pageSize),
+    };
+  }
+
+  private async formatAreaName(storeIds: string[]): Promise<
+    {
+      store_id: string;
+      province_name: string;
+      city_name: string;
+      area_name: string;
+      town_name: string;
+    }[]
+  > {
+    return this.prisma.$queryRaw`SELECT
+          A.store_id,
+          B1.name AS province_name,
+          B2.name AS city_name,
+          B3.name AS area_name,
+          B4.name AS town_name
+        FROM storehouse.store AS A
+          LEFT JOIN storehouse.province AS B1 ON A.province = B1.code
+          LEFT JOIN storehouse.province AS B2 ON A.city = B2.code
+          LEFT JOIN storehouse.province AS B3 ON A.area = B3.code
+            AND B3.town = 0
+          LEFT JOIN storehouse.province AS B4 ON A.area = B4.code
+            AND A.town = B4.town
+        WHERE store_id IN (${Prisma.join(storeIds)})
+        `;
   }
 
   public async findOne(id: string) {
-    return this.prisma.store.findUnique({ where: { store_id: id } });
+    const store = await this.prisma.store.findUnique({
+      where: { store_id: id },
+    });
+
+    if (!store) {
+      return store;
+    }
+
+    const names = await this.formatAreaName([store.store_id]);
+
+    return { ...store, ...(names[0] || {}) };
   }
 
   public async findHistory(id: string, type?: string) {
@@ -350,5 +398,23 @@ export class StoreService {
     if (status === STORE_STATUS_TYPES.FROZEN) {
       return this.frozen(store_id, user);
     }
+  }
+
+  public async findAllApprovedStoresBySessionUser(user: UserEntity) {
+    const stores = await this.prisma.store.findMany({
+      where: {
+        user_id: user.user_id,
+        status: { gte: STORE_STATUS_TYPES.APPROVED },
+      },
+    });
+
+    const ids = stores.map(({ store_id }) => store_id);
+
+    const names = await this.formatAreaName(ids);
+
+    return stores.map((s) => {
+      const find = names.find(({ store_id }) => store_id === s.store_id);
+      return { ...s, ...(find || {}) };
+    });
   }
 }

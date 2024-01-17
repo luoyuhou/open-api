@@ -69,6 +69,16 @@ export class StoreController {
     return this.storeService.searchMany(args);
   }
 
+  @Get('')
+  @ApiProperty()
+  async findAllApprovedStoresBySessionUser(@Req() req: Request) {
+    const data = await this.storeService.findAllApprovedStoresBySessionUser(
+      req.user as UserEntity,
+    );
+
+    return { data };
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.storeService.findOne(id);

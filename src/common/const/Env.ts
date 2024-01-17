@@ -34,6 +34,22 @@ class Env {
   static get APP_SECRET() {
     return env.APP_SECRET!;
   }
+
+  static get PRISMA_LOG_LEVEL(): 'info' | 'query' | 'warn' | 'error' {
+    const level = env.PRISMA_LOG!;
+    if (level === 'info') {
+      return 'info';
+    }
+
+    if (level === 'query') {
+      return 'query';
+    }
+
+    if (level === 'warn') {
+      return 'warn';
+    }
+    return 'error';
+  }
 }
 
 export default Env;
