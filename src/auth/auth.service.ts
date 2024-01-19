@@ -10,7 +10,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { AuthEntity } from './entity/auth.entity';
-import bcrypt = require('bcrypt');
+import bcrypt = require('bcryptjs');
 import * as moment from 'moment';
 import { FILED_LOGIN_TIMES, Login_SOURCE_TYPES } from './const';
 import {

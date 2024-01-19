@@ -4,7 +4,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUser_signup_passwordDto } from './dto/create-user_signup_password.dto';
 import { v4 } from 'uuid';
-import bcrypt = require('bcrypt');
+import bcrypt = require('bcryptjs');
 import {
   UpdateUser_signup_passwordDto,
   UpdateUser_signup_passwordInputDto,
