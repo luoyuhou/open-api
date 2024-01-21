@@ -5,14 +5,24 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { v4 } from 'uuid';
 import { E_CATEGORY_STATUS_TYPE } from './const';
 import { FindAllCategoryDto } from './dto/findAll-category.dto';
+import { UserEntity } from '../../users/entities/user.entity';
+import { SwitchRankCategoryDto } from './dto/switch-rank-category.dto';
 
 @Injectable()
 export class CategoryService {
   constructor(private prisma: PrismaService) {}
 
-  async create({ store_id, pid, name }: CreateCategoryDto) {
+  async create({ store_id, pid, name }: CreateCategoryDto, user: UserEntity) {
+    const store = await this.prisma.store.findFirst({
+      where: { store_id, user_id: user.user_id },
+    });
+
+    if (!store) {
+      throw new BadRequestException('商铺不在您名下 或 商铺不存在');
+    }
+
     const category = await this.prisma.category_goods.findFirst({
-      where: { store_id, name },
+      where: { store_id, pid: pid ?? '0', name },
     });
 
     if (category) {
@@ -31,53 +41,11 @@ export class CategoryService {
         category_id: categoryId,
         store_id,
         pid: pid ?? '0',
-        rank: lastCategory?.rank ? lastCategory.rank + 1 : 0,
+        rank: lastCategory ? lastCategory.rank + 1 : 0,
         name,
         status: E_CATEGORY_STATUS_TYPE.active,
       },
     });
-  }
-
-  public async switchRank({
-    categoryId1,
-    categoryId2,
-  }: {
-    categoryId1: string;
-    categoryId2: string;
-  }) {
-    const category1 = await this.prisma.category_goods.findUnique({
-      where: { category_id: categoryId1 },
-    });
-    if (!category1) {
-      throw new BadRequestException(`分类 ${categoryId1} 不存在`);
-    }
-    const category2 = await this.prisma.category_goods.findUnique({
-      where: { category_id: categoryId2 },
-    });
-    if (!category2) {
-      throw new BadRequestException(`分类 ${categoryId2} 不存在`);
-    }
-
-    if (category1.store_id !== category2.store_id) {
-      throw new BadRequestException('错误的请求, 请刷新页面重拾');
-    }
-
-    if (category1.pid !== category2.pid) {
-      throw new BadRequestException(
-        `${categoryId1}, ${categoryId2} 不是同一分类的子集`,
-      );
-    }
-
-    return this.prisma.$transaction([
-      this.prisma.category_goods.update({
-        where: { category_id: category1.category_id },
-        data: { rank: category2.rank },
-      }),
-      this.prisma.category_goods.update({
-        where: { category_id: category2.category_id },
-        data: { rank: category1.rank },
-      }),
-    ]);
   }
 
   async switchCategory({
@@ -129,8 +97,11 @@ export class CategoryService {
     });
   }
 
-  findAll({ store_id, pid }: FindAllCategoryDto) {
-    return this.prisma.category_goods.findMany({ where: { store_id, pid } });
+  async findAll({ store_id, pid }: { store_id: string; pid?: string }) {
+    return this.prisma.category_goods.findMany({
+      where: { store_id, pid: pid ?? '0' },
+      orderBy: { rank: 'asc' },
+    });
   }
 
   findOne(id: number) {
@@ -177,5 +148,83 @@ export class CategoryService {
       where: { category_id: id },
       data: { status: E_CATEGORY_STATUS_TYPE.active },
     });
+  }
+
+  async switchRank(cid: string, { type }: SwitchRankCategoryDto) {
+    const category = await this.prisma.category_goods.findUnique({
+      where: { category_id: cid },
+    });
+    if (!category) {
+      throw new BadRequestException(
+        `未能找到您要修改的分类，请你刷新页面后重试。`,
+      );
+    }
+    console.log('category', category);
+
+    const brothers = await this.prisma.category_goods.findMany({
+      where: { store_id: category.store_id, pid: category.pid },
+      orderBy: { rank: 'asc' },
+    });
+
+    if (!brothers.length) {
+      throw new BadRequestException('未能找到同级分类');
+    }
+
+    if (brothers.length === 1) {
+      throw new BadRequestException('同级分类仅一个元素， 无需修改排序');
+    }
+
+    let index;
+    brothers.forEach((item, i) => {
+      if (item.category_id === cid) {
+        index = i;
+      }
+    });
+
+    if (index === undefined) {
+      throw new BadRequestException(`未能在父级中找到 ${category.name} 的位置`);
+    }
+
+    if (index === 0 && type === 'up') {
+      throw new BadRequestException(
+        `分类 ${category.name} 已经是第一位，无需往前调整`,
+      );
+    }
+
+    if (type === 'up') {
+      const preItem = brothers[index - 1];
+      return this.prisma.$transaction([
+        this.prisma.category_goods.update({
+          where: { category_id: cid },
+          data: { rank: preItem.rank },
+        }),
+        this.prisma.category_goods.update({
+          where: { category_id: preItem.category_id },
+          data: { rank: category.rank },
+        }),
+      ]);
+    }
+
+    if (index === brothers.length - 1 && type === 'down') {
+      throw new BadRequestException(
+        `分类 ${category.name} 已经是最后一位，无需往后调整`,
+      );
+    }
+
+    if (type === 'down') {
+      const nextItem = brothers[index + 1];
+      return this.prisma.$transaction([
+        this.prisma.category_goods.update({
+          where: { category_id: cid },
+          data: { rank: nextItem.rank },
+        }),
+        this.prisma.category_goods.update({
+          where: { category_id: nextItem.category_id },
+          data: { rank: category.rank },
+        }),
+      ]);
+    }
+
+    throw new BadRequestException('未知的操作');
   }
 }

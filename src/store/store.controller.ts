@@ -69,7 +69,7 @@ export class StoreController {
     return this.storeService.searchMany(args);
   }
 
-  @Get('')
+  @Get()
   @ApiProperty()
   async findAllApprovedStoresBySessionUser(@Req() req: Request) {
     const data = await this.storeService.findAllApprovedStoresBySessionUser(

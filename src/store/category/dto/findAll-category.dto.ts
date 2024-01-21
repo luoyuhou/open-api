@@ -1,14 +1,9 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class FindAllCategoryDto {
   @IsString()
-  @IsNotEmpty()
-  @ApiProperty()
-  store_id: string;
-
-  @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty()
   pid: string;
 }
