@@ -7,6 +7,7 @@ import { E_CATEGORY_STATUS_TYPE } from './const';
 import { FindAllCategoryDto } from './dto/findAll-category.dto';
 import { UserEntity } from '../../users/entities/user.entity';
 import { SwitchRankCategoryDto } from './dto/switch-rank-category.dto';
+import Utils from 'src/common/utils';
 
 @Injectable()
 export class CategoryService {
@@ -226,5 +227,17 @@ export class CategoryService {
     }
 
     throw new BadRequestException('未知的操作');
+  }
+
+  async categoryTree(store_id: string) {
+    const categories = await this.prisma.category_goods.findMany({
+      where: { store_id, status: E_CATEGORY_STATUS_TYPE.active },
+    });
+    console.log('categories.length', categories.length);
+    return Utils.array2Tree(
+      categories,
+      { key: 'pid', emptyValue: '0' },
+      'category_id',
+    );
   }
 }

@@ -49,6 +49,12 @@ export class CategoryController {
     return this.categoryService.findOne(+id);
   }
 
+  @Get(':id/tree')
+  async categoryTree(@Param('id') id: string) {
+    const data = await this.categoryService.categoryTree(id);
+    return { data };
+  }
+
   @Patch(':id/rank')
   @ApiProperty()
   async switchRank(
