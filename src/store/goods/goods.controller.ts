@@ -10,9 +10,11 @@ import {
 import { GoodsService } from './goods.service';
 import { CreateGoodDto } from './dto/create-good.dto';
 import { UpdateGoodDto } from './dto/update-good.dto';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiProperty, ApiTags } from '@nestjs/swagger';
 import { CreateGoodsVersionDto } from './dto/create-goods-version.dto';
 import { UpdateGoodsVersionDto } from './dto/update-goods-version.dto';
+import { Pagination } from '../../common/dto/pagination';
+import { UpsertGoodsVersionDto } from './dto/upsert-goods-version.dto';
 
 @Controller('store/goods')
 @ApiTags('store/goods')
@@ -20,8 +22,30 @@ export class GoodsController {
   constructor(private readonly goodsService: GoodsService) {}
 
   @Post()
-  async create(@Body() createGoodDto: CreateGoodDto) {
+  async create(@Body() createGoodDto: CreateGoodDto & CreateGoodsVersionDto) {
     return this.goodsService.create(createGoodDto);
+  }
+
+  @Post('pagination')
+  @ApiProperty()
+  async pagination(@Body() pagination: Pagination) {
+    return this.goodsService.pagination(pagination);
+  }
+
+  @Get('version/:id')
+  @ApiProperty()
+  async goodsVersions(@Param('id') id: string) {
+    const data = await this.goodsService.goodsVersions(id);
+    return { data };
+  }
+
+  @Post('version/:goodsId')
+  @ApiProperty()
+  async upsertGoodsVersion(
+    @Param('goodsId') goodsId: string,
+    @Body() upsertGoodsVersionDto: UpsertGoodsVersionDto,
+  ) {
+    return this.goodsService.upsertGoodsVersion(goodsId, upsertGoodsVersionDto);
   }
 
   @Get('category/:id')
@@ -31,7 +55,8 @@ export class GoodsController {
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    return this.goodsService.findOne(id);
+    const data = await this.goodsService.findOne(id);
+    return { data };
   }
 
   @Patch(':id')
@@ -47,11 +72,6 @@ export class GoodsController {
   @Patch('reactive/:id')
   async reactive(@Param('id') id: string) {
     return this.goodsService.reactive(id);
-  }
-
-  @Post('version')
-  async createGoodsVersion(@Body() createGoodsVersion: CreateGoodsVersionDto) {
-    return this.goodsService.createGoodsVersion(createGoodsVersion);
   }
 
   @Patch('version/:id')

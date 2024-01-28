@@ -3,11 +3,6 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateGoodsVersionDto {
   @IsString()
-  @IsNotEmpty()
-  @ApiProperty()
-  goods_id: string;
-
-  @IsString()
   @ApiProperty()
   @MaxLength(32)
   version_number: string;

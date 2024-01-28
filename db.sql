@@ -173,21 +173,20 @@ CREATE TABLE store_goods_version (
     bar_code varchar(32),
     count int unsigned NOT NULL,
     price int unsigned NOT NULL,
+    unit_name varchar(8) NOT NULL,
     supplier varchar(64),
+    status tinyint(4) NOT NULL,
     create_date datetime DEFAULT CURRENT_TIMESTAMP,
     update_date datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY (`version_id`),
-    UNIQUE KEY (`goods_id`, `version_number`),
-    UNIQUE KEY (`goods_id`, `bar_code`),
+    UNIQUE KEY (`goods_id`, `unit_name`, `version_number`),
+    UNIQUE KEY (`goods_id`, `unit_name`, `bar_code`),
     INDEX `goods_idx` (`goods_id`) USING BTREE,
     INDEX `goods_suppler_idx` (`supplier`) USING BTREE,
     INDEX `goods_version_number_idx` (`version_number`) USING BTREE,
     INDEX `goods_bar_code_idx` (`bar_code`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-ALTER TABLE store_goods_version ADD COLUMN unit_name varchar(8) NOT NULL after price;
-ALTER TABLE store_goods_version ADD COLUMN status tinyint(4) NOT NULL after supplier;
 
 CREATE TABLE user_order (
     id int unsigned NOT NULL AUTO_INCREMENT,

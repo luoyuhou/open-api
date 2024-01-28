@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsNotEmpty } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { PickType } from '@nestjs/mapped-types';
 import { CreateGoodsVersionDto } from './create-goods-version.dto';
@@ -12,6 +12,11 @@ export class UpdateGoodsVersionDto extends PickType(CreateGoodsVersionDto, [
   'unit_name',
   'supplier',
 ]) {
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty()
+  goods_id: string;
+
   @ApiProperty()
   version_number: string;
 

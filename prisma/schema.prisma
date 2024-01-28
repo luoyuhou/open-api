@@ -146,8 +146,8 @@ model store_goods_version {
   create_date    DateTime? @default(now()) @db.DateTime(0)
   update_date    DateTime? @default(now()) @db.DateTime(0)
 
-  @@unique([goods_id, version_number], map: "goods_id")
-  @@unique([goods_id, bar_code], map: "goods_id_2")
+  @@unique([goods_id, unit_name, version_number], map: "goods_id")
+  @@unique([goods_id, unit_name, bar_code], map: "goods_id_2")
   @@index([bar_code], map: "goods_bar_code_idx")
   @@index([goods_id], map: "goods_idx")
   @@index([supplier], map: "goods_suppler_idx")

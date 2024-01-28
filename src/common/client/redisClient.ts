@@ -12,12 +12,13 @@ class CustomRedisClient {
       host: Env.REDIS_HOST,
       port: Env.REDIS_PORT,
       db: Env.REDIS_DB,
+      lazyConnect: true,
     });
 
-    // client
-    //   .connect()
-    //   .then(() => this.logger.log(`Successful connected redis`))
-    //   .catch((e) => this.logger.error(`Failed connect redis. ${e}`));
+    client
+      .connect()
+      .then(() => this.logger.log(`Successful connected redis`))
+      .catch((e) => this.logger.error(`Failed connect redis. ${e}`));
 
     return client;
   }
