@@ -50,6 +50,14 @@ class Env {
     }
     return 'error';
   }
+
+  static get WX_APP_ID(): string {
+    return env.WX_APP_ID!;
+  }
+
+  static get WX_SECRET(): string {
+    return env.WX_SECRET!;
+  }
 }
 
 export default Env;

@@ -21,6 +21,12 @@ import { UsersService } from '../users/users.service';
 import { CreateUserByPasswordDto } from '../users/dto/create-user.dto';
 import { UserEntity } from '../users/entities/user.entity';
 import { UpdateUser_signup_passwordInputDto } from '../users/dto/update-user_signin_password.dto';
+import fetchClient from '../common/client/fetch-client';
+import env from '../common/const/Env';
+import redisClient from '../common/client/redisClient';
+import { v4 } from 'uuid';
+import { WxLoginDto, WxUserInfo } from './dto/login.dto';
+import sha1 = require('sha1');
 
 @Injectable()
 export class AuthService {
@@ -90,6 +96,49 @@ export class AuthService {
         )}. Error: ${err}`,
       ),
     );
+  }
+
+  public async verifyCode(code: string) {
+    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${env.WX_APP_ID}&secret=${env.WX_SECRET}&js_code=${code}&grant_type=authorization_code`;
+    const response = await fetchClient.get<{
+      openid: string;
+      session_key: string;
+    }>(url);
+
+    const uuid = v4();
+    await redisClient.set(uuid, JSON.stringify(response));
+    await redisClient.expire(uuid, 30);
+    return { uuid };
+  }
+
+  public async loginByWx(wxLoginDto: WxLoginDto) {
+    const { uuid, signature, rawData } = wxLoginDto;
+    const cache = await redisClient.get(uuid);
+    if (!cache) {
+      throw new BadRequestException(`The session has been is expired`);
+    }
+
+    await redisClient.del(uuid);
+
+    const { session_key, openid } = JSON.parse(cache);
+
+    const signature2 = sha1(rawData + session_key);
+    if (signature !== signature2) {
+      throw new BadRequestException('Invalid session');
+    }
+
+    const userSignWechat = await this.prisma.user_signin_wechat.findUnique({
+      where: { openid },
+    });
+
+    if (userSignWechat) {
+      return this.prisma.user.findUnique({
+        where: { user_id: userSignWechat.user_id },
+      });
+    }
+
+    const wxUserInfo: WxUserInfo = JSON.parse(rawData);
+    return this.usersService.createByWechat(wxUserInfo, openid);
   }
 
   public async loginByPassword(

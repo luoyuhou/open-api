@@ -14,6 +14,8 @@ CREATE TABLE user (
     UNIQUE KEY (`phone`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+ALTER TABLE user MODIFY phone varchar(16) NOT NULL;
+
 
 CREATE TABLE user_signIn_password (
     id int unsigned NOT NULL AUTO_INCREMENT,
@@ -259,3 +261,14 @@ CREATE TABLE `province` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 ALTER TABLE province MODIFY COLUMN code varchar(8) NOT NULL;
+
+CREATE TABLE `user_signIn_wechat` (
+    id int unsigned NOT NULL AUTO_INCREMENT,
+    openid varchar(64) NOT NULL,
+    user_id varchar(64) NOT NULL,
+    create_date datetime DEFAULT CURRENT_TIMESTAMP,
+    update_date datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY (`openid`),
+    UNIQUE KEY (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

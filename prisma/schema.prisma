@@ -14,7 +14,7 @@ model user {
   first_name  String    @db.VarChar(32)
   last_name   String    @db.VarChar(32)
   email       String?   @db.VarChar(64)
-  phone       String    @unique(map: "phone") @db.VarChar(11)
+  phone       String    @unique(map: "phone") @db.VarChar(16)
   avatar      String?   @db.VarChar(256)
   create_date DateTime? @default(now()) @db.DateTime(0)
   update_date DateTime? @default(now()) @db.DateTime(0)
@@ -237,4 +237,66 @@ model store_apply {
 
   @@index([store_id], map: "store_apply_idx")
   @@index([type])
+}
+
+model auth {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  pid         String    @default("0") @db.VarChar(64)
+  auth_id     String    @unique(map: "auth_id") @db.VarChar(64)
+  path        String    @unique(map: "path") @db.VarChar(64)
+  status      Int       @db.TinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([pid])
+}
+
+model role {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  role_id     String    @unique(map: "role_id") @db.VarChar(64)
+  role_name   String    @unique(map: "role_name") @db.VarChar(16)
+  description String?   @db.VarChar(1024)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+}
+
+model role_auth {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  auth_id     String    @db.VarChar(64)
+  role_id     String    @db.VarChar(64)
+  status      Int       @db.TinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([role_id, auth_id], map: "role_id")
+  @@index([auth_id], map: "auth_idx")
+}
+
+model user_auth {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  user_id     String    @unique(map: "user_id") @db.VarChar(64)
+  is_admin    Boolean
+  status      Int       @db.TinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+}
+
+model user_role {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  role_id     String    @db.VarChar(64)
+  user_id     String    @db.VarChar(64)
+  status      Int       @db.TinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([user_id, role_id], map: "user_id")
+  @@index([role_id], map: "role_idx")
+}
+
+model user_signin_wechat {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  openid      String    @unique(map: "openid") @db.VarChar(64)
+  user_id     String    @unique(map: "user_id") @db.VarChar(64)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
 }

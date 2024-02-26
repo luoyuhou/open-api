@@ -3,4 +3,5 @@ export const JWT_SECRET = '$10$AQWjRAGVF7xra0PFcIJpmO';
 
 export enum Login_SOURCE_TYPES {
   password = 1,
+  wechat = 2,
 }

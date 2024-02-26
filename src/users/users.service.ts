@@ -9,10 +9,15 @@ import {
   UpdateUser_signup_passwordDto,
   UpdateUser_signup_passwordInputDto,
 } from './dto/update-user_signin_password.dto';
+import { WxUserInfo } from '../auth/dto/login.dto';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
+
+  private get user_id(): string {
+    return 'user-' + v4();
+  }
 
   private bcryptPassword(password: string): { pwd: string; salt: string } {
     const salt = bcrypt.genSaltSync(16);
@@ -30,7 +35,7 @@ export class UsersService {
       throw new BadRequestException(`电话: ${phone} 用户已存在`);
     }
 
-    const user_id = 'user-' + v4();
+    const user_id = this.user_id;
     const user: CreateUserDto = {
       user_id,
       first_name,
@@ -88,5 +93,25 @@ export class UsersService {
       where: { user_id },
       data: data,
     });
+  }
+
+  public async createByWechat(wxUserInfo: WxUserInfo, openid: string) {
+    const user_id = this.user_id;
+    const user: CreateUserDto = {
+      user_id,
+      first_name: '',
+      last_name: wxUserInfo.nickName,
+      phone: new Date().getTime() + '',
+      status: 1,
+      email: null,
+      avatar: wxUserInfo.avatarUrl,
+    };
+
+    await this.prisma.$transaction([
+      this.prisma.user.create({ data: user }),
+      this.prisma.user_signin_wechat.create({ data: { user_id, openid } }),
+    ]);
+
+    return user;
   }
 }

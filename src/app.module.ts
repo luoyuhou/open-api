@@ -10,6 +10,7 @@ import { TerminusModule } from '@nestjs/terminus';
 import { LoggerMiddleware } from './common/middlewares/logger.middleware';
 import { OrderModule } from './order/order.module';
 import { GeneralModule } from './general/general.module';
+import { WxModule } from './wx/wx.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { GeneralModule } from './general/general.module';
     StoreModule,
     OrderModule,
     GeneralModule,
+    WxModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

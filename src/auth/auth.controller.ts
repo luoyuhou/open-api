@@ -33,6 +33,7 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
 import { Login_SOURCE_TYPES } from './const';
 import { TokenInterceptor } from './interceptors/token.interceptor';
 import customLogger from '../common/logger';
+import { VerifyCodeDot, WxLoginDto } from './dto/login.dto';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -66,6 +67,33 @@ export class AuthController {
       Login_SOURCE_TYPES.password,
       { ip: Utils.formatIp(ip), useragent },
     );
+    return { message: 'ok', data: user };
+  }
+
+  @Post('wx/verify-code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AuthEntity })
+  async verifyCode(@Req() request: Request, @Body() { code }: VerifyCodeDot) {
+    const responses = await this.authService.verifyCode(code);
+    return { message: 'ok', data: responses };
+  }
+
+  @Post('wx/sign-in')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AuthEntity })
+  async wxLogin(@Req() request: Request, @Body() wxLoginDto: WxLoginDto) {
+    const user = await this.authService.loginByWx(wxLoginDto);
+
+    request.login(user, () => {
+      const ip = request.ip;
+      const useragent = request.headers['user-agent'];
+      this.authService.addLoginHistory(
+        (user as UserEntity).user_id,
+        Login_SOURCE_TYPES.wechat,
+        { ip: Utils.formatIp(ip), useragent },
+      );
+    });
+
     return { message: 'ok', data: user };
   }
 
