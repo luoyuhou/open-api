@@ -160,6 +160,7 @@ model user_order {
   user_id       String    @db.VarChar(64)
   store_id      String    @db.VarChar(64)
   status        Int       @db.TinyInt
+  stage         Int       @db.TinyInt
   recipient     String    @db.VarChar(16)
   money         Int       @db.UnsignedInt
   phone         String    @db.VarChar(16)

@@ -3,7 +3,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UserEntity } from '../users/entities/user.entity';
 import { PrismaService } from '../prisma/prisma.service';
 import { v4 } from 'uuid';
-import { E_USER_ORDER_STATUS } from './const';
+import { E_USER_ORDER_STAGE, E_USER_ORDER_STATUS } from './const';
 import { Pagination } from '../common/dto/pagination';
 
 @Injectable()
@@ -43,7 +43,8 @@ export class OrderService {
           address,
           phone,
           recipient,
-          status: E_USER_ORDER_STATUS.create,
+          status: E_USER_ORDER_STATUS.active,
+          stage: E_USER_ORDER_STAGE.create,
         },
       }),
       this.prisma.user_order_info.createMany({ data: formatGoods }),
@@ -52,14 +53,40 @@ export class OrderService {
           order_action_id: `action-${v4()}`,
           order_id,
           user_id,
-          status: E_USER_ORDER_STATUS.create,
+          status: E_USER_ORDER_STAGE.create,
         },
       }),
     ]);
   }
 
-  findAll(pagination: Pagination) {
-    return this.prisma.user_order.findMany();
+  public async findAll(pagination: Pagination) {
+    const { filtered, pageNum, pageSize, sorted } = pagination;
+    const where = {};
+    filtered.forEach(({ id, value }) => {
+      if (['create_date', 'update_date'].includes(id)) {
+        return;
+      }
+
+      if (Array.isArray(value)) {
+        where[id] = { in: value };
+        return;
+      }
+
+      where[id] = value;
+    });
+
+    const order = sorted.length ? sorted[0] : { id: 'create_date', desc: true };
+
+    const data = await this.prisma.user_order.findMany({
+      where: where,
+      orderBy: { [order.id]: order.desc ? 'desc' : 'acs' },
+      take: pageSize,
+      skip: pageNum * pageNum,
+    });
+
+    const count = await this.prisma.user_order.count({ where });
+
+    return { rows: count, pages: Math.ceil(count / pageSize), data };
   }
 
   findOne(id: string) {
@@ -68,7 +95,7 @@ export class OrderService {
 
   async cancel(user: UserEntity, id: string) {
     const order = await this.prisma.user_order.findUnique({
-      where: { order_id: id, status: E_USER_ORDER_STATUS.create },
+      where: { order_id: id, status: E_USER_ORDER_STATUS.active },
     });
 
     if (!order) {
@@ -93,7 +120,11 @@ export class OrderService {
 
   async delivery(user: UserEntity, id: string) {
     const order = await this.prisma.user_order.findUnique({
-      where: { order_id: id, status: E_USER_ORDER_STATUS.create },
+      where: {
+        order_id: id,
+        status: E_USER_ORDER_STATUS.active,
+        stage: E_USER_ORDER_STAGE.create,
+      },
     });
 
     if (!order) {
@@ -103,14 +134,14 @@ export class OrderService {
     await this.prisma.$transaction([
       this.prisma.user_order.update({
         where: { order_id: id },
-        data: { status: E_USER_ORDER_STATUS.delivery },
+        data: { stage: E_USER_ORDER_STAGE.delivery },
       }),
       this.prisma.user_order_action.create({
         data: {
           order_id: id,
           user_id: user.user_id,
           order_action_id: `action-${v4()}`,
-          status: E_USER_ORDER_STATUS.delivery,
+          status: E_USER_ORDER_STAGE.delivery,
         },
       }),
     ]);
@@ -118,7 +149,11 @@ export class OrderService {
 
   async receive(user: UserEntity, id: string) {
     const order = await this.prisma.user_order.findUnique({
-      where: { order_id: id, status: E_USER_ORDER_STATUS.delivery },
+      where: {
+        order_id: id,
+        status: E_USER_ORDER_STATUS.active,
+        stage: E_USER_ORDER_STAGE.delivery,
+      },
     });
 
     if (!order) {
@@ -128,14 +163,14 @@ export class OrderService {
     await this.prisma.$transaction([
       this.prisma.user_order.update({
         where: { order_id: id },
-        data: { status: E_USER_ORDER_STATUS.received },
+        data: { status: E_USER_ORDER_STAGE.received },
       }),
       this.prisma.user_order_action.create({
         data: {
           order_id: id,
           user_id: user.user_id,
           order_action_id: `action-${v4()}`,
-          status: E_USER_ORDER_STATUS.received,
+          status: E_USER_ORDER_STAGE.received,
         },
       }),
     ]);
@@ -143,7 +178,11 @@ export class OrderService {
 
   async finish(user: UserEntity, id: string) {
     const order = await this.prisma.user_order.findUnique({
-      where: { order_id: id, status: E_USER_ORDER_STATUS.received },
+      where: {
+        order_id: id,
+        status: E_USER_ORDER_STATUS.active,
+        stage: E_USER_ORDER_STAGE.received,
+      },
     });
 
     if (!order) {
@@ -153,14 +192,14 @@ export class OrderService {
     await this.prisma.$transaction([
       this.prisma.user_order.update({
         where: { order_id: id },
-        data: { status: E_USER_ORDER_STATUS.finished },
+        data: { stage: E_USER_ORDER_STAGE.finished },
       }),
       this.prisma.user_order_action.create({
         data: {
           order_id: id,
           user_id: user.user_id,
           order_action_id: `action-${v4()}`,
-          status: E_USER_ORDER_STATUS.finished,
+          status: E_USER_ORDER_STAGE.finished,
         },
       }),
     ]);
@@ -176,7 +215,7 @@ export class OrderService {
     }
 
     if (
-      [E_USER_ORDER_STATUS.delivery, E_USER_ORDER_STATUS.received].includes(
+      [E_USER_ORDER_STAGE.delivery, E_USER_ORDER_STAGE.received].includes(
         order.status,
       )
     ) {
@@ -199,20 +238,24 @@ export class OrderService {
     ]);
   }
 
-  async actionAdapter(id: string, type: E_USER_ORDER_STATUS, user: UserEntity) {
+  async actionAdapter(
+    id: string,
+    type: E_USER_ORDER_STATUS | E_USER_ORDER_STAGE,
+    user: UserEntity,
+  ) {
     if (type === E_USER_ORDER_STATUS.cancel) {
       return this.cancel(user, id);
     }
 
-    if (type === E_USER_ORDER_STATUS.delivery) {
+    if (type === E_USER_ORDER_STAGE.delivery) {
       return this.delivery(user, id);
     }
 
-    if (type === E_USER_ORDER_STATUS.received) {
+    if (type === E_USER_ORDER_STAGE.received) {
       return this.receive(user, id);
     }
 
-    if (type === E_USER_ORDER_STATUS.finished) {
+    if (type === E_USER_ORDER_STAGE.finished) {
       return this.finish(user, id);
     }
 
@@ -221,5 +264,9 @@ export class OrderService {
     }
 
     throw new BadRequestException('');
+  }
+
+  public async orderDetailInfo(order_id: string) {
+    return this.prisma.user_order_info.findMany({ where: { order_id } });
   }
 }

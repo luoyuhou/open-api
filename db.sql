@@ -215,6 +215,7 @@ CREATE TABLE user_order (
 ALTER TABLE user_order ADD Column delivery_date datetime NOT NULL after address;
 ALTER TABLE user_order CHANGE COLUMN district area varchar(8) NOT NULL;
 ALTER TABLE user_order ADD COLUMN town varchar(8) NOT NULL after area;
+ALTER TABLE user_order ADD stage tinyint(4) NOT NULL after status;
 
 CREATE TABLE user_order_info (
     id int unsigned NOT NULL AUTO_INCREMENT,

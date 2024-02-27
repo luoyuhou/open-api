@@ -6,18 +6,64 @@ import {
   Patch,
   Param,
   Delete,
+  Put,
+  Req,
 } from '@nestjs/common';
 import { WxService } from './wx.service';
-import { CreateWxDto } from './dto/create-wx.dto';
 import { UpdateWxDto } from './dto/update-wx.dto';
+import { Request } from 'express';
+import { CreateOrderDto } from '../order/dto/create-order.dto';
+import { UserEntity } from '../users/entities/user.entity';
+import { Pagination } from '../common/dto/pagination';
 
 @Controller('wx')
 export class WxController {
   constructor(private readonly wxService: WxService) {}
 
-  @Post()
-  create(@Body() createWxDto: CreateWxDto) {
-    return this.wxService.create(createWxDto);
+  @Post('order')
+  async createOrder(
+    @Req() request: Request,
+    @Body() createOrderDto: CreateOrderDto,
+  ) {
+    const data = await this.wxService.createOrder(
+      request.user as UserEntity,
+      createOrderDto,
+    );
+
+    return { message: 'ok', data };
+  }
+
+  @Post('order/pagination')
+  async orderPagination(
+    @Req() request: Request,
+    @Body() pagination: Pagination,
+  ) {
+    const data = await this.wxService.orderPagination({
+      ...pagination,
+      filtered: pagination.filtered.concat({
+        id: 'user_id',
+        value: (request.user as UserEntity).user_id,
+      }),
+    });
+    return { message: 'ok', data };
+  }
+
+  @Get('order/:id/detail')
+  async orderDetailInfo(@Param('id') id: string) {
+    const data = await this.wxService.orderDetailInfo(id);
+    return { message: 'ok', data };
+  }
+
+  @Put('order/:id')
+  async cancelOrder(@Req() request: Request, @Param('id') id: string) {
+    await this.wxService.cancelOrder(id, request.user as UserEntity);
+    return { message: 'ok' };
+  }
+
+  @Delete('order/:id')
+  async removeOrder(@Req() request: Request, @Param('id') id: string) {
+    await this.wxService.removeOrder(id, request.user as UserEntity);
+    return { message: 'ok' };
   }
 
   @Get()
