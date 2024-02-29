@@ -6,6 +6,12 @@ import { OrderService } from '../order/order.service';
 import { Pagination } from '../common/dto/pagination';
 import { E_USER_ORDER_STATUS } from '../order/const';
 import { PrismaService } from '../prisma/prisma.service';
+import { StoreService } from '../store/store.service';
+import { GoodsService } from '../store/goods/goods.service';
+import { CategoryService } from '../store/category/category.service';
+import { AddressService } from '../users/address/address.service';
+import { UpdateAddressDto } from '../users/address/dto/update-address.dto';
+import { CreateAddressDto } from '../users/address/dto/create-address.dto';
 
 @Injectable()
 export class WxService {
@@ -13,6 +19,18 @@ export class WxService {
 
   @Inject(forwardRef(() => OrderService))
   private readonly orderService: OrderService;
+
+  @Inject(forwardRef(() => StoreService))
+  private readonly storeService: StoreService;
+
+  @Inject(forwardRef(() => GoodsService))
+  private readonly goodsService: GoodsService;
+
+  @Inject(forwardRef(() => CategoryService))
+  private readonly categoryService: CategoryService;
+
+  @Inject(forwardRef(() => AddressService))
+  private readonly addressService: AddressService;
 
   public async createOrder(user: UserEntity, createOrderDto: CreateOrderDto) {
     return this.orderService.create(user, createOrderDto);
@@ -42,19 +60,38 @@ export class WxService {
     return this.orderService.orderDetailInfo(order_id);
   }
 
-  findAll() {
-    return `This action returns all wx`;
+  public async storePagination(pagination: Pagination) {
+    return this.storeService.pagination(pagination);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} wx`;
+  public async storeInfo(store_id: string) {
+    return this.storeService.findOne(store_id);
   }
 
-  update(id: number, updateWxDto: UpdateWxDto) {
-    return `This action updates a #${id} wx`;
+  public async findCategoryByStoreId(args: { store_id: string; pid?: string }) {
+    return this.categoryService.findAll(args);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} wx`;
+  public async goodsPagination(pagination: Pagination) {
+    return this.goodsService.pagination(pagination);
+  }
+
+  public async createUserAddress(
+    user: UserEntity,
+    createAddressDto: CreateAddressDto,
+  ) {
+    return this.addressService.create(user, createAddressDto);
+  }
+
+  public async getUserAllAddress(user: UserEntity) {
+    return this.addressService.findAll(user);
+  }
+
+  public async editUserAddress(
+    address_id: string,
+    data: UpdateAddressDto,
+    user: UserEntity,
+  ) {
+    return this.addressService.update(address_id, data, user);
   }
 }

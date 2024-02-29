@@ -8,13 +8,16 @@ import {
   Delete,
   Put,
   Req,
+  Query,
 } from '@nestjs/common';
 import { WxService } from './wx.service';
-import { UpdateWxDto } from './dto/update-wx.dto';
 import { Request } from 'express';
 import { CreateOrderDto } from '../order/dto/create-order.dto';
 import { UserEntity } from '../users/entities/user.entity';
 import { Pagination } from '../common/dto/pagination';
+import { FindAllCategoryDto } from '../store/category/dto/findAll-category.dto';
+import { UpdateAddressDto } from '../users/address/dto/update-address.dto';
+import { CreateAddressDto } from '../users/address/dto/create-address.dto';
 
 @Controller('wx')
 export class WxController {
@@ -66,23 +69,67 @@ export class WxController {
     return { message: 'ok' };
   }
 
-  @Get()
-  findAll() {
-    return this.wxService.findAll();
+  @Post('store/pagination')
+  async storePagination(@Body() pagination: Pagination) {
+    const data = await this.wxService.storePagination(pagination);
+    return { message: 'ok', data };
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.wxService.findOne(+id);
+  @Get('store/:id')
+  async storeInfo(@Param('id') id: string) {
+    const data = await this.wxService.storeInfo(id);
+    return { message: 'ok', data };
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateWxDto: UpdateWxDto) {
-    return this.wxService.update(+id, updateWxDto);
+  @Get('category/:id')
+  async findCategoryByStoreId(
+    @Param('id') id: string,
+    @Query() { pid }: FindAllCategoryDto,
+  ) {
+    const data = await this.wxService.findCategoryByStoreId({
+      store_id: id,
+      pid,
+    });
+    return { message: 'ok', data };
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.wxService.remove(+id);
+  @Post('goods/pagination')
+  async goodsPagination(@Body() pagination: Pagination) {
+    const data = await this.wxService.goodsPagination(pagination);
+    return { message: 'ok', data };
+  }
+
+  @Get('user/address')
+  async getUserAllAddress(@Req() request: Request) {
+    const data = await this.wxService.getUserAllAddress(
+      request.user as UserEntity,
+    );
+    return { message: 'ok', data };
+  }
+
+  @Patch('user/address/:id')
+  async editUserAddress(
+    @Param('id') id: string,
+    @Req() request: Request,
+    @Body() updateAddressDto: UpdateAddressDto,
+  ) {
+    const data = await this.wxService.editUserAddress(
+      id,
+      updateAddressDto,
+      request.user as UserEntity,
+    );
+    return { message: 'ok', data };
+  }
+
+  @Post('user/address')
+  async createUserAddress(
+    @Req() request: Request,
+    @Body() createAddressDto: CreateAddressDto,
+  ) {
+    const data = await this.wxService.createUserAddress(
+      request.user as UserEntity,
+      createAddressDto,
+    );
+    return { message: 'ok', data };
   }
 }
