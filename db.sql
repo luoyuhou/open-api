@@ -273,3 +273,66 @@ CREATE TABLE `user_signIn_wechat` (
     UNIQUE KEY (`openid`),
     UNIQUE KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `auth` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `pid` varchar(64) NOT NULL DEFAULT '0',
+  `auth_id` varchar(64) NOT NULL,
+  `path` varchar(64) NOT NULL,
+  `status` tinyint(2) NOT NULL,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `auth_id` (`auth_id`),
+  UNIQUE KEY `path` (`path`),
+  KEY `auth_pid_idx` (`pid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `auth` ADD COLUMN `side` tinyint(4) unsigned NOT NULL AFTER `auth_id`;
+
+CREATE TABLE `user_auth` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` varchar(64) NOT NULL,
+  `is_admin` tinyint(1) NOT NULL,
+  `status` tinyint(4) NOT NULL,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `role` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `role_id` varchar(64) NOT NULL,
+  `role_name` varchar(16) NOT NULL,
+  `description` varchar(1024) DEFAULT NULL,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `role_id` (`role_id`),
+  UNIQUE KEY `role_name` (`role_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `role_auth` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `auth_id` varchar(64) NOT NULL,
+  `role_id` varchar(64) NOT NULL,
+  `status` tinyint(2) NOT NULL,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `role_id` (`role_id`,`auth_id`) USING BTREE,
+  KEY `auth_idx` (`auth_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `user_role` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `role_id` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `status` tinyint(2) NOT NULL,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_id` (`user_id`,`role_id`) USING BTREE,
+  KEY `role_idx` (`role_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

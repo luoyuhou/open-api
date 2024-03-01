@@ -244,6 +244,7 @@ model auth {
   id          Int       @id @default(autoincrement()) @db.UnsignedInt
   pid         String    @default("0") @db.VarChar(64)
   auth_id     String    @unique(map: "auth_id") @db.VarChar(64)
+  side        Int       @db.UnsignedTinyInt
   path        String    @unique(map: "path") @db.VarChar(64)
   status      Int       @db.TinyInt
   create_date DateTime? @default(now()) @db.DateTime(0)

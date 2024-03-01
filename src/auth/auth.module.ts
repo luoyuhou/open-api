@@ -10,6 +10,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { JWT_SECRET } from './const';
 import { LocalStrategy } from './strategies/local.strategy';
 import { SessionSerializer } from './session.serializer';
+import { RoleManagementModule } from './role-management/role-management.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { SessionSerializer } from './session.serializer';
       signOptions: { expiresIn: '5m' }, // e.g. 7d, 24h
     }),
     UsersModule,
+    RoleManagementModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, LocalStrategy, SessionSerializer],
