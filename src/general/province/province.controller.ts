@@ -1,11 +1,12 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ProvinceService } from './province.service';
 import { SearchProvinceListDto } from './dto/search-province-list.dto';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiTags } from '@nestjs/swagger';
 import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
 
 @UseGuards(SessionAuthGuard)
 @Controller('general/province')
+@ApiTags('general/province')
 export class ProvinceController {
   constructor(private readonly provinceService: ProvinceService) {}
 

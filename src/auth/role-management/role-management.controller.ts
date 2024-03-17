@@ -18,8 +18,10 @@ import { UpsertRoleForRoleManagementDto } from './dto/upsert-role-for-role-manag
 import { CreateAuthRoleForRoleManagementDto } from './dto/create-authRole-for-role-management.dto';
 import { CreateUserRoleForRoleManagementDto } from './dto/create-userRole-for-role-management.dto';
 import { UpdateUserRoleForRoleManagementDto } from './dto/update-userRole-for-role-management.dto';
+import { ApiTags } from '@nestjs/swagger';
 
 @Controller('auth/role-management')
+@ApiTags('auth/role-management')
 export class RoleManagementController {
   constructor(private readonly roleManagementService: RoleManagementService) {}
 

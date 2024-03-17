@@ -18,8 +18,10 @@ import { Pagination } from '../common/dto/pagination';
 import { FindAllCategoryDto } from '../store/category/dto/findAll-category.dto';
 import { UpdateAddressDto } from '../users/address/dto/update-address.dto';
 import { CreateAddressDto } from '../users/address/dto/create-address.dto';
+import { ApiTags } from '@nestjs/swagger';
 
 @Controller('wx')
+@ApiTags('wx')
 export class WxController {
   constructor(private readonly wxService: WxService) {}
 

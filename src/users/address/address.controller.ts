@@ -15,9 +15,11 @@ import { UpdateAddressDto } from './dto/update-address.dto';
 import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
 import { Request } from 'express';
 import { UserEntity } from '../entities/user.entity';
+import { ApiTags } from '@nestjs/swagger';
 
 @UseGuards(SessionAuthGuard)
 @Controller('users/address')
+@ApiTags('users/address')
 export class AddressController {
   constructor(private readonly addressService: AddressService) {}
 

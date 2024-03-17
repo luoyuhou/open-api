@@ -17,9 +17,11 @@ import { Request } from 'express';
 import { UserEntity } from '../users/entities/user.entity';
 import { Pagination } from '../common/dto/pagination';
 import { RemoveOrderDto } from './dto/remove-order.dto';
+import { ApiTags } from '@nestjs/swagger';
 
 @UseGuards(SessionAuthGuard)
 @Controller('order')
+@ApiTags('order')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
