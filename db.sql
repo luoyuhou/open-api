@@ -278,17 +278,18 @@ CREATE TABLE `auth` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `pid` varchar(64) NOT NULL DEFAULT '0',
   `auth_id` varchar(64) NOT NULL,
+  `side` tinyint(4) unsigned NOT NULL,
   `path` varchar(64) NOT NULL,
+  `method` varchar(8),
   `status` tinyint(2) NOT NULL,
   `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
   `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `auth_id` (`auth_id`),
-  UNIQUE KEY `path` (`path`),
+  UNIQUE KEY `auth_idx` (`side`, `path`),
+  KEY `auth_side_idx` (`side`),
   KEY `auth_pid_idx` (`pid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-ALTER TABLE `auth` ADD COLUMN `side` tinyint(4) unsigned NOT NULL AFTER `auth_id`;
 
 CREATE TABLE `user_auth` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
@@ -313,7 +314,7 @@ CREATE TABLE `role` (
   UNIQUE KEY `role_name` (`role_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `role_auth` (
+CREATE TABLE `auth_role` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `auth_id` varchar(64) NOT NULL,
   `role_id` varchar(64) NOT NULL,

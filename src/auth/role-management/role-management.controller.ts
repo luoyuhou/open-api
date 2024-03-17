@@ -6,12 +6,20 @@ import {
   Patch,
   Param,
   Delete,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { RoleManagementService } from './role-management.service';
-import { CreateRoleManagementDto } from './dto/create-role-management.dto';
-import { UpdateRoleManagementDto } from './dto/update-role-management.dto';
+import { Pagination } from '../../common/dto/pagination';
+import { CreateAuthForRoleManagementDto } from './dto/create-auth-for-role-management.dto';
+import { UserEntity } from '../../users/entities/user.entity';
+import { UpdateAuthForRoleManagementDto } from './dto/update-auth-for-role-management.dto';
+import { UpsertRoleForRoleManagementDto } from './dto/upsert-role-for-role-management.dto';
+import { CreateAuthRoleForRoleManagementDto } from './dto/create-authRole-for-role-management.dto';
+import { CreateUserRoleForRoleManagementDto } from './dto/create-userRole-for-role-management.dto';
+import { UpdateUserRoleForRoleManagementDto } from './dto/update-userRole-for-role-management.dto';
 
-@Controller('role-management')
+@Controller('auth/role-management')
 export class RoleManagementController {
   constructor(private readonly roleManagementService: RoleManagementService) {}
 
@@ -19,43 +27,70 @@ export class RoleManagementController {
    * /auth/auth section
    */
   @Post('auth/pagination')
-  async authPagination() {
-    const data = [];
+  async authPagination(@Body() pagination: Pagination) {
+    const data = await this.roleManagementService.authPagination(pagination);
     return { message: 'ok', data };
   }
 
   @Post('auth')
-  async createAuth() {
-    return { message: 'ok', data: [] };
+  async createAuth(
+    @Req() request: Request,
+    @Body() createAuthForRoleManagementDto: CreateAuthForRoleManagementDto,
+  ) {
+    const data = await this.roleManagementService.createAuth(
+      request.user as UserEntity,
+      createAuthForRoleManagementDto,
+    );
+    return { message: 'ok', data };
   }
 
   @Patch('auth/:id')
-  async editAuth() {
-    return { message: 'ok', data: [] };
-  }
-
-  @Delete('auth/:id')
-  async deleteAuth() {
-    return { message: 'ok', data: [] };
+  async editAuth(
+    @Param('id') id: string,
+    @Req() request: Request,
+    @Body() updateAuthForRoleManagementDto: UpdateAuthForRoleManagementDto,
+  ) {
+    const data = await this.roleManagementService.updateAuth(
+      id,
+      updateAuthForRoleManagementDto,
+      request.user as UserEntity,
+    );
+    return { message: 'ok', data };
   }
 
   /**
    * /auth/role section
    */
   @Post('role/pagination')
-  async rolePagination() {
-    const data = [];
+  async rolePagination(@Body() pagination: Pagination) {
+    const data = await this.roleManagementService.authPagination(pagination);
     return { message: 'ok', data };
   }
 
   @Post('role')
-  async createRole() {
-    return { message: 'ok', data: [] };
+  async createRole(
+    @Req() request: Request,
+    @Body() createRoleForRoleManagementDto: UpsertRoleForRoleManagementDto,
+  ) {
+    const role = await this.roleManagementService.createRole(
+      createRoleForRoleManagementDto,
+      request.user as UserEntity,
+    );
+    return { message: 'ok', data: role };
   }
 
   @Patch('role/:id')
-  async editRole() {
-    return { message: 'ok', data: [] };
+  async editRole(
+    @Param('id') id: string,
+    @Req() request: Request,
+    @Body() updateRoleForRoleManagementDto: UpsertRoleForRoleManagementDto,
+  ) {
+    const role = await this.roleManagementService.updateRole(
+      id,
+      updateRoleForRoleManagementDto,
+      request.user as UserEntity,
+    );
+    return { message: 'ok', data: role };
   }
 
   @Delete('role/:id')
@@ -67,30 +102,61 @@ export class RoleManagementController {
    * /auth/auth-role section
    */
   @Post('auth-role')
-  async createAuthRole() {
-    return { message: 'ok', data: [] };
+  async createAuthRole(
+    @Req() request: Request,
+    @Body() createAuthRole: CreateAuthRoleForRoleManagementDto,
+  ) {
+    const authRole = await this.roleManagementService.createAuthRole(
+      createAuthRole,
+      request.user as UserEntity,
+    );
+    return { message: 'ok', data: authRole };
   }
 
   @Patch('auth-role/:id')
-  async editAuthRole() {
-    return { message: 'ok', data: [] };
+  async editAuthRole(@Param('id') id: string, @Req() request: Request) {
+    const authRole = await this.roleManagementService.reactiveAuthRole(
+      +id,
+      request.user as UserEntity,
+    );
+    return { message: 'ok', data: authRole };
   }
 
   @Delete('auth-role/:id')
-  async deleteAuthRole() {
-    return { message: 'ok', data: [] };
+  async deleteAuthRole(@Param('id') id: string, @Req() request: Request) {
+    const authRole = await this.roleManagementService.frozenAuthRole(
+      +id,
+      request.user as UserEntity,
+    );
+    return { message: 'ok', data: authRole };
   }
 
   /**
    * /auth/user-role section
    */
   @Post('user-role')
-  async createUserRole() {
-    return { message: 'ok', data: [] };
+  async createUserRole(
+    @Req() request: Request,
+    @Body() createUserRole: CreateUserRoleForRoleManagementDto,
+  ) {
+    const userRole = await this.roleManagementService.createUserRole(
+      createUserRole,
+      request.user as UserEntity,
+    );
+    return { message: 'ok', data: userRole };
   }
 
   @Patch('user-role/:id')
-  async editUserRole() {
+  async editUserRole(
+    @Param('id') id: string,
+    @Req() request: Request,
+    @Body() updateUserRole: UpdateUserRoleForRoleManagementDto,
+  ) {
+    const userRole = await this.roleManagementService.updateUserRole(
+      +id,
+      updateUserRole,
+      request.user as UserEntity,
+    );
     return { message: 'ok', data: [] };
   }
 

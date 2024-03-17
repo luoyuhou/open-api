@@ -245,12 +245,15 @@ model auth {
   pid         String    @default("0") @db.VarChar(64)
   auth_id     String    @unique(map: "auth_id") @db.VarChar(64)
   side        Int       @db.UnsignedTinyInt
-  path        String    @unique(map: "path") @db.VarChar(64)
+  path        String    @db.VarChar(64)
+  method      String?   @db.VarChar(8)
   status      Int       @db.TinyInt
   create_date DateTime? @default(now()) @db.DateTime(0)
   update_date DateTime? @default(now()) @db.DateTime(0)
 
+  @@unique([side, path], map: "auth_idx")
   @@index([pid])
+  @@index([side])
 }
 
 model role {
@@ -301,4 +304,16 @@ model user_signin_wechat {
   user_id     String    @unique(map: "user_id") @db.VarChar(64)
   create_date DateTime? @default(now()) @db.DateTime(0)
   update_date DateTime? @default(now()) @db.DateTime(0)
+}
+
+model auth_role {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  auth_id     String    @db.VarChar(64)
+  role_id     String    @db.VarChar(64)
+  status      Int       @db.TinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([role_id, auth_id], map: "role_id")
+  @@index([auth_id], map: "auth_idx")
 }
