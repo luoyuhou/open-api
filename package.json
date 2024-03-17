@@ -44,6 +44,7 @@
     "express-session": "^1.17.3",
     "ioredis": "^5.3.2",
     "moment": "^2.29.4",
+    "mysql": "^2.18.1",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",

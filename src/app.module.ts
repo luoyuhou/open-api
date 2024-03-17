@@ -11,6 +11,8 @@ import { LoggerMiddleware } from './common/middlewares/logger.middleware';
 import { OrderModule } from './order/order.module';
 import { GeneralModule } from './general/general.module';
 import { WxModule } from './wx/wx.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import Env from './common/const/Env';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { WxModule } from './wx/wx.module';
     OrderModule,
     GeneralModule,
     WxModule,
+    TypeOrmModule.forRoot({ type: 'mysql', url: Env.DATABASE_URL }),
+    TerminusModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

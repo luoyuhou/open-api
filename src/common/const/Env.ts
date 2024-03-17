@@ -58,6 +58,10 @@ class Env {
   static get WX_SECRET(): string {
     return env.WX_SECRET!;
   }
+
+  static get DATABASE_URL(): string {
+    return env.DATABASE_URL!;
+  }
 }
 
 export default Env;
