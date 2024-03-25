@@ -65,7 +65,7 @@ export class RoleManagementController {
    */
   @Post('role/pagination')
   async rolePagination(@Body() pagination: Pagination) {
-    const data = await this.roleManagementService.authPagination(pagination);
+    const data = await this.roleManagementService.rolePagination(pagination);
     return { message: 'ok', data };
   }
 
@@ -103,6 +103,14 @@ export class RoleManagementController {
   /**
    * /auth/auth-role section
    */
+  @Post('auth-role/pagination')
+  async authRolePagination(@Body() pagination: Pagination) {
+    const data = await this.roleManagementService.authRolePagination(
+      pagination,
+    );
+    return { message: 'ok', data };
+  }
+
   @Post('auth-role')
   async createAuthRole(
     @Req() request: Request,
@@ -136,6 +144,14 @@ export class RoleManagementController {
   /**
    * /auth/user-role section
    */
+  @Post('user-role/pagination')
+  async userRolePagination(@Body() pagination: Pagination) {
+    const data = await this.roleManagementService.userRolePagination(
+      pagination,
+    );
+    return { message: 'ok', data };
+  }
+
   @Post('user-role')
   async createUserRole(
     @Req() request: Request,

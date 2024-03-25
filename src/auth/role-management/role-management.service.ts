@@ -96,7 +96,7 @@ export class RoleManagementService {
 
     const { side, path } = updateAuthForRoleManagementDto;
     const newAuth = await this.prisma.auth.findFirst({ where: { side, path } });
-    if (newAuth) {
+    if (newAuth && newAuth.auth_id !== auth_id) {
       throw new BadRequestException(
         `The <${path}> existed on ${this.sideCodeTranslateToWord(side)}`,
       );
@@ -170,6 +170,43 @@ export class RoleManagementService {
     }
   }
 
+  public async rolePagination(pagination: Pagination) {
+    const { pageNum, pageSize, sorted, filtered } = pagination;
+    const where = {};
+    filtered.forEach(({ id, value }) => {
+      if (Array.isArray(value)) {
+        where[id] = { in: value };
+        return;
+      }
+
+      where[id] = value;
+    });
+
+    const orderByKey =
+      Array.isArray(sorted) && sorted.length ? sorted[0].id : 'create_date';
+    const orderByValue =
+      Array.isArray(sorted) && sorted.length
+        ? sorted[0].desc
+          ? 'desc'
+          : 'acs'
+        : 'desc';
+    const count = await this.prisma.role.count({
+      where: where,
+    });
+    const data = await this.prisma.role.findMany({
+      where: where,
+      take: pageSize,
+      skip: pageNum * pageSize,
+      orderBy: { [orderByKey]: orderByValue },
+    });
+
+    return {
+      data,
+      rows: count,
+      pages: Math.ceil(count / pageSize),
+    };
+  }
+
   public async createRole(
     createRole: UpsertRoleForRoleManagementDto,
     user: UserEntity,
@@ -214,6 +251,43 @@ export class RoleManagementService {
         `The relation has been existed by ${createAuthRole.role_id} with ${createAuthRole.auth_id}`,
       );
     }
+  }
+
+  public async authRolePagination(pagination: Pagination) {
+    const { pageNum, pageSize, sorted, filtered } = pagination;
+    const where = {};
+    filtered.forEach(({ id, value }) => {
+      if (Array.isArray(value)) {
+        where[id] = { in: value };
+        return;
+      }
+
+      where[id] = value;
+    });
+
+    const orderByKey =
+      Array.isArray(sorted) && sorted.length ? sorted[0].id : 'create_date';
+    const orderByValue =
+      Array.isArray(sorted) && sorted.length
+        ? sorted[0].desc
+          ? 'desc'
+          : 'acs'
+        : 'desc';
+    const count = await this.prisma.auth_role.count({
+      where: where,
+    });
+    const data = await this.prisma.auth_role.findMany({
+      where: where,
+      take: pageSize,
+      skip: pageNum * pageSize,
+      orderBy: { [orderByKey]: orderByValue },
+    });
+
+    return {
+      data,
+      rows: count,
+      pages: Math.ceil(count / pageSize),
+    };
   }
 
   public async createAuthRole(
@@ -265,6 +339,43 @@ export class RoleManagementService {
   /**
    * user-role
    */
+  public async userRolePagination(pagination: Pagination) {
+    const { pageNum, pageSize, sorted, filtered } = pagination;
+    const where = {};
+    filtered.forEach(({ id, value }) => {
+      if (Array.isArray(value)) {
+        where[id] = { in: value };
+        return;
+      }
+
+      where[id] = value;
+    });
+
+    const orderByKey =
+      Array.isArray(sorted) && sorted.length ? sorted[0].id : 'create_date';
+    const orderByValue =
+      Array.isArray(sorted) && sorted.length
+        ? sorted[0].desc
+          ? 'desc'
+          : 'acs'
+        : 'desc';
+    const count = await this.prisma.user_role.count({
+      where: where,
+    });
+    const data = await this.prisma.user_role.findMany({
+      where: where,
+      take: pageSize,
+      skip: pageNum * pageSize,
+      orderBy: { [orderByKey]: orderByValue },
+    });
+
+    return {
+      data,
+      rows: count,
+      pages: Math.ceil(count / pageSize),
+    };
+  }
+
   public async createUserRole(
     createUserRole: CreateUserRoleForRoleManagementDto,
     user: UserEntity,
