@@ -415,7 +415,7 @@ export class RoleManagementService {
       },
     });
 
-    if (userRole) {
+    if (userRole && userRole.id !== id) {
       throw new BadRequestException("It's existed");
     }
 

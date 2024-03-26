@@ -1,14 +1,16 @@
 // src/users/users.controller.ts
-import { Controller, Get, Body, Patch, Param } from '@nestjs/common';
+import { Controller, Get, Body, Patch, Param, Post } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiProperty,
   ApiTags,
 } from '@nestjs/swagger';
 import { UserEntity } from './entities/user.entity';
+import { Pagination } from '../common/dto/pagination';
 @Controller('users')
 @ApiTags('users')
 export class UsersController {
@@ -26,6 +28,13 @@ export class UsersController {
   @ApiOkResponse({ type: UserEntity })
   async findOne(@Param('id') id: string) {
     return new UserEntity(await this.usersService.findOne(id));
+  }
+
+  @Post('pagination')
+  @ApiProperty()
+  async usersPagination(@Body() pagination: Pagination) {
+    const data = await this.usersService.usersPagination(pagination);
+    return { message: 'ok', data };
   }
 
   @Patch(':id')

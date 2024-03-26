@@ -10,6 +10,7 @@ import {
   UpdateUser_signup_passwordInputDto,
 } from './dto/update-user_signin_password.dto';
 import { WxUserInfo } from '../auth/dto/login.dto';
+import { Pagination } from '../common/dto/pagination';
 
 @Injectable()
 export class UsersService {
@@ -113,5 +114,42 @@ export class UsersService {
     ]);
 
     return user;
+  }
+
+  public async usersPagination(pagination: Pagination) {
+    const { pageNum, pageSize, sorted, filtered } = pagination;
+    const where = {};
+    filtered.forEach(({ id, value }) => {
+      if (Array.isArray(value)) {
+        where[id] = { in: value };
+        return;
+      }
+
+      where[id] = value;
+    });
+
+    const orderByKey =
+      Array.isArray(sorted) && sorted.length ? sorted[0].id : 'create_date';
+    const orderByValue =
+      Array.isArray(sorted) && sorted.length
+        ? sorted[0].desc
+          ? 'desc'
+          : 'acs'
+        : 'desc';
+    const count = await this.prisma.user.count({
+      where: where,
+    });
+    const data = await this.prisma.user.findMany({
+      where: where,
+      take: pageSize,
+      skip: pageNum * pageSize,
+      orderBy: { [orderByKey]: orderByValue },
+    });
+
+    return {
+      data,
+      rows: count,
+      pages: Math.ceil(count / pageSize),
+    };
   }
 }
