@@ -5,12 +5,16 @@ import {
 } from '@nestjs/common';
 import { UserEntity } from '../../users/entities/user.entity';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateAuthForRoleManagementDto } from './dto/create-auth-for-role-management.dto';
+import {
+  CreateAuthForRoleManagementDto,
+  ResourcesFromAuth,
+} from './dto/create-auth-for-role-management.dto';
 import { v4 } from 'uuid';
 import {
   EAUTH_ROLE_STATUS,
   EAUTH_SIDE_CODE,
   EAUTH_STATUS,
+  EUSER_AUTH_STATUS,
   EUSER_ROLE_STATUS,
 } from './const';
 import { UpdateAuthForRoleManagementDto } from './dto/update-auth-for-role-management.dto';
@@ -19,6 +23,7 @@ import { UpsertRoleForRoleManagementDto } from './dto/upsert-role-for-role-manag
 import { CreateAuthRoleForRoleManagementDto } from './dto/create-authRole-for-role-management.dto';
 import { CreateUserRoleForRoleManagementDto } from './dto/create-userRole-for-role-management.dto';
 import { UpdateUserRoleForRoleManagementDto } from './dto/update-userRole-for-role-management.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class RoleManagementService {
@@ -425,5 +430,32 @@ export class RoleManagementService {
     });
 
     return updated;
+  }
+
+  public async getResourcesByUserId(userId: string) {
+    const userAuth = await this.prisma.user_auth.findUnique({
+      where: { user_id: userId, status: EUSER_AUTH_STATUS.active },
+    });
+
+    const userRoles = await this.prisma.user_role.findMany({
+      where: { user_id: userId, status: EUSER_ROLE_STATUS.active },
+    });
+
+    const roleIds = userRoles.map(({ role_id }) => role_id);
+
+    const resources: ResourcesFromAuth[] = await this.prisma.$queryRaw`SELECT
+        A.auth_id AS auth_id,
+        A.side AS side,
+        A.path AS path,
+        A.method AS method,
+        A.status AS status
+    FROM storehouse.auth AS A
+        JOIN storehouse.auth_role AS B ON A.auth_id = B.auth_id
+    WHERE B.role_id IN (${Prisma.join(roleIds)})
+    AND A.status = ${EAUTH_STATUS.active}
+    AND B.status = ${EAUTH_ROLE_STATUS.active}
+    `;
+
+    return { userAuth, resources };
   }
 }

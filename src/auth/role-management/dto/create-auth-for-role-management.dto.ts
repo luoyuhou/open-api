@@ -7,6 +7,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { PickType } from '@nestjs/mapped-types';
 
 export class CreateAuthForRoleManagementDto {
   @IsNotEmpty()
@@ -33,4 +34,15 @@ export class CreateAuthForRoleManagementDto {
   @MaxLength(8)
   @ApiProperty()
   method: string;
+}
+
+export class ResourcesFromAuth extends PickType(
+  CreateAuthForRoleManagementDto,
+  ['side', 'path', 'method'],
+) {
+  @IsNotEmpty()
+  @IsString()
+  @MaxLength(64)
+  @ApiProperty()
+  auth_id: string;
 }

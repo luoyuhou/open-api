@@ -17,3 +17,8 @@ export enum EUSER_ROLE_STATUS {
   inactive = 0,
   active = 1,
 }
+
+export enum EUSER_AUTH_STATUS {
+  inactive = 0,
+  active = 1,
+}

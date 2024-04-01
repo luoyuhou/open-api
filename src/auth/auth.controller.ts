@@ -67,7 +67,18 @@ export class AuthController {
       Login_SOURCE_TYPES.password,
       { ip: Utils.formatIp(ip), useragent },
     );
-    return { message: 'ok', data: user };
+    const { userAuth, resources } = await this.authService.setCacheResources(
+      (user as UserEntity).user_id,
+    );
+    return {
+      message: 'ok',
+      data: user,
+      resources: userAuth
+        ? [{ auth_id: '*', side: 0, path: '*', method: '*' }].concat(
+            ...resources,
+          )
+        : resources,
+    };
   }
 
   @Post('wx/verify-code')
@@ -101,7 +112,18 @@ export class AuthController {
   @UseGuards(SessionAuthGuard)
   @ApiOkResponse({ type: UserEntity })
   async getSignedUser(@Req() request: Request) {
-    return { message: 'ok', data: request.user };
+    const { userAuth, resources } = await this.authService.setCacheResources(
+      (request.user as UserEntity).user_id,
+    );
+    return {
+      message: 'ok',
+      data: request.user,
+      resources: userAuth
+        ? [{ auth_id: '*', side: 0, path: '*', method: '*' }].concat(
+            ...resources,
+          )
+        : resources,
+    };
   }
 
   @Delete('logout')
