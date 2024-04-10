@@ -219,6 +219,10 @@ export class StoreService {
       town_name: string;
     }[]
   > {
+    if (!storeIds.length) {
+      return [];
+    }
+
     return this.prisma.$queryRaw`SELECT
           A.store_id,
           B1.name AS province_name,
