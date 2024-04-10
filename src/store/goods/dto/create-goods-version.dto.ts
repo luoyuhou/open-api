@@ -1,4 +1,10 @@
-import { IsInt, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateGoodsVersionDto {
@@ -8,8 +14,9 @@ export class CreateGoodsVersionDto {
   version_number: string;
 
   @IsString()
-  @ApiProperty()
+  @IsOptional()
   @MaxLength(32)
+  @ApiProperty()
   bar_code: string;
 
   @IsInt()
@@ -29,6 +36,7 @@ export class CreateGoodsVersionDto {
   unit_name: string;
 
   @IsString()
+  @IsOptional()
   @MaxLength(64)
   @ApiProperty()
   supplier: string;

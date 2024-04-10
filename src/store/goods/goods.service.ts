@@ -7,7 +7,6 @@ import { v4 } from 'uuid';
 import { CreateGoodsVersionDto } from './dto/create-goods-version.dto';
 import { UpdateGoodsVersionDto } from './dto/update-goods-version.dto';
 import { Pagination } from '../../common/dto/pagination';
-import { Prisma } from '@prisma/client';
 import { UpsertGoodsVersionDto } from './dto/upsert-goods-version.dto';
 
 @Injectable()

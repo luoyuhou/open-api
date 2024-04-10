@@ -443,6 +443,10 @@ export class RoleManagementService {
 
     const roleIds = userRoles.map(({ role_id }) => role_id);
 
+    if (!roleIds.length) {
+      return { userAuth, resources: [] };
+    }
+
     const resources: ResourcesFromAuth[] = await this.prisma.$queryRaw`SELECT
         A.auth_id AS auth_id,
         A.side AS side,

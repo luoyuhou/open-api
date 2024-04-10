@@ -17,7 +17,7 @@ CREATE TABLE user (
 ALTER TABLE user MODIFY phone varchar(16) NOT NULL;
 
 
-CREATE TABLE user_signIn_password (
+CREATE TABLE user_signin_password (
     id int unsigned NOT NULL AUTO_INCREMENT,
     user_id varchar(64) NOT NULL,
     salt varchar(16) NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE user_signIn_password (
 ALTER TABLE user_signIn_password MODIFY salt varchar(32) NOT NULL;
 
 
-CREATE TABLE user_signIn_history(
+CREATE TABLE user_signin_history(
     id int unsigned NOT NULL AUTO_INCREMENT,
     user_id varchar(64) NOT NULL,
     ip varchar(64),
@@ -263,7 +263,7 @@ CREATE TABLE `province` (
 
 ALTER TABLE province MODIFY COLUMN code varchar(8) NOT NULL;
 
-CREATE TABLE `user_signIn_wechat` (
+CREATE TABLE `user_signin_wechat` (
     id int unsigned NOT NULL AUTO_INCREMENT,
     openid varchar(64) NOT NULL,
     user_id varchar(64) NOT NULL,
