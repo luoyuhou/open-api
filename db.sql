@@ -350,6 +350,8 @@ CREATE TABLE `user_fetch` (
 	INDEX `fetch_url_idx` (`url`,`method`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+ALTER TABLE user_fetch ADD COLUMN `source` tinyint(4) unsigned NOT NULL after `user_id`;
+
 CREATE TABLE `report_daily_user_fetch` (
     `id` int (10) unsigned NOT NULL AUTO_INCREMENT,
     `user_id` varchar(64) NOT NULL,

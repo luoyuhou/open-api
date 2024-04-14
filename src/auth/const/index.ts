@@ -5,3 +5,8 @@ export enum Login_SOURCE_TYPES {
   password = 1,
   wechat = 2,
 }
+
+export enum API_SOURCE_TYPES {
+  UI = 1,
+  WECHAT = 2,
+}

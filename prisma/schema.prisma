@@ -309,6 +309,7 @@ model auth_role {
 model user_fetch {
   id          Int       @id @default(autoincrement()) @db.UnsignedInt
   user_id     String    @db.VarChar(64)
+  source      Int       @db.UnsignedTinyInt
   url         String    @db.VarChar(256)
   method      String    @db.VarChar(8)
   create_date DateTime? @default(now()) @db.DateTime(0)

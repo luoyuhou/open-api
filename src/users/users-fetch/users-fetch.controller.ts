@@ -1,45 +1,27 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-} from '@nestjs/common';
+import { Controller, Post, Body, Get, Req } from '@nestjs/common';
 import { UsersFetchService } from './users-fetch.service';
-import { CreateUsersFetchDto } from './dto/create-users-fetch.dto';
-import { UpdateUsersFetchDto } from './dto/update-users-fetch.dto';
+import { Pagination } from '../../common/dto/pagination';
+import { Request } from 'express';
+import { UserEntity } from '../entities/user.entity';
 
-@Controller('/users/users-fetch')
+@Controller('/users')
 export class UsersFetchController {
   constructor(private readonly usersFetchService: UsersFetchService) {}
 
-  @Post()
-  create(@Body() createUsersFetchDto: CreateUsersFetchDto) {
-    return this.usersFetchService.create(createUsersFetchDto);
+  @Get('users-fetch/realtime')
+  async realtime(@Req() req: Request) {
+    const { user_id } = (req as unknown as UserEntity) ?? {};
+    const list = await this.usersFetchService.realtime(user_id);
+    return { data: list };
   }
 
-  @Get()
-  findAll() {
-    return this.usersFetchService.findAll();
+  @Post('users-fetch/pagination')
+  async fetchPagination(@Body() pagination: Pagination) {
+    return this.usersFetchService.fetchPagination(pagination);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersFetchService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateUsersFetchDto: UpdateUsersFetchDto,
-  ) {
-    return this.usersFetchService.update(+id, updateUsersFetchDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersFetchService.remove(+id);
+  @Post('users-login/pagination')
+  async loginPagination(@Body() pagination: Pagination) {
+    return this.usersFetchService.loginPagination(pagination);
   }
 }

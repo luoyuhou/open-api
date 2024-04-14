@@ -1,17 +1,104 @@
 import { Injectable } from '@nestjs/common';
-import { CreateUsersFetchDto } from './dto/create-users-fetch.dto';
 import { UpdateUsersFetchDto } from './dto/update-users-fetch.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as moment from 'moment';
 import customLogger from '../../common/logger';
-import { Prisma } from '@prisma/client';
+import { Pagination } from '../../common/dto/pagination';
 
 @Injectable()
 export class UsersFetchService {
   constructor(private prisma: PrismaService) {}
 
-  create(createUsersFetchDto: CreateUsersFetchDto) {
-    return 'This action adds a new usersFetch';
+  public async realtime(user_id: string) {
+    const now = moment();
+    const start = moment().startOf('day').toDate();
+    return this.prisma.user_fetch.groupBy({
+      where: { user_id, create_date: { gte: start, lte: now.toDate() } },
+      by: ['source'],
+      _count: true,
+    });
+  }
+
+  public async fetchPagination({
+    pageNum,
+    pageSize,
+    sorted,
+    filtered,
+  }: Pagination) {
+    const where = {};
+    filtered.forEach(({ id, value }) => {
+      if (Array.isArray(value)) {
+        where[id] = { in: value };
+        return;
+      }
+
+      where[id] = value;
+    });
+
+    const orderByKey =
+      Array.isArray(sorted) && sorted.length ? sorted[0].id : 'create_date';
+    const orderByValue =
+      Array.isArray(sorted) && sorted.length
+        ? sorted[0].desc
+          ? 'desc'
+          : 'acs'
+        : 'desc';
+    const count = await this.prisma.report_daily_user_fetch.count({
+      where: where,
+    });
+    const data = await this.prisma.report_daily_user_fetch.findMany({
+      where: where,
+      take: pageSize,
+      skip: pageNum * pageSize,
+      orderBy: { [orderByKey]: orderByValue },
+    });
+
+    return {
+      data,
+      rows: count,
+      pages: Math.ceil(count / pageSize),
+    };
+  }
+
+  public async loginPagination({
+    pageNum,
+    pageSize,
+    sorted,
+    filtered,
+  }: Pagination) {
+    const where = {};
+    filtered.forEach(({ id, value }) => {
+      if (Array.isArray(value)) {
+        where[id] = { in: value };
+        return;
+      }
+
+      where[id] = value;
+    });
+
+    const orderByKey =
+      Array.isArray(sorted) && sorted.length ? sorted[0].id : 'create_date';
+    const orderByValue =
+      Array.isArray(sorted) && sorted.length
+        ? sorted[0].desc
+          ? 'desc'
+          : 'acs'
+        : 'desc';
+    const count = await this.prisma.user_signin_history.count({
+      where: where,
+    });
+    const data = await this.prisma.user_signin_history.findMany({
+      where: where,
+      take: pageSize,
+      skip: pageNum * pageSize,
+      orderBy: { [orderByKey]: orderByValue },
+    });
+
+    return {
+      data,
+      rows: count,
+      pages: Math.ceil(count / pageSize),
+    };
   }
 
   findAll() {
