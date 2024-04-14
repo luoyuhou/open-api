@@ -13,6 +13,11 @@ import { GeneralModule } from './general/general.module';
 import { WxModule } from './wx/wx.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import Env from './common/const/Env';
+import { RecordFetchMiddleware } from './common/middlewares/record-fetch.middleware';
+import { TraceMiddleware } from './common/middlewares/trace.middleware';
+import { ScheduleModule } from '@nestjs/schedule';
+import { SchedulesService } from './schedules/schedules.service';
+import { UsersFetchModule } from './users/users-fetch/users-fetch.module';
 
 @Module({
   imports: [
@@ -26,12 +31,16 @@ import Env from './common/const/Env';
     WxModule,
     TypeOrmModule.forRoot({ type: 'mysql', url: Env.DATABASE_URL }),
     TerminusModule,
+    UsersFetchModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController, HealthController],
-  providers: [AppService],
+  providers: [AppService, SchedulesService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): any {
+    consumer.apply(TraceMiddleware).forRoutes('');
     consumer.apply(LoggerMiddleware).forRoutes('');
+    consumer.apply(RecordFetchMiddleware).forRoutes('');
   }
 }

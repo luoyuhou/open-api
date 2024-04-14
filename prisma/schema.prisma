@@ -265,18 +265,6 @@ model role {
   update_date DateTime? @default(now()) @db.DateTime(0)
 }
 
-model role_auth {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  auth_id     String    @db.VarChar(64)
-  role_id     String    @db.VarChar(64)
-  status      Int       @db.TinyInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
-
-  @@unique([role_id, auth_id], map: "role_id")
-  @@index([auth_id], map: "auth_idx")
-}
-
 model user_auth {
   id          Int       @id @default(autoincrement()) @db.UnsignedInt
   user_id     String    @unique(map: "user_id") @db.VarChar(64)
@@ -316,4 +304,29 @@ model auth_role {
 
   @@unique([role_id, auth_id], map: "role_id")
   @@index([auth_id], map: "auth_idx")
+}
+
+model user_fetch {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  user_id     String    @db.VarChar(64)
+  url         String    @db.VarChar(256)
+  method      String    @db.VarChar(8)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([url, method], map: "fetch_url_idx")
+  @@index([user_id], map: "fetch_user_idx")
+}
+
+model report_daily_user_fetch {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  user_id     String    @db.VarChar(64)
+  times       Int       @db.UnsignedSmallInt
+  use_time    Int       @db.UnsignedMediumInt
+  record_date DateTime  @db.DateTime(0)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([record_date], map: "fetch_daily_record_date_idx")
+  @@index([user_id], map: "fetch_daily_user_idx")
 }

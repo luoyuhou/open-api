@@ -337,3 +337,28 @@ CREATE TABLE `user_role` (
   UNIQUE KEY `user_id` (`user_id`,`role_id`) USING BTREE,
   KEY `role_idx` (`role_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `user_fetch` (
+	`id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+	`user_id` varchar(64) NOT NULL,
+	`url` varchar(256) NOT NULL,
+	`method` varchar(8) NOT NULL,
+	`create_date` datetime default CURRENT_TIMESTAMP,
+	`update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`),
+	INDEX `fetch_user_idx` (`user_id`) USING BTREE,
+	INDEX `fetch_url_idx` (`url`,`method`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `report_daily_user_fetch` (
+    `id` int (10) unsigned NOT NULL AUTO_INCREMENT,
+    `user_id` varchar(64) NOT NULL,
+    `times` smallint unsigned NOT NULL,
+    `use_time` mediumint unsigned NOT NULL,
+    `record_date` datetime NOT NULL,
+    `create_date` datetime default CURRENT_TIMESTAMP,
+    `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `fetch_daily_user_idx` (`user_id`) USING BTREE,
+    INDEX `fetch_daily_record_date_idx` (`record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

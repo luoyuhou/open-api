@@ -5,11 +5,12 @@ import { UsersController } from './users.controller';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { OrderModule } from './order/order.module';
 import { AddressModule } from './address/address.module';
+import { UsersFetchModule } from './users-fetch/users-fetch.module';
 
 @Module({
   controllers: [UsersController],
   providers: [UsersService],
-  imports: [PrismaModule, OrderModule, AddressModule],
+  imports: [PrismaModule, OrderModule, AddressModule, UsersFetchModule],
   exports: [UsersService],
 })
 export class UsersModule {}
