@@ -155,7 +155,10 @@ export class UsersFetchService {
 
     const { max_date, min_date } = data[0];
 
-    return new Date(max_date).getTime() - new Date(min_date).getTime() || 1;
+    const max_timestamp = +(new Date(max_date).getTime() / 1000).toFixed(0);
+    const min_timestamp = +(new Date(min_date).getTime() / 1000).toFixed(0);
+
+    return max_timestamp - min_timestamp || 0;
   }
 
   async dailyUsersFetch() {
