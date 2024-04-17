@@ -9,6 +9,7 @@ import {
   Put,
   Req,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { WxService } from './wx.service';
 import { Request } from 'express';
@@ -19,7 +20,9 @@ import { FindAllCategoryDto } from '../store/category/dto/findAll-category.dto';
 import { UpdateAddressDto } from '../users/address/dto/update-address.dto';
 import { CreateAddressDto } from '../users/address/dto/create-address.dto';
 import { ApiTags } from '@nestjs/swagger';
+import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 
+@UseGuards(SessionAuthGuard)
 @Controller('wx')
 @ApiTags('wx')
 export class WxController {

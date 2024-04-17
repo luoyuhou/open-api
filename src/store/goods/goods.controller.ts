@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 import { GoodsService } from './goods.service';
 import { CreateGoodDto } from './dto/create-good.dto';
@@ -15,7 +16,9 @@ import { CreateGoodsVersionDto } from './dto/create-goods-version.dto';
 import { UpdateGoodsVersionDto } from './dto/update-goods-version.dto';
 import { Pagination } from '../../common/dto/pagination';
 import { UpsertGoodsVersionDto } from './dto/upsert-goods-version.dto';
+import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
 
+@UseGuards(SessionAuthGuard)
 @Controller('store/goods')
 @ApiTags('store/goods')
 export class GoodsController {

@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { RoleManagementService } from './role-management.service';
@@ -19,7 +20,9 @@ import { CreateAuthRoleForRoleManagementDto } from './dto/create-authRole-for-ro
 import { CreateUserRoleForRoleManagementDto } from './dto/create-userRole-for-role-management.dto';
 import { UpdateUserRoleForRoleManagementDto } from './dto/update-userRole-for-role-management.dto';
 import { ApiTags } from '@nestjs/swagger';
+import { SessionAuthGuard } from '../guards/session-auth.guard';
 
+@UseGuards(SessionAuthGuard)
 @Controller('auth/role-management')
 @ApiTags('auth/role-management')
 export class RoleManagementController {

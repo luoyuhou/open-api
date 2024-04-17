@@ -7,6 +7,7 @@ export enum Login_SOURCE_TYPES {
 }
 
 export enum API_SOURCE_TYPES {
+  MOBILE = 0,
   UI = 1,
   WECHAT = 2,
 }

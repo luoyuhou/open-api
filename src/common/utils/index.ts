@@ -1,7 +1,15 @@
 class Utils {
   static formatIp(ip: string) {
     const ipPrefix = '::ffff:';
-    return ip.indexOf(ipPrefix) === 0 ? ip.slice(ipPrefix.length) : ip;
+    if (ip.includes(ipPrefix)) {
+      return ip.indexOf(ipPrefix) === 0 ? ip.slice(ipPrefix.length) : ip;
+    }
+
+    if (ip.includes('::')) {
+      return ip.split('::')?.[0] ?? ip;
+    }
+
+    return ip;
   }
 
   /**

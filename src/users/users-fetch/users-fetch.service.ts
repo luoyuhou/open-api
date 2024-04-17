@@ -9,7 +9,11 @@ import { Pagination } from '../../common/dto/pagination';
 export class UsersFetchService {
   constructor(private prisma: PrismaService) {}
 
-  public async realtime(user_id: string) {
+  public async realtime(user_id?: string) {
+    if (!user_id) {
+      return [];
+    }
+
     const now = moment();
     const start = moment().startOf('day').toDate();
     return this.prisma.user_fetch.groupBy({

@@ -1,5 +1,13 @@
 // src/users/users.controller.ts
-import { Controller, Get, Body, Patch, Param, Post } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Body,
+  Patch,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import {
@@ -11,6 +19,9 @@ import {
 } from '@nestjs/swagger';
 import { UserEntity } from './entities/user.entity';
 import { Pagination } from '../common/dto/pagination';
+import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
+
+@UseGuards(SessionAuthGuard)
 @Controller('users')
 @ApiTags('users')
 export class UsersController {

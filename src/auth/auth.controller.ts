@@ -59,7 +59,7 @@ export class AuthController {
   @UseInterceptors(TokenInterceptor)
   @ApiOkResponse({ type: AuthEntity })
   async login(@Req() request: Request) {
-    const ip = request.ip;
+    const ip = (request.headers['x-forwarded-host'] as string) || request.ip;
     const useragent = request.headers['user-agent'];
     const { user } = request;
     this.authService.addLoginHistory(
@@ -96,7 +96,7 @@ export class AuthController {
     const user = await this.authService.loginByWx(wxLoginDto);
 
     request.login(user, () => {
-      const ip = request.ip;
+      const ip = (request.headers['x-forwarded-host'] as string) || request.ip;
       const useragent = request.headers['user-agent'];
       this.authService.addLoginHistory(
         (user as UserEntity).user_id,
