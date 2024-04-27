@@ -28,6 +28,8 @@ import { v4 } from 'uuid';
 import { WxLoginDto, WxUserInfo } from './dto/login.dto';
 import sha1 = require('sha1');
 import { RoleManagementService } from './role-management/role-management.service';
+import cacheManager from '../common/cache-manager';
+import { ResourcesFromAuth } from './role-management/dto/create-auth-for-role-management.dto';
 
 @Injectable()
 export class AuthService {
@@ -40,34 +42,20 @@ export class AuthService {
   @Inject(forwardRef(() => UsersService))
   private readonly usersService: UsersService;
 
-  private generateResourceKey(user_id: string) {
-    return `auth:${user_id}`;
-  }
-
   public async setCacheResources(user_id: string) {
-    const key = this.generateResourceKey(user_id);
     const { userAuth = null, resources } =
       await this.roleManagementService.getResourcesByUserId(user_id);
 
-    await redisClient.set(key, JSON.stringify({ userAuth, resources }));
-    await redisClient.expire(key, 86400); // 1 day
+    await cacheManager.setResourcesForUser(user_id, { userAuth, resources });
 
     return { userAuth, resources };
   }
 
-  public async getCacheResources(user_id: string) {
-    const key = this.generateResourceKey(user_id);
-    const cache = await redisClient.get(key);
-
-    if (!cache) {
-      return { userAuth: null, resources: [] };
-    }
-
-    try {
-      return JSON.parse(cache);
-    } catch {
-      return { userAuth: null, resources: [] };
-    }
+  public async getCacheResources(user_id: string): Promise<{
+    userAuth: UserEntity | null;
+    resources: ResourcesFromAuth[];
+  }> {
+    return cacheManager.getResourceForUser(user_id);
   }
 
   public async createUserByPassword(createUserDto: CreateUserByPasswordDto) {

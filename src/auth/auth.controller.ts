@@ -34,6 +34,7 @@ import { Login_SOURCE_TYPES } from './const';
 import { TokenInterceptor } from './interceptors/token.interceptor';
 import customLogger from '../common/logger';
 import { VerifyCodeDot, WxLoginDto } from './dto/login.dto';
+import sessionManager from '../common/cache-manager';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -112,9 +113,20 @@ export class AuthController {
   @UseGuards(SessionAuthGuard)
   @ApiOkResponse({ type: UserEntity })
   async getSignedUser(@Req() request: Request) {
-    const { userAuth, resources } = await this.authService.setCacheResources(
-      (request.user as UserEntity).user_id,
+    const user_id = (request.user as UserEntity).user_id;
+    const { userAuth, resources } = await this.authService.getCacheResources(
+      user_id,
     );
+
+    if (!userAuth) {
+      request.logout(() =>
+        customLogger.log({
+          message: "Can't get user profile from cache",
+          user_id,
+        }),
+      );
+    }
+
     return {
       message: 'ok',
       data: request.user,
@@ -131,9 +143,25 @@ export class AuthController {
   @ApiOkResponse({})
   async logout(@Req() request: Request) {
     const user_id = (request.user as UserEntity)?.user_id;
-    request.logout(() =>
-      customLogger.log({ user_id, message: 'success logout' }),
-    );
+    request.logout(() => {
+      customLogger.log({ user_id, message: 'success logout' });
+
+      sessionManager
+        .delSessionIdByUserId(user_id)
+        .then(() => {
+          customLogger.log({
+            user_id,
+            message: 'success logout by session map',
+          });
+        })
+        .catch((reason) => {
+          customLogger.error({
+            user_id,
+            message: 'failed logout by session map',
+            error: reason,
+          });
+        });
+    });
     return { message: 'ok', data: null };
   }
 
