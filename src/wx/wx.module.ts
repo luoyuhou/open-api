@@ -7,6 +7,7 @@ import { GoodsModule } from '../store/goods/goods.module';
 import { StoreModule } from '../store/store.module';
 import { CategoryModule } from '../store/category/category.module';
 import { AddressModule } from '../users/address/address.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AddressModule } from '../users/address/address.module';
     StoreModule,
     CategoryModule,
     AddressModule,
+    UsersModule,
   ],
   controllers: [WxController],
   providers: [WxService],

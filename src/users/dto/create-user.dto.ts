@@ -1,6 +1,8 @@
 import {
+  IsEnum,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsPhoneNumber,
   IsString,
   IsStrongPassword,
@@ -48,6 +50,18 @@ export class CreateUserDto {
   @MaxLength(256)
   @ApiProperty()
   avatar: string;
+
+  @IsInt()
+  @IsEnum([0, 1, 2])
+  @IsOptional()
+  @ApiProperty()
+  gender: number;
+
+  @IsString()
+  @MaxLength(512)
+  @IsOptional()
+  @ApiProperty()
+  bio: string;
 }
 
 export class CreateUserByPasswordDto extends PickType(CreateUserDto, [

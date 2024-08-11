@@ -97,7 +97,6 @@ export class AuthController {
   @UseInterceptors(TokenInterceptor)
   @ApiOkResponse({ type: AuthEntity })
   async wxLogin(@Req() request: Request, @Body() wxLoginDto: WxLoginDto) {
-    console.log('================');
     const user = await this.authService.loginByWx(wxLoginDto);
 
     request.login(user, () => {

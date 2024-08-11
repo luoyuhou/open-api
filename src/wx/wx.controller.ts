@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   Put,
@@ -19,8 +18,10 @@ import { Pagination } from '../common/dto/pagination';
 import { FindAllCategoryDto } from '../store/category/dto/findAll-category.dto';
 import { UpdateAddressDto } from '../users/address/dto/update-address.dto';
 import { CreateAddressDto } from '../users/address/dto/create-address.dto';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiProperty, ApiTags } from '@nestjs/swagger';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
+import { UpdateUserDto } from '../users/dto/update-user.dto';
+import { UpdateUserPasswordDto } from '../users/dto/update-user-password.dto';
 
 @UseGuards(SessionAuthGuard)
 @Controller('wx')
@@ -29,6 +30,7 @@ export class WxController {
   constructor(private readonly wxService: WxService) {}
 
   @Post('order')
+  @ApiProperty()
   async createOrder(
     @Req() request: Request,
     @Body() createOrderDto: CreateOrderDto,
@@ -42,6 +44,7 @@ export class WxController {
   }
 
   @Post('order/pagination')
+  @ApiProperty()
   async orderPagination(
     @Req() request: Request,
     @Body() pagination: Pagination,
@@ -57,36 +60,42 @@ export class WxController {
   }
 
   @Get('order/:id/detail')
+  @ApiProperty()
   async orderDetailInfo(@Param('id') id: string) {
     const data = await this.wxService.orderDetailInfo(id);
     return { message: 'ok', data };
   }
 
   @Put('order/:id')
+  @ApiProperty()
   async cancelOrder(@Req() request: Request, @Param('id') id: string) {
     await this.wxService.cancelOrder(id, request.user as UserEntity);
     return { message: 'ok' };
   }
 
   @Delete('order/:id')
+  @ApiProperty()
   async removeOrder(@Req() request: Request, @Param('id') id: string) {
     await this.wxService.removeOrder(id, request.user as UserEntity);
     return { message: 'ok' };
   }
 
   @Post('store/pagination')
+  @ApiProperty()
   async storePagination(@Body() pagination: Pagination) {
     const data = await this.wxService.storePagination(pagination);
     return { message: 'ok', data };
   }
 
   @Get('store/:id')
+  @ApiProperty()
   async storeInfo(@Param('id') id: string) {
     const data = await this.wxService.storeInfo(id);
     return { message: 'ok', data };
   }
 
   @Get('category/:id')
+  @ApiProperty()
   async findCategoryByStoreId(
     @Param('id') id: string,
     @Query() { pid }: FindAllCategoryDto,
@@ -99,12 +108,14 @@ export class WxController {
   }
 
   @Post('goods/pagination')
+  @ApiProperty()
   async goodsPagination(@Body() pagination: Pagination) {
     const data = await this.wxService.goodsPagination(pagination);
     return { message: 'ok', data };
   }
 
   @Get('user/address')
+  @ApiProperty()
   async getUserAllAddress(@Req() request: Request) {
     const data = await this.wxService.getUserAllAddress(
       request.user as UserEntity,
@@ -113,12 +124,14 @@ export class WxController {
   }
 
   @Get('user/address/:id')
+  @ApiProperty()
   async getUserAddress(@Param('id') id: string) {
     const data = await this.wxService.findUserAddress(id);
     return { message: 'ok', data };
   }
 
   @Put('user/address/:id')
+  @ApiProperty()
   async editUserAddress(
     @Param('id') id: string,
     @Req() request: Request,
@@ -133,6 +146,7 @@ export class WxController {
   }
 
   @Post('user/address')
+  @ApiProperty()
   async createUserAddress(
     @Req() request: Request,
     @Body() createAddressDto: CreateAddressDto,
@@ -142,5 +156,19 @@ export class WxController {
       createAddressDto,
     );
     return { message: 'ok', data };
+  }
+
+  @Put('user/profile')
+  async updateUserProfile(
+    @Req() request: Request,
+    @Body()
+    updateUserProfileWithPasswordDto: UpdateUserDto & UpdateUserPasswordDto,
+  ) {
+    const result = await this.wxService.updateUserProfileWithPassword(
+      request.user as UserEntity,
+      updateUserProfileWithPasswordDto,
+    );
+
+    return { message: 'ok', data: result };
   }
 }

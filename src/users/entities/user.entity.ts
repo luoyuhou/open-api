@@ -31,6 +31,12 @@ export class UserEntity {
   avatar: string | null;
 
   @ApiProperty()
+  gender: number;
+
+  @ApiProperty()
+  bio: string | null;
+
+  @ApiProperty()
   create_date: Date;
 
   @ApiProperty()

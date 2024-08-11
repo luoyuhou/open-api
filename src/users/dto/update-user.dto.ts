@@ -8,6 +8,8 @@ export class UpdateUserDto extends PickType(CreateUserDto, [
   'phone',
   'email',
   'avatar',
+  'gender',
+  'bio',
 ]) {
   @ApiProperty()
   first_name: string;
@@ -23,4 +25,10 @@ export class UpdateUserDto extends PickType(CreateUserDto, [
 
   @ApiProperty()
   avatar: string;
+
+  @ApiProperty()
+  gender: number;
+
+  @ApiProperty()
+  bio: string;
 }

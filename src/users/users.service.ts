@@ -11,6 +11,8 @@ import {
 } from './dto/update-user_signin_password.dto';
 import { WxUserInfo } from '../auth/dto/login.dto';
 import { Pagination } from '../common/dto/pagination';
+import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
+import { UserEntity } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
@@ -45,6 +47,8 @@ export class UsersService {
       status: 1,
       email: null,
       avatar: null,
+      gender: 0,
+      bio: null,
     };
     const { pwd, salt } = this.bcryptPassword(password);
     const userAuth: CreateUser_signup_passwordDto = {
@@ -59,6 +63,55 @@ export class UsersService {
     ]);
 
     return user;
+  }
+
+  public async updateUserProfileWithPassword(
+    user: UserEntity,
+    profile: UpdateUserDto & UpdateUserPasswordDto,
+  ) {
+    const { user_id } = user;
+    const {
+      password,
+      avatar,
+      last_name,
+      first_name,
+      phone,
+      bio,
+      email,
+      gender,
+    } = profile;
+
+    const result = await this.update(user_id, {
+      last_name,
+      first_name,
+      email,
+      phone,
+      bio,
+      gender,
+      avatar,
+    });
+    if (!password) {
+      return result;
+    }
+
+    const { pwd, salt } = this.bcryptPassword(password);
+    const existed = await this.prisma.user_signin_password.findFirst({
+      where: {
+        user_id,
+      },
+    });
+    if (existed) {
+      await this.prisma.user_signin_password.update({
+        where: { user_id },
+        data: { salt, password: pwd },
+      });
+      return result;
+    }
+
+    await this.prisma.user_signin_password.create({
+      data: { user_id, password: pwd, salt },
+    });
+    return result;
   }
 
   async findAll() {
@@ -100,12 +153,14 @@ export class UsersService {
     const user_id = this.user_id;
     const user: CreateUserDto = {
       user_id,
-      first_name: '',
-      last_name: wxUserInfo.nickName,
+      first_name: wxUserInfo.nickName,
+      last_name: '',
       phone: new Date().getTime() + '',
       status: 1,
       email: null,
       avatar: wxUserInfo.avatarUrl,
+      gender: 0,
+      bio: null,
     };
 
     await this.prisma.$transaction([

@@ -15,7 +15,9 @@ model user {
   last_name   String    @db.VarChar(32)
   email       String?   @db.VarChar(64)
   phone       String    @unique(map: "phone") @db.VarChar(16)
+  gender      Int       @default(0) @db.UnsignedTinyInt
   avatar      String?   @db.VarChar(256)
+  bio         String?   @db.VarChar(512)
   create_date DateTime? @default(now()) @db.DateTime(0)
   update_date DateTime? @default(now()) @db.DateTime(0)
 }

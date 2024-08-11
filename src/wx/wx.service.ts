@@ -12,6 +12,9 @@ import { CategoryService } from '../store/category/category.service';
 import { AddressService } from '../users/address/address.service';
 import { UpdateAddressDto } from '../users/address/dto/update-address.dto';
 import { CreateAddressDto } from '../users/address/dto/create-address.dto';
+import { UsersService } from '../users/users.service';
+import { UpdateUserDto } from '../users/dto/update-user.dto';
+import { UpdateUserPasswordDto } from '../users/dto/update-user-password.dto';
 
 @Injectable()
 export class WxService {
@@ -31,6 +34,9 @@ export class WxService {
 
   @Inject(forwardRef(() => AddressService))
   private readonly addressService: AddressService;
+
+  @Inject(forwardRef(() => UsersService))
+  private readonly userService: UsersService;
 
   public async createOrder(user: UserEntity, createOrderDto: CreateOrderDto) {
     return this.orderService.create(user, createOrderDto);
@@ -97,5 +103,12 @@ export class WxService {
     user: UserEntity,
   ) {
     return this.addressService.update(address_id, data, user);
+  }
+
+  public async updateUserProfileWithPassword(
+    user: UserEntity,
+    profile: UpdateUserDto & UpdateUserPasswordDto,
+  ) {
+    return this.userService.updateUserProfileWithPassword(user, profile);
   }
 }

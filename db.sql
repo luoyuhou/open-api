@@ -15,6 +15,8 @@ CREATE TABLE user (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 ALTER TABLE user MODIFY phone varchar(16) NOT NULL;
+ALTER TABLE user ADD COLUMN bio varchar(512) DEFAULT NULL AFTER avatar;
+ALTER TABLE user ADD COLUMN gender tinyint(2) unsigned NOT NULL DEFAULT 0 AFTER phone;
 
 
 CREATE TABLE user_signin_password (
