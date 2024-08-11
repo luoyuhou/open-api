@@ -87,6 +87,10 @@ export class WxService {
     return this.addressService.findAll(user);
   }
 
+  public async findUserAddress(address_id: string) {
+    return this.addressService.findOne(address_id);
+  }
+
   public async editUserAddress(
     address_id: string,
     data: UpdateAddressDto,

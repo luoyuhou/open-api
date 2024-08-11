@@ -141,7 +141,7 @@ export class AuthService {
       throw new BadRequestException(`The session has been is expired`);
     }
 
-    await redisClient.del(uuid);
+    // await redisClient.del(uuid);
 
     const { session_key, openid } = JSON.parse(cache);
 

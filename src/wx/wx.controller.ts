@@ -112,7 +112,13 @@ export class WxController {
     return { message: 'ok', data };
   }
 
-  @Patch('user/address/:id')
+  @Get('user/address/:id')
+  async getUserAddress(@Param('id') id: string) {
+    const data = await this.wxService.findUserAddress(id);
+    return { message: 'ok', data };
+  }
+
+  @Put('user/address/:id')
   async editUserAddress(
     @Param('id') id: string,
     @Req() request: Request,

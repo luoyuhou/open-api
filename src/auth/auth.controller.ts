@@ -35,6 +35,7 @@ import { TokenInterceptor } from './interceptors/token.interceptor';
 import customLogger from '../common/logger';
 import { VerifyCodeDot, WxLoginDto } from './dto/login.dto';
 import sessionManager from '../common/cache-manager';
+import { WxLocalAuthGuard } from './guards/wx-local-auth.guard';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -91,9 +92,12 @@ export class AuthController {
   }
 
   @Post('wx/sign-in')
+  @UseGuards(WxLocalAuthGuard)
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(TokenInterceptor)
   @ApiOkResponse({ type: AuthEntity })
   async wxLogin(@Req() request: Request, @Body() wxLoginDto: WxLoginDto) {
+    console.log('================');
     const user = await this.authService.loginByWx(wxLoginDto);
 
     request.login(user, () => {

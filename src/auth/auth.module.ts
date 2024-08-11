@@ -11,6 +11,7 @@ import { JWT_SECRET } from './const';
 import { LocalStrategy } from './strategies/local.strategy';
 import { SessionSerializer } from './session.serializer';
 import { RoleManagementModule } from './role-management/role-management.module';
+import { WxLocalStrategy } from './strategies/wx-local.strategy';
 
 @Module({
   imports: [
@@ -24,6 +25,12 @@ import { RoleManagementModule } from './role-management/role-management.module';
     RoleManagementModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy, SessionSerializer],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    LocalStrategy,
+    SessionSerializer,
+    WxLocalStrategy,
+  ],
 })
 export class AuthModule {}
