@@ -10,7 +10,20 @@ import { E_USER_ADDRESS_STATUS } from './const';
 export class AddressService {
   constructor(private prisma: PrismaService) {}
 
-  create(user: UserEntity, createAddressDto: CreateAddressDto) {
+  private async updateUserAllAddressIsNotDefault(user_id: string) {
+    return this.prisma.user_address.updateMany({
+      where: { user_id },
+      data: { is_default: false },
+    });
+  }
+
+  public async create(user: UserEntity, createAddressDto: CreateAddressDto) {
+    const { is_default } = createAddressDto;
+
+    if (is_default) {
+      await this.updateUserAllAddressIsNotDefault(user.user_id);
+    }
+
     return this.prisma.user_address.create({
       data: {
         ...createAddressDto,
@@ -23,6 +36,7 @@ export class AddressService {
   findAll(user: UserEntity) {
     return this.prisma.user_address.findMany({
       where: { user_id: user.user_id, status: !!E_USER_ADDRESS_STATUS.active },
+      orderBy: { update_date: 'desc' },
     });
   }
 
@@ -43,6 +57,11 @@ export class AddressService {
 
     if (!address) {
       throw new BadRequestException('');
+    }
+
+    const { is_default } = updateAddressDto;
+    if (is_default) {
+      await this.updateUserAllAddressIsNotDefault(user.user_id);
     }
 
     return this.prisma.user_address.update({

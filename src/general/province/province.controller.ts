@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ProvinceService } from './province.service';
 import { SearchProvinceListDto } from './dto/search-province-list.dto';
-import { ApiProperty, ApiTags } from '@nestjs/swagger';
+import { ApiProperty, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
 
 @UseGuards(SessionAuthGuard)
@@ -12,6 +12,7 @@ export class ProvinceController {
 
   @Get()
   @ApiProperty()
+  @ApiQuery({ name: 'pid' })
   async findAll(@Query() { pid }: SearchProvinceListDto) {
     return this.provinceService.findAll(pid);
   }
