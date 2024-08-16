@@ -6,7 +6,9 @@ on:
         - master
         - main
         - develop
-
+defaults:
+  run:
+    working-directory: ./
 jobs:
   unit-test:
     runs-on: ubuntu-latest
@@ -87,7 +89,7 @@ jobs:
 
       - id: set-test-chunks
         name: Set chunks
-        run: echo "test-chunks=$(npx jest --testPathPattern='./src' --listTests --changedSince ${{ github.event.pull_request.base.sha }} --json | jq -cM '[_nwise(length / 10 | floor)]')" >> $GITHUB_OUTPUT
+        run: echo "test-chunks=$(npx jest --testPathPattern='./src' --listTests --changedSince ${{ github.event.pull_request.base.sha }} --json | jq -cM '[_nwise(length / 2 | floor)]')" >> $GITHUB_OUTPUT
       - id: set-test-chunk-ids
         name: Set chunk ids
         run: echo "test-chunk-ids=$(echo $CHUNKS | jq -cM 'to_entries | map(.key)')" >> $GITHUB_OUTPUT
