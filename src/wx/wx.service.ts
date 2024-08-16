@@ -1,5 +1,4 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { UpdateWxDto } from './dto/update-wx.dto';
 import { UserEntity } from '../users/entities/user.entity';
 import { CreateOrderDto } from '../order/dto/create-order.dto';
 import { OrderService } from '../order/order.service';
