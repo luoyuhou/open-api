@@ -30,11 +30,11 @@ jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      run_test: ${{ steps.filChanges.outputs.tests }}
+      run_test: ${{ steps.fileChanges.outputs.tests }}
     steps:
       - uses: actions/checkout@v3
       - uses: dorny/paths-filter@v2
-        if: fileChanges
+        id: fileChanges
         with:
           base: ${{ github.ref }}
           filters: |
@@ -43,8 +43,8 @@ jobs:
               - ./package.json
               - ./package-lock.json
 
-  on-need-tests:
-    runs-on: ubuntu-lates
+  no-need-tests:
+    runs-on: ubuntu-latest
     needs: check
     if: needs.check.outputs.run_test != 'true'
     steps:
@@ -52,16 +52,13 @@ jobs:
         working-directory: .
         run: echo done
 
-  steps:
+  setup:
     runs-on: ubuntu-latest
     needs: check
-    if: need.check.outputs.run_test == 'true'
+    if: needs.check.outputs.run_test == 'true'
     strategy:
       matrix:
         node-version: [20.10.0]
-    outputs:
-      test-chunks: ${{ steps['set-test-chunks'].outputs['test-chunks'] }}
-      test-chunk-ids: ${{ steps['set-test-chunk-ids'].outputs['test-chunk-ids'] }}
     steps:
       - name: Download code
         uses: actions/checkout@v3
@@ -85,27 +82,20 @@ jobs:
         run: npm ci
 
       - name: EsLint check
-        run: tsc --noEmit && ./node_modules/.bin/eslint "**/*.{js,ts}" --quiet --fix
+        run: npm run ts-check
 
-      - id: set-test-chunks
-        name: Set chunks
-        run: echo "test-chunks=$(npx jest --testPathPattern='./src' --listTests --changedSince ${{ github.event.pull_request.base.sha }} --json | jq -cM '[_nwise(length / 2 | floor)]')" >> $GITHUB_OUTPUT
-      - id: set-test-chunk-ids
-        name: Set chunk ids
-        run: echo "test-chunk-ids=$(echo $CHUNKS | jq -cM 'to_entries | map(.key)')" >> $GITHUB_OUTPUT
-        env:
-          CHUNKS: ${{ steps['set-test-chunks'].outputs['test-chunks'] }}
+      - name: Build
+        run: npm run build
 
 
   test:
     runs-on: ubuntu-latest
-    name: test (chunk ${{ matrix.chunk }})
+    name: test
     needs:
       - setup
     strategy:
       matrix:
         node-version: [20.10.0]
-        chunk: ${{ fromJson(needs.setup.outputs['test-chunk-ids']) }}
     steps:
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
@@ -121,9 +111,7 @@ jobs:
       - name: Run unit test & collect coverage
         run: |
           export NODE_OPTIONS="--max_old_space_size=2048"
-          echo $CHUNK | jq '.[${{ matrix.chunk }}] | .[] | @text | xargs npx jest --detectOpenHandles --coverage'
-        env:
-          CHUNKS: ${{ needs.setup.outputs['test-chunks'] }}
+          npm run test:cov
         continue-on-error: true
 
       - name: Email notification
@@ -134,10 +122,6 @@ jobs:
 
       - name: Rename coverage to shard coverage
         run: |
-          mv coverage/clover.xml coverage/clover-${{ matrix.chunk }}.xml
-          mv coverage/lcov.info coverage/lcov-${{ matrix.chunk }}.info
-          mv coverage/coverage-final.json coverage/coverage-${{ matrix.chunk }}.json
-          rm coverage/coverage-summary.json
           rm -rf lcov-report
 
       - name: Upload coverage report
