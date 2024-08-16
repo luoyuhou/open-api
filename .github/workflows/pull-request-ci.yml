@@ -1,0 +1,166 @@
+name: Pull Request CI
+
+on:
+    pull_request:
+      branches:
+        - master
+        - main
+        - develop
+
+jobs:
+  unit-test:
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - no-need-tests
+      - check-coverage
+    steps:
+      - name: Done
+        id: done
+        if: needs.check-coverage.result == 'success' || needs.no-need-tests.result == 'success'
+        working-directory: .
+        run: echo run test done
+      - run: echo run test failed && exit 1
+        working-directory: .
+        name: Failed
+        if: steps.done.outcome == 'skipped'
+
+  check:
+    run-on: ubuntu-latest
+    outputs:
+      run_test: ${{ steps.filChanges.outputs.tests }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v2
+        if: fileChanges
+        with:
+          base: ${{ github.ref }}
+          filters: |
+            tests:
+              - ./src/**
+              - ./package.json
+              - ./package-lock.json
+
+  on-need-tests:
+    runs-on: ubuntu-lates
+    needs: check
+    if: needs.check.outputs.run_test != 'true'
+    steps:
+      - name: No need to run unit tests
+        working-directory: .
+        run: echo done
+
+  steps:
+    runs-on: ubuntu-latest
+    needs: check
+    if: need.check.outputs.run_test == 'true'
+    strategy:
+      matrix:
+        node-version: [20.10.0]
+    outputs:
+      test-chunks: ${{ steps['set-test-chunks'].outputs['test-chunks'] }}
+      test-chunk-ids: ${{ steps['set-test-chunk-ids'].outputs['test-chunk-ids'] }}
+    steps:
+      - name: Download code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Cache dependencies
+        id: cache
+        uses: actions/cache@v2
+        with:
+          path: ./node_modules
+          key: dependencies-${{ github.event.repository.name }}-${{ hashFiles('./package.json') }}
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: EsLint check
+        run: tsc --noEmit && ./node_modules/.bin/eslint "**/*.{js,ts}" --quiet --fix
+
+      - id: set-test-chunks
+        name: Set chunks
+        run: echo "test-chunks=$(npx jest --testPathPattern='./src' --listTests --changedSince ${{ github.event.pull_request.base.sha }} --json | jq -cM '[_nwise(length / 10 | floor)]')" >> $GITHUB_OUTPUT
+      - id: set-test-chunk-ids
+        name: Set chunk ids
+        run: echo "test-chunk-ids=$(echo $CHUNKS | jq -cM 'to_entries | map(.key)')" >> $GITHUB_OUTPUT
+        env:
+          CHUNKS: ${{ steps['set-test-chunks'].outputs['test-chunks'] }}
+
+
+  test:
+    runs-on: ubuntu-latest
+    name: test (chunk ${{ matrix.chunk }})
+    needs:
+      - setup
+    strategy:
+      matrix:
+        node-version: [20.10.0]
+        chunk: ${{ fromJson(needs.setup.outputs['test-chunk-ids']) }}
+    steps:
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Restore cached node_modules
+        uses: actions/cache@v2
+        with:
+          path: ./node_modules
+          key: dependencies-${{ github.event.repository.name }}-${{ hashFiles('./package.json') }}
+
+      - name: Run unit test & collect coverage
+        run: |
+          export NODE_OPTIONS="--max_old_space_size=2048"
+          echo $CHUNK | jq '.[${{ matrix.chunk }}] | .[] | @text | xargs npx jest --detectOpenHandles --coverage'
+        env:
+          CHUNKS: ${{ needs.setup.outputs['test-chunks'] }}
+        continue-on-error: true
+
+      - name: Email notification
+        if: ${{ failure() }}
+        run: |
+          echo "Test failed. Sending email..."
+          echo "Subject: Unit Test Failed" | mutt -s "Unit Test Failed" luoyuhou@qq.com
+
+      - name: Rename coverage to shard coverage
+        run: |
+          mv coverage/clover.xml coverage/clover-${{ matrix.chunk }}.xml
+          mv coverage/lcov.info coverage/lcov-${{ matrix.chunk }}.info
+          mv coverage/coverage-final.json coverage/coverage-${{ matrix.chunk }}.json
+          rm coverage/coverage-summary.json
+          rm -rf lcov-report
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-artifacts
+          path: coverage/
+
+
+
+  check-coverage:
+    runs-on: ubuntu-latest
+    needs: test
+    name: PR check coverage
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache dependencies
+        id: cache-nextjob
+        uses: actions/cache@v3
+        with:
+          path: ./node_modules
+          key: dependencies-${{ github.event.repository.name }}-${{ hashFiles('./package.json') }}
+      - uses: actions/download-artifact@v3
+        with:
+          name: coverage-artifacts
+          path: coverage
+      - name: Process coverage
+        run: npx nyc report --check-coverage --lines 25 --reporter lcov --reporter text --reporter clover -t coverage
