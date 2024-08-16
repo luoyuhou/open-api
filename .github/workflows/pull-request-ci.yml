@@ -26,7 +26,7 @@ jobs:
         if: steps.done.outcome == 'skipped'
 
   check:
-    run-on: ubuntu-latest
+    runs-on: ubuntu-latest
     outputs:
       run_test: ${{ steps.filChanges.outputs.tests }}
     steps:
