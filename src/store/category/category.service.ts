@@ -7,7 +7,7 @@ import { E_CATEGORY_STATUS_TYPE } from './const';
 import { FindAllCategoryDto } from './dto/findAll-category.dto';
 import { UserEntity } from '../../users/entities/user.entity';
 import { SwitchRankCategoryDto } from './dto/switch-rank-category.dto';
-import Utils from 'src/common/utils';
+import Utils from '../../common/utils';
 
 @Injectable()
 export class CategoryService {

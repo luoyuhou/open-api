@@ -15,8 +15,9 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.healthCheck()).toBe('health check!');
+    it('should return "Hello World!"', async () => {
+      const responses = await appController.healthCheck();
+      expect(responses).toBe('health check!');
     });
   });
 });
