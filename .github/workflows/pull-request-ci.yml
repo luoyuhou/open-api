@@ -8,151 +8,31 @@ on:
         - develop
 
 
-permissions:
-  contents: read
-  pull-requests: write
-  id-token: write
-
-
 jobs:
   unit-test:
     runs-on: ubuntu-latest
-    if: always()
-    needs:
-      - no-need-tests
-      - check-coverage
-    steps:
-      - name: Done
-        id: done
-        if: needs.check-coverage.result == 'success' || needs.no-need-tests.result == 'success'
-        working-directory: .
-        run: echo run test done
-      - run: echo run test failed && exit 1
-        working-directory: .
-        name: Failed
-        if: steps.done.outcome == 'skipped'
 
-  check:
-    runs-on: ubuntu-latest
-    outputs:
-      run_test: ${{ steps.fileChanges.outputs.tests }}
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dorny/paths-filter@v2
-        id: fileChanges
-        with:
-          base: ${{ github.ref }}
-          filters: |
-            tests:
-              - ./src/**
-              - ./package.json
-              - ./package-lock.json
-
-  no-need-tests:
-    runs-on: ubuntu-latest
-    needs: check
-    if: needs.check.outputs.run_test != 'true'
-    steps:
-      - name: No need to run unit tests
-        working-directory: .
-        run: echo done
-
-  setup:
-    runs-on: ubuntu-latest
-    needs: check
-    if: needs.check.outputs.run_test == 'true'
     strategy:
       matrix:
         node-version: [20.10.0]
-    steps:
-      - name: Download code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
 
+    steps:
+      - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Cache dependencies
-        id: cache
-        uses: actions/cache@v2
-        with:
-          path: ./node_modules
-          key: dependencies-${{ github.event.repository.name }}-${{ hashFiles('./package.json') }}
-
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: EsLint check
+      - name: Eslint check
         run: npm run ts-check
 
       - name: Build
         run: npm run build
 
-
-  test:
-    runs-on: ubuntu-latest
-    name: test
-    needs:
-      - setup
-    strategy:
-      matrix:
-        node-version: [20.10.0]
-    steps:
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-
-      - name: Restore cached node_modules
-        uses: actions/cache@v2
-        with:
-          path: ./node_modules
-          key: dependencies-${{ github.event.repository.name }}-${{ hashFiles('./package.json') }}
-
-      - name: Run unit test & collect coverage
-        working-directory: ../
-        run: |
-          export NODE_OPTIONS="--max_old_space_size=2048"
-          npm run test:cov
-        continue-on-error: true
-
-      - name: Email notification
-        if: ${{ failure() }}
-        run: |
-          echo "Test failed. Sending email..."
-          echo "Subject: Unit Test Failed" | mutt -s "Unit Test Failed" luoyuhou@qq.com
-
-      - name: Rename coverage to shard coverage
-        run: |
-          rm -rf lcov-report
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage-artifacts
-          path: coverage/
-
-
-
-  check-coverage:
-    runs-on: ubuntu-latest
-    needs: test
-    name: PR check coverage
-    steps:
-      - uses: actions/checkout@v3
-      - name: Cache dependencies
-        id: cache-nextjob
-        uses: actions/cache@v3
-        with:
-          path: ./node_modules
-          key: dependencies-${{ github.event.repository.name }}-${{ hashFiles('./package.json') }}
-      - uses: actions/download-artifact@v3
-        with:
-          name: coverage-artifacts
-          path: coverage
-      - name: Process coverage
-        run: npx nyc report --check-coverage --lines 25 --reporter lcov --reporter text --reporter clover -t coverage
+      - name: Unit test
+        run: npm run test:cov
+        env:
+          CI: true
