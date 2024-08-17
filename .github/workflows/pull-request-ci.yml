@@ -12,6 +12,16 @@ jobs:
   unit-test:
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:5.7.26
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: storehouse
+        ports:
+          - "3306:3306"
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
     strategy:
       matrix:
         node-version: [20.10.0]
@@ -31,6 +41,11 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Connect to MySQL
+        env:
+          DATABASE_URL: mysql://root:root@localhost:3306/storehouse
+        run: npm run schema2mysql
 
       - name: Unit test
         run: npm run test:cov

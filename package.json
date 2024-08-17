@@ -17,6 +17,8 @@
     "ts-check": "bash -c tsc -p tsconfig.json --pretty --noEmit",
     "prepare": "husky install",
     "lint-staged": "lint-staged",
+    "mysql2schema": "prisma db pull && prisma generate",
+    "schema2mysql": "prisma db push",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
