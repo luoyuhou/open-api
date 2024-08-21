@@ -48,6 +48,8 @@ jobs:
         run: npm run schema2mysql
 
       - name: Unit test
-        run: npm run test:cov
         env:
-          CI: true
+          DATABASE_URL: mysql://root:root@localhost:3306/storehouse
+          REDIS_PORT: 6379
+          REDIS_DB: 0
+        run: npm run test:cov
