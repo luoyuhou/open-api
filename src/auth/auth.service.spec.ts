@@ -5,6 +5,7 @@ import { CreateUserByPasswordDto } from '../users/dto/create-user.dto';
 import { JwtService } from '@nestjs/jwt';
 import { RoleManagementService } from './role-management/role-management.service';
 import { UsersService } from '../users/users.service';
+import { CacheService } from '../common/cache-manager/cache.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -13,6 +14,7 @@ describe('AuthService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
+        CacheService,
         UsersService,
         PrismaService,
         JwtService,
@@ -42,5 +44,5 @@ describe('AuthService', () => {
       password,
     );
     expect(loginUserByPassword?.phone).toBe(password);
-  });
+  }, 10000);
 });

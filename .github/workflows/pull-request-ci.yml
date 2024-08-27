@@ -47,9 +47,16 @@ jobs:
           DATABASE_URL: mysql://root:root@localhost:3306/storehouse
         run: npm run schema2mysql
 
+      - name: Install Redis
+        uses: actions/setup-redis@v1
+        with:
+          host: localhost
+          port: 6379
+
       - name: Unit test
         env:
           DATABASE_URL: mysql://root:root@localhost:3306/storehouse
+          REDIS_HOST: localhost
           REDIS_PORT: 6379
           REDIS_DB: 0
         run: npm run test:cov
