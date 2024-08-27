@@ -27,7 +27,9 @@ jobs:
         node-version: [20.10.0]
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v2
         with:
@@ -35,6 +37,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Start Redis Service
+        uses: redis-actions/redis-service@v1
+        with:
+          redis-version: '6'
+          host: localhost
+          port: 6379
 
       - name: Eslint check
         run: npm run ts-check
@@ -46,12 +55,6 @@ jobs:
         env:
           DATABASE_URL: mysql://root:root@localhost:3306/storehouse
         run: npm run schema2mysql
-
-      - name: Install Redis
-        uses: actions/setup-redis@v1
-        with:
-          host: localhost
-          port: 6379
 
       - name: Unit test
         env:
