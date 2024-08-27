@@ -12,12 +12,24 @@ jobs:
   unit-test:
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:5.7.26
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: storehouse
+        ports:
+          - "3306:3306"
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
     strategy:
       matrix:
         node-version: [20.10.0]
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v2
         with:
@@ -26,13 +38,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Start Redis Service
+        uses: redis-actions/redis-service@v1
+        with:
+          redis-version: '6'
+          host: localhost
+          port: 6379
+
       - name: Eslint check
         run: npm run ts-check
 
       - name: Build
         run: npm run build
 
-      - name: Unit test
-        run: npm run test:cov
+      - name: Connect to MySQL
         env:
-          CI: true
+          DATABASE_URL: mysql://root:root@localhost:3306/storehouse
+        run: npm run schema2mysql
+
+      - name: Unit test
+        env:
+          DATABASE_URL: mysql://root:root@localhost:3306/storehouse
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_DB: 0
+        run: npm run test:cov

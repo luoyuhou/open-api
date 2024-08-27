@@ -23,13 +23,12 @@ import { UserEntity } from '../users/entities/user.entity';
 import { UpdateUser_signup_passwordInputDto } from '../users/dto/update-user_signin_password.dto';
 import fetchClient from '../common/client/fetch-client';
 import env from '../common/const/Env';
-import redisClient from '../common/client/redisClient';
 import { v4 } from 'uuid';
 import { WxLoginDto, WxUserInfo } from './dto/login.dto';
 import sha1 = require('sha1');
 import { RoleManagementService } from './role-management/role-management.service';
-import cacheManager from '../common/cache-manager';
 import { ResourcesFromAuth } from './role-management/dto/create-auth-for-role-management.dto';
+import { CacheService } from '../common/cache-manager/cache.service';
 
 @Injectable()
 export class AuthService {
@@ -37,6 +36,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private roleManagementService: RoleManagementService,
+    private cacheService: CacheService,
   ) {}
 
   @Inject(forwardRef(() => UsersService))
@@ -46,7 +46,10 @@ export class AuthService {
     const { userAuth = null, resources } =
       await this.roleManagementService.getResourcesByUserId(user_id);
 
-    await cacheManager.setResourcesForUser(user_id, { userAuth, resources });
+    await this.cacheService.setResourcesForUser(user_id, {
+      userAuth,
+      resources,
+    });
 
     return { userAuth, resources };
   }
@@ -55,7 +58,7 @@ export class AuthService {
     userAuth: UserEntity | null;
     resources: ResourcesFromAuth[];
   }> {
-    return cacheManager.getResourceForUser(user_id);
+    return this.cacheService.getResourceForUser(user_id);
   }
 
   public async createUserByPassword(createUserDto: CreateUserByPasswordDto) {
@@ -129,14 +132,14 @@ export class AuthService {
     }>(url);
 
     const uuid = v4();
-    await redisClient.set(uuid, JSON.stringify(response));
-    await redisClient.expire(uuid, 30);
+    await this.cacheService.client.set(uuid, JSON.stringify(response));
+    await this.cacheService.client.expire(uuid, 30);
     return { uuid };
   }
 
   public async loginByWx(wxLoginDto: WxLoginDto) {
     const { uuid, signature, rawData } = wxLoginDto;
-    const cache = await redisClient.get(uuid);
+    const cache = await this.cacheService.client.get(uuid);
     if (!cache) {
       throw new BadRequestException(`The session has been is expired`);
     }

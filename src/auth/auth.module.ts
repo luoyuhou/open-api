@@ -12,6 +12,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { SessionSerializer } from './session.serializer';
 import { RoleManagementModule } from './role-management/role-management.module';
 import { WxLocalStrategy } from './strategies/wx-local.strategy';
+import { CacheModule } from '../common/cache-manager/cache.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { WxLocalStrategy } from './strategies/wx-local.strategy';
     }),
     UsersModule,
     RoleManagementModule,
+    CacheModule,
   ],
   controllers: [AuthController],
   providers: [

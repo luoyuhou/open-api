@@ -11,14 +11,13 @@ import * as passport from 'passport';
 import { AppModule } from './app.module';
 import Env from './common/const/Env';
 import { Reflector } from '@nestjs/core';
-import redisClient from './common/client/redisClient';
 import RedisStore from 'connect-redis';
 import rTracer = require('cls-rtracer');
 import uid = require('uid-safe');
 import e from 'express';
 import { UserEntity } from './users/entities/user.entity';
 import customLogger from './common/logger';
-import cacheManager from './common/cache-manager';
+import { CacheService } from './common/cache-manager/cache.service';
 
 export function setup(app: INestApplication): INestApplication {
   // app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
@@ -36,7 +35,7 @@ export function setup(app: INestApplication): INestApplication {
 
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
-  const redisStore = new RedisStore({ client: redisClient });
+  const redisStore = new RedisStore({ client: new CacheService().client });
 
   app.use(
     session({
@@ -59,7 +58,9 @@ export function setup(app: INestApplication): INestApplication {
         const user = req.user as UserEntity;
         const sid = `sess:${_sid}`;
 
-        cacheManager
+        const cacheService = new CacheService();
+
+        cacheService
           .setSessionId(user.user_id, sid)
           .then(() =>
             customLogger.log({

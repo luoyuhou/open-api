@@ -18,10 +18,12 @@ import { TraceMiddleware } from './common/middlewares/trace.middleware';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SchedulesService } from './schedules/schedules.service';
 import { UsersFetchModule } from './users/users-fetch/users-fetch.module';
+import { CacheModule } from './common/cache-manager/cache.module';
 
 @Module({
   imports: [
     PrismaModule,
+    CacheModule,
     TerminusModule,
     UsersModule,
     AuthModule,

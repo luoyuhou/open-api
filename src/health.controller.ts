@@ -6,7 +6,7 @@ import {
   MemoryHealthIndicator,
   TypeOrmHealthIndicator,
 } from '@nestjs/terminus';
-import redisClient from './common/client/redisClient';
+import { CacheService } from './common/cache-manager/cache.service';
 
 @Controller('health')
 export class HealthController {
@@ -14,12 +14,13 @@ export class HealthController {
     private health: HealthCheckService,
     private orm: TypeOrmHealthIndicator,
     private memory: MemoryHealthIndicator,
+    private cacheService: CacheService,
   ) {}
 
   @Get()
   @HealthCheck()
   async check(): Promise<HealthCheckResult> {
-    const redisIsReady = redisClient.status === 'ready';
+    const redisIsReady = this.cacheService.client.status === 'ready';
     const data = await this.health.check([
       () => this.orm.pingCheck('database', { timeout: 300 }),
       () => this.memory.checkRSS('mem_rss', 1024 * 2 ** 20 /* 1024 MB */),
