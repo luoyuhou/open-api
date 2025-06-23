@@ -22,6 +22,16 @@ jobs:
           - "3306:3306"
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     strategy:
       matrix:
         node-version: [20.10.0]
@@ -37,13 +47,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Start Redis Service
-        uses: redis-actions/redis-service@v1
-        with:
-          redis-version: '6'
-          host: localhost
-          port: 6379
 
       - name: Eslint check
         run: npm run ts-check
