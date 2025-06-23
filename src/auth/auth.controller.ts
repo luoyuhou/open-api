@@ -34,14 +34,17 @@ import { Login_SOURCE_TYPES } from './const';
 import { TokenInterceptor } from './interceptors/token.interceptor';
 import customLogger from '../common/logger';
 import { VerifyCodeDot, WxLoginDto } from './dto/login.dto';
-import sessionManager from '../common/cache-manager';
 import { WxLocalAuthGuard } from './guards/wx-local-auth.guard';
+import { CacheService } from '../common/cache-manager/cache.service';
 
 @Controller('auth')
 @ApiTags('auth')
 @UseInterceptors(ClassSerializerInterceptor)
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly cacheService: CacheService,
+  ) {}
 
   @Post('local/sign-up')
   @HttpCode(HttpStatus.CREATED)
@@ -149,7 +152,7 @@ export class AuthController {
     request.logout(() => {
       customLogger.log({ user_id, message: 'success logout' });
 
-      sessionManager
+      this.cacheService
         .delSessionIdByUserId(user_id)
         .then(() => {
           customLogger.log({
