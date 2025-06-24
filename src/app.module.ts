@@ -19,9 +19,29 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { SchedulesService } from './schedules/schedules.service';
 import { UsersFetchModule } from './users/users-fetch/users-fetch.module';
 import { CacheModule } from './common/cache-manager/cache.module';
+import { ChatGateway } from './chat/chat.gateway';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        name: 'short',
+        ttl: 1000,
+        limit: 3,
+      },
+      {
+        name: 'medium',
+        ttl: 10000,
+        limit: 20,
+      },
+      {
+        name: 'long',
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     PrismaModule,
     CacheModule,
     TerminusModule,
@@ -37,7 +57,15 @@ import { CacheModule } from './common/cache-manager/cache.module';
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController, HealthController],
-  providers: [AppService, SchedulesService],
+  providers: [
+    AppService,
+    SchedulesService,
+    ChatGateway,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): any {
