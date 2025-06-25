@@ -13,6 +13,8 @@ import { Server, Socket } from 'socket.io';
 import { v4 } from 'uuid';
 import * as moment from 'moment';
 import { CacheService } from '../common/cache-manager/cache.service';
+import customLogger from '../common/logger';
+import { sleep } from '@nestjs/terminus/dist/utils';
 
 type SendMessageItemProps = {
   senderId: string;
@@ -20,8 +22,6 @@ type SendMessageItemProps = {
   recipientId: string;
   message: string;
 };
-
-const CHAT_USER_SOCKET_MAP = 'chat-user-socket-map';
 
 @WebSocketGateway({
   namespace: '/chat',
@@ -38,30 +38,86 @@ export class ChatGateway
   private userSockets = new Map<string, Socket>();
 
   afterInit(server: Server) {
-    console.log('WebSocket 网关已初始化');
+    customLogger.log({ message: 'Websocket started' });
   }
 
-  handleConnection(client: Socket) {
+  private getUserSocketMapKey(userId: string) {
+    const CHAT_USER_SOCKET_MAP = 'chat-user-socket-map';
+    return `${CHAT_USER_SOCKET_MAP}:${userId}`;
+  }
+
+  private getMessagePipelineKey(userId: string) {
+    const CHAT_MESSAGE_PIPELINE_SET = 'chat-message-pipeline';
+    return `${CHAT_MESSAGE_PIPELINE_SET}:${userId}`;
+  }
+
+  async handleConnection(client: Socket) {
     const userId = client.handshake.auth.userId;
-    this.cacheService.client.hmset(CHAT_USER_SOCKET_MAP, userId, client.id);
+    const chatUserSocketMapKey = this.getUserSocketMapKey(userId);
+    this.cacheService.client.hset(chatUserSocketMapKey, client.id, 1);
+    this.cacheService.client.expire(chatUserSocketMapKey, 24 * 3600);
 
     this.userSockets.set(client.id, client);
+
+    const pipelineKey = this.getMessagePipelineKey(userId);
+    const messages = await this.cacheService.client.smembers(pipelineKey);
+    this.cacheService.client.expire(pipelineKey, 3 * 24 * 3600);
+
+    customLogger.log({
+      userId,
+      count: messages.length,
+      message: '待发送 message 数量',
+    });
+
+    if (!messages) {
+      return;
+    }
+    messages.reverse();
+
+    for (const item of messages) {
+      try {
+        if (!item) return;
+        const { event, data } = JSON.parse(item);
+        client.emit(event, data);
+        this.cacheService.client.srem(pipelineKey, item);
+        await sleep(200);
+      } catch (e) {
+        customLogger.error({
+          user_id: userId,
+          message: 'Failed parse chat message',
+          data: item,
+          error: (e as { message: string }).message,
+        });
+      }
+    }
   }
 
-  handleDisconnect(client: Socket) {
+  async handleDisconnect(client: Socket) {
     const userId = client.handshake.auth.userId;
-    this.cacheService.client.hdel(CHAT_USER_SOCKET_MAP, userId, client.id);
+    const mapKey = this.getUserSocketMapKey(userId);
 
     this.userSockets.delete(client.id);
+
+    const users = await this.cacheService.client.hgetall(mapKey);
+    const socketIds = Object.keys(users);
+
+    for (const socketId of socketIds) {
+      this.userSockets.delete(socketId);
+      this.cacheService.client.hdel(mapKey, socketId);
+    }
   }
 
   async sendToUser(userId: string, event: string, data: any) {
-    const socketIds = await this.cacheService.client.hmget(
-      CHAT_USER_SOCKET_MAP,
-      userId,
+    const _socketIds = await this.cacheService.client.hgetall(
+      this.getUserSocketMapKey(userId),
     );
+    const socketIds = Object.keys(_socketIds);
 
-    if (!socketIds.length) {
+    if (!socketIds.filter(Boolean).length) {
+      this.cacheService.client.sadd(
+        this.getMessagePipelineKey(userId),
+        JSON.stringify({ event, data }),
+      );
       return;
     }
 
@@ -87,7 +143,6 @@ export class ChatGateway
       datetime,
       isMe: true,
     });
-    console.log('data==', data);
 
     this.sendToUser(data.recipientId, 'receiveMessage', {
       ...data,
