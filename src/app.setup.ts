@@ -33,9 +33,11 @@ export function setup(app: INestApplication): INestApplication {
   app.use(cookieParser(process.env.APP_SECRET));
   app.use(rTracer.expressMiddleware());
 
+  // 从应用上下文获取 CacheService 实例，避免创建多个 Redis 连接
+  const cacheService = app.get(CacheService);
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
-  const redisStore = new RedisStore({ client: new CacheService().client });
+  const redisStore = new RedisStore({ client: cacheService.client });
 
   app.use(
     session({
@@ -57,8 +59,6 @@ export function setup(app: INestApplication): INestApplication {
 
         const user = req.user as UserEntity;
         const sid = `sess:${_sid}`;
-
-        const cacheService = new CacheService();
 
         cacheService
           .setSessionId(user.user_id, sid)
