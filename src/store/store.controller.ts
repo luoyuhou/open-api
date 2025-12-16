@@ -18,7 +18,7 @@ import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { StoreEntity } from './entities/store.entity';
 import { Pagination } from '../common/dto/pagination';
 import { SearchStoreDto } from './dto/search-store.dto';
-import { UserEntity } from 'src/users/entities/user.entity';
+import { UserEntity } from '../users/entities/user.entity';
 import { Request } from 'express';
 import { SearchHistoryDto } from './dto/search-history.dto';
 import { ApproverStoreDto } from './dto/approver-store.dto';

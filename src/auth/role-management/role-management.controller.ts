@@ -1,6 +1,5 @@
 import {
   Controller,
-  Get,
   Post,
   Body,
   Patch,
@@ -8,6 +7,9 @@ import {
   Delete,
   Req,
   UseGuards,
+  HttpCode,
+  HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { RoleManagementService } from './role-management.service';
@@ -19,8 +21,9 @@ import { UpsertRoleForRoleManagementDto } from './dto/upsert-role-for-role-manag
 import { CreateAuthRoleForRoleManagementDto } from './dto/create-authRole-for-role-management.dto';
 import { CreateUserRoleForRoleManagementDto } from './dto/create-userRole-for-role-management.dto';
 import { UpdateUserRoleForRoleManagementDto } from './dto/update-userRole-for-role-management.dto';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SessionAuthGuard } from '../guards/session-auth.guard';
+import { KickOfflineDto } from './dto/online-user.dto';
 
 @UseGuards(SessionAuthGuard)
 @Controller('auth/role-management')
@@ -184,5 +187,25 @@ export class RoleManagementController {
   @Delete('user-role/:id')
   async deleteUserRole() {
     return { message: 'ok', data: [] };
+  }
+
+  /**
+   * 在线用户管理 section
+   */
+  @Post('online-users/pagination')
+  @ApiOperation({ summary: '获取在线用户列表（分页）' })
+  async getOnlineUsersPagination(@Body() pagination: Pagination) {
+    const data = await this.roleManagementService.getOnlineUsersPagination(
+      pagination,
+    );
+    return { message: 'ok', data };
+  }
+
+  @Delete('online-users/kick-offline/:user_id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '踢用户下线（DELETE方式）' })
+  async kickUserOffline(@Param('user_id') user_id: string) {
+    const data = await this.roleManagementService.kickUserOffline(user_id);
+    return { message: 'ok', data };
   }
 }

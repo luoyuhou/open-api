@@ -24,10 +24,14 @@ import { CreateAuthRoleForRoleManagementDto } from './dto/create-authRole-for-ro
 import { CreateUserRoleForRoleManagementDto } from './dto/create-userRole-for-role-management.dto';
 import { UpdateUserRoleForRoleManagementDto } from './dto/update-userRole-for-role-management.dto';
 import { Prisma } from '@prisma/client';
+import { CacheService } from '../../common/cache-manager/cache.service';
 
 @Injectable()
 export class RoleManagementService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cacheService: CacheService,
+  ) {}
 
   private generateAuthId() {
     return `auth-${v4()}`;
@@ -461,5 +465,96 @@ export class RoleManagementService {
     `;
 
     return { userAuth, resources };
+  }
+
+  /**
+   * 在线用户管理
+   */
+
+  /**
+   * 获取在线用户列表（带分页）
+   */
+  public async getOnlineUsersPagination(pagination: Pagination) {
+    const { pageNum, pageSize } = pagination;
+
+    // 1. 从 Redis 获取所有在线用户的 user_id
+    const allOnlineUserIds = await this.cacheService.getAllOnlineUserIds();
+
+    if (!allOnlineUserIds.length) {
+      return {
+        data: [],
+        rows: 0,
+        pages: 0,
+      };
+    }
+
+    // 2. 计算分页
+    const total = allOnlineUserIds.length;
+    const startIndex = pageNum * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedUserIds = allOnlineUserIds.slice(startIndex, endIndex);
+
+    // 3. 从数据库查询用户信息
+    const users = await this.prisma.user.findMany({
+      where: {
+        user_id: { in: paginatedUserIds },
+      },
+      select: {
+        user_id: true,
+        first_name: true,
+        last_name: true,
+        phone: true,
+        email: true,
+      },
+    });
+
+    // 4. 获取每个用户的 session_id
+    const onlineUsers = await Promise.all(
+      users.map(async (user) => {
+        const sessionId = await this.cacheService.getSessionIdByUserId(
+          user.user_id,
+        );
+        return {
+          user_id: user.user_id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone,
+          email: user.email,
+          session_id: sessionId || '',
+        };
+      }),
+    );
+
+    return {
+      data: onlineUsers,
+      rows: total,
+      pages: Math.ceil(total / pageSize),
+    };
+  }
+
+  /**
+   * 踢用户下线
+   */
+  public async kickUserOffline(user_id: string) {
+    // 检查用户是否存在
+    const user = await this.prisma.user.findUnique({
+      where: { user_id },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`用户 ${user_id} 不存在`);
+    }
+
+    // 执行踢下线操作
+    const success = await this.cacheService.kickUserOffline(user_id);
+
+    if (!success) {
+      throw new BadRequestException(`踢用户 ${user_id} 下线失败`);
+    }
+
+    return {
+      success: true,
+      message: `用户 ${user.first_name} ${user.last_name} 已被踢下线`,
+    };
   }
 }

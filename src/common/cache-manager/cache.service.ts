@@ -146,4 +146,73 @@ export class CacheService implements OnModuleDestroy {
     const key = this.generateResourceKey(user_id);
     return this.client.del(key);
   }
+
+  /**
+   * 获取所有在线用户的 user_id 列表
+   * 通过扫描 auth:* 的 key 来获取
+   */
+  public async getAllOnlineUserIds(): Promise<string[]> {
+    const pattern = 'auth:*';
+    const userIds: string[] = [];
+
+    try {
+      // 使用 SCAN 命令遍历所有匹配的 key
+      let cursor = '0';
+      do {
+        const [nextCursor, keys] = await this.client.scan(
+          cursor,
+          'MATCH',
+          pattern,
+          'COUNT',
+          100,
+        );
+        cursor = nextCursor;
+
+        // 从 key 中提取 user_id (auth:xxx -> xxx)
+        for (const key of keys) {
+          const userId = key.replace('auth:', '');
+          if (userId) {
+            userIds.push(userId);
+          }
+        }
+      } while (cursor !== '0');
+
+      return userIds;
+    } catch (error) {
+      this.logger.error('Failed to get online user ids:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 踢用户下线
+   * 1. 从 user-session-map 获取 sessionId
+   * 2. 删除 sess:{sessionId}
+   * 3. 从 user-session-map 删除该用户
+   * 4. 删除 auth:{user_id}
+   */
+  public async kickUserOffline(user_id: string): Promise<boolean> {
+    try {
+      // 1. 获取 sessionId
+      const sessionId = await this.getSessionIdByUserId(user_id);
+
+      if (sessionId) {
+        // 2. 删除 session 数据
+        await this.client.del(sessionId);
+        this.logger.log(`Deleted session: ${sessionId} for user: ${user_id}`);
+      }
+
+      // 3. 从 user-session-map 中删除
+      await this.client.hdel(this.USER_SESSION_MAP, user_id);
+
+      // 4. 删除 auth 信息
+      await this.delResourceForUser(user_id);
+
+      this.logger.log(`Successfully kicked user offline: ${user_id}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to kick user offline: ${user_id}`, error);
+      return false;
+    }
+  }
 }
