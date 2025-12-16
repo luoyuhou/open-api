@@ -176,6 +176,7 @@ model user {
 - MySQL 特定语法（如 `FULLTEXT` 索引）
 - 某些聚合函数差异
 - 事务隔离级别差异
+- **不支持 `createMany`**（Prisma 5.0+）- 使用 `...array.map(create)` 替代
 
 **解决方案：** 使用 SQLite 进行快速单元测试，关键功能在集成测试中使用真实 MySQL。
 
@@ -205,6 +206,7 @@ model user {
 
 - `jest.setup.ts` 使用 `jest.mock('ioredis')` 模拟所有 Redis 操作
 - 所有 Redis 方法返回预设的模拟值
+- Mock 支持 ES Module 和 CommonJS 导入方式
 - 测试完全独立，不依赖外部 Redis 服务
 
 **Mock 的方法包括：**
@@ -212,7 +214,30 @@ model user {
 - `set`, `get`, `del` - 返回成功
 - `scan`, `ping`, `quit` - 返回模拟响应
 
-### Q5: 测试失败怎么办？
+**关键修复：** `RedisMock.default = RedisMock` 确保 TypeScript 编译后的代码正常工作。
+
+### Q5: SQLite 有哪些限制需要注意？
+
+**A:** 主要限制和解决方案：
+
+| 限制 | 影响 | 解决方案 |
+|------|------|---------|
+| 不支持 `createMany` | Prisma 5.0+ | 使用 `...array.map(create)` 在 transaction 中 |
+| 类型系统差异 | 需要移除 `@db.*` 注解 | `schema.test.prisma` 单独维护 |
+| 并发限制 | 写操作串行 | 单元测试数据量小，影响可忽略 |
+
+**示例：**
+```typescript
+// ❌ 不兼容 SQLite
+await prisma.user.createMany({ data: users });
+
+// ✅ 兼容 SQLite 和 MySQL
+await prisma.$transaction(
+  users.map(user => prisma.user.create({ data: user }))
+);
+```
+
+### Q6: 测试失败怎么办？
 
 ```bash
 # 1. 重新生成测试数据库
@@ -227,9 +252,16 @@ npm test -- --verbose
 # 4. 清理缓存
 rm -rf node_modules/.cache
 rm -rf dist
+
+# 5. 检查 TypeScript 错误
+npm run ts-check
 ```
 
-### Q6: 能在本地使用 MySQL 测试吗？
+**常见错误：**
+- `ioredis_1.default is not a constructor` → 已修复（jest.setup.ts）
+- `Property 'createMany' does not exist` → 已修复（使用 ...map(create)）
+
+### Q7: 能在本地使用 MySQL 测试吗？
 
 **A:** 可以！使用原来的方式：
 

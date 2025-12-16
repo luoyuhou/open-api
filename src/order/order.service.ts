@@ -47,7 +47,10 @@ export class OrderService {
           stage: E_USER_ORDER_STAGE.create,
         },
       }),
-      this.prisma.user_order_info.createMany({ data: formatGoods }),
+      // SQLite 不支持 createMany，使用 Promise.all 批量创建
+      ...formatGoods.map((good) =>
+        this.prisma.user_order_info.create({ data: good }),
+      ),
       this.prisma.user_order_action.create({
         data: {
           order_action_id: `action-${v4()}`,

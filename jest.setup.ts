@@ -24,6 +24,11 @@ jest.mock('ioredis', () => {
     on: jest.fn(),
   }));
 
+  // 同时支持 ES Module default export 和 CommonJS
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  RedisMock.default = RedisMock;
+
   return RedisMock;
 });
 
