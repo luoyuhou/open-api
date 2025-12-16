@@ -21,6 +21,7 @@
 ✅ **CI/CD 友好** - GitHub Actions 无需配置数据库服务
 ✅ **成本节约** - 减少 CI/CD 运行时间和资源消耗
 ✅ **开发便利** - 本地开发和测试更简单
+✅ **自动 Mock** - Redis 在测试中自动被 mock，无需真实连接
 
 ### 对比
 
@@ -198,7 +199,20 @@ model user {
 # 3. 保持字段和关系一致
 ```
 
-### Q4: 测试失败怎么办？
+### Q4: Redis 在测试中如何处理？
+
+**A:** Redis 在单元测试中被 **自动 Mock**，无需真实连接：
+
+- `jest.setup.ts` 使用 `jest.mock('ioredis')` 模拟所有 Redis 操作
+- 所有 Redis 方法返回预设的模拟值
+- 测试完全独立，不依赖外部 Redis 服务
+
+**Mock 的方法包括：**
+- `hset`, `hget`, `hdel` - 返回成功
+- `set`, `get`, `del` - 返回成功
+- `scan`, `ping`, `quit` - 返回模拟响应
+
+### Q5: 测试失败怎么办？
 
 ```bash
 # 1. 重新生成测试数据库
@@ -215,7 +229,7 @@ rm -rf node_modules/.cache
 rm -rf dist
 ```
 
-### Q5: 能在本地使用 MySQL 测试吗？
+### Q6: 能在本地使用 MySQL 测试吗？
 
 **A:** 可以！使用原来的方式：
 
