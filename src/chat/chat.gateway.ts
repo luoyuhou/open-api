@@ -15,6 +15,7 @@ import * as moment from 'moment';
 import { CacheService } from '../common/cache-manager/cache.service';
 import customLogger from '../common/logger';
 import { sleep } from '@nestjs/terminus/dist/utils';
+import Env from '../common/const/Env';
 
 type SendMessageItemProps = {
   senderId: string;
@@ -25,7 +26,11 @@ type SendMessageItemProps = {
 
 @WebSocketGateway({
   namespace: '/chat',
-  cors: { origin: 'http://127.0.0.1:3000', credentials: true },
+  cors: {
+    origin: [Env.FRONTEND_URL].filter(Boolean),
+    credentials: true,
+  },
+  transports: ['websocket', 'polling'],
 })
 export class ChatGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect

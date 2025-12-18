@@ -62,6 +62,10 @@ class Env {
   static get DATABASE_URL(): string {
     return env.DATABASE_URL!;
   }
+
+  static get FRONTEND_URL() {
+    return env.FRONTEND_URL!;
+  }
 }
 
 export default Env;
