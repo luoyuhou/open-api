@@ -333,3 +333,12 @@ model report_daily_user_fetch {
   @@index([record_date], map: "fetch_daily_record_date_idx")
   @@index([user_id], map: "fetch_daily_user_idx")
 }
+
+model file {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  file_name   String    @db.VarChar(128)
+  hash        String    @unique(map: "hash_id") @db.VarChar(256)
+  url         String    @db.VarChar(256)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+}

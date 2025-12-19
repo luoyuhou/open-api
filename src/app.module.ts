@@ -22,6 +22,7 @@ import { CacheModule } from './common/cache-manager/cache.module';
 import { ChatGateway } from './chat/chat.gateway';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { FileModule } from './file/file.module';
 
 @Module({
   imports: [
@@ -51,9 +52,12 @@ import { APP_GUARD } from '@nestjs/core';
     OrderModule,
     GeneralModule,
     WxModule,
+    FileModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       url: Env.DATABASE_URL,
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: Env.IS_DEV,
       extra: {
         connectionLimit: 10,
         connectTimeout: 60000,

@@ -66,6 +66,22 @@ class Env {
   static get FRONTEND_URL() {
     return env.FRONTEND_URL!;
   }
+
+  static get Q_ACCESS_KEY(): string {
+    return env.Q_ACCESS_KEY!;
+  }
+
+  static get Q_SECRET_KEY(): string {
+    return env.Q_SECRET_KEY!;
+  }
+
+  static get Q_BUCKET(): string {
+    return env.Q_BUCKET!;
+  }
+
+  static get Q_DOMAIN(): string {
+    return env.Q_DOMAIN!;
+  }
 }
 
 export default Env;
