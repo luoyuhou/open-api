@@ -34,18 +34,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Eslint check
-        run: npm run ts-check
-
-      - name: Build
-        run: npm run build
-
       - name: Setup test database (SQLite)
         run: |
           chmod +x ./scripts/setup-test-db.sh
           ./scripts/setup-test-db.sh
         env:
           DATABASE_URL: file:./test.db
+
+      - name: Eslint check
+        run: npm run ts-check
+
+      - name: Build
+        run: npm run build
 
       - name: Unit test
         env:
