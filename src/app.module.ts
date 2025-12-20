@@ -22,24 +22,25 @@ import { CacheModule } from './common/cache-manager/cache.module';
 import { ChatGateway } from './chat/chat.gateway';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { FileModule } from './file/file.module';
 
 @Module({
   imports: [
     ThrottlerModule.forRoot([
       {
         name: 'short',
-        ttl: 1000,
-        limit: 3,
+        ttl: 1000, // 1秒
+        limit: 10, // 允许10个请求
       },
       {
         name: 'medium',
-        ttl: 10000,
-        limit: 20,
+        ttl: 10000, // 10秒
+        limit: 50, // 允许50个请求
       },
       {
         name: 'long',
-        ttl: 60000,
-        limit: 100,
+        ttl: 60000, // 1分钟
+        limit: 200, // 允许200个请求
       },
     ]),
     PrismaModule,
@@ -51,7 +52,22 @@ import { APP_GUARD } from '@nestjs/core';
     OrderModule,
     GeneralModule,
     WxModule,
-    TypeOrmModule.forRoot({ type: 'mysql', url: Env.DATABASE_URL }),
+    FileModule,
+    TypeOrmModule.forRoot({
+      type: 'mysql',
+      url: Env.DATABASE_URL,
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: Env.IS_DEV,
+      extra: {
+        connectionLimit: 10,
+        connectTimeout: 60000,
+        acquireTimeout: 60000,
+        timeout: 60000,
+      },
+      retryAttempts: 3,
+      retryDelay: 3000,
+      keepConnectionAlive: true,
+    }),
     TerminusModule,
     UsersFetchModule,
     ScheduleModule.forRoot(),

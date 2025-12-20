@@ -138,6 +138,7 @@ model store_goods_version {
   id             Int       @id @default(autoincrement()) @db.UnsignedInt
   version_id     String    @unique(map: "version_id") @db.VarChar(64)
   goods_id       String    @db.VarChar(64)
+  image_url      String?   @db.VarChar(256)
   version_number String?   @db.VarChar(32)
   bar_code       String?   @db.VarChar(32)
   count          Int       @db.UnsignedInt
@@ -332,4 +333,13 @@ model report_daily_user_fetch {
 
   @@index([record_date], map: "fetch_daily_record_date_idx")
   @@index([user_id], map: "fetch_daily_user_idx")
+}
+
+model file {
+  id          Int      @id @default(autoincrement())
+  file_name   String?  @db.VarChar(128)
+  hash        String   @unique(map: "IDX_50da2892bca204d060cf562bdf") @db.VarChar(256)
+  url         String   @db.VarChar(256)
+  create_date DateTime @default(now()) @db.DateTime(6)
+  update_date DateTime @default(now()) @db.DateTime(6)
 }

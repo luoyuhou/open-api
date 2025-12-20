@@ -18,6 +18,12 @@ lerna-debug.log*
 /coverage
 /.nyc_output
 
+# Test database files (SQLite)
+test.db
+test.db-journal
+*.db
+*.db-journal
+
 # IDEs and editors
 /.idea
 .project

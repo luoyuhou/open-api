@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { GoodsService } from './goods.service';
 import { CreateGoodDto } from './dto/create-good.dto';
 import { UpdateGoodDto } from './dto/update-good.dto';
@@ -21,6 +22,7 @@ import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
 @UseGuards(SessionAuthGuard)
 @Controller('store/goods')
 @ApiTags('store/goods')
+@SkipThrottle() // 跳过整个 controller 的限流
 export class GoodsController {
   constructor(private readonly goodsService: GoodsService) {}
 

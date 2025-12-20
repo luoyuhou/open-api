@@ -1,0 +1,291 @@
+// 测试环境专用 Prisma Schema - 使用 SQLite
+// 此文件包含所有生产环境的表模型,但移除了 MySQL 特定的类型声明
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  id          Int       @id @default(autoincrement())
+  user_id     String    @unique
+  status      Int
+  first_name  String
+  last_name   String
+  email       String?
+  phone       String    @unique
+  gender      Int       @default(0)
+  avatar      String?
+  bio         String?
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+
+model user_signin_history {
+  id          Int       @id @default(autoincrement())
+  user_id     String
+  ip          String?
+  useragent   String?
+  source      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+
+model user_signin_password {
+  id                 Int       @id @default(autoincrement())
+  user_id            String    @unique
+  salt               String
+  password           String
+  failed_login_times Int       @default(0)
+  locked_date        DateTime?
+  create_date        DateTime? @default(now())
+  update_date        DateTime? @default(now())
+}
+
+model user_signin_wechat {
+  id          Int       @id @default(autoincrement())
+  openid      String    @unique
+  user_id     String    @unique
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+
+model store {
+  id          Int       @id @default(autoincrement())
+  store_id    String    @unique
+  id_code     String
+  id_name     String
+  user_id     String
+  store_name  String
+  phone       String
+  province    String
+  city        String
+  area        String
+  town        String
+  address     String
+  status      Int       @default(0)
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+
+model store_history {
+  id             Int       @id @default(autoincrement())
+  store_id       String
+  action_type    Int
+  action_content String
+  payload        String?
+  action_user_id String
+  action_date    DateTime
+  create_date    DateTime? @default(now())
+  update_date    DateTime? @default(now())
+}
+
+model user_address {
+  id              Int       @id @default(autoincrement())
+  user_address_id String    @unique
+  user_id         String
+  recipient       String
+  phone           String
+  province        String
+  city            String
+  area            String
+  town            String
+  address         String
+  is_default      Boolean   @default(false)
+  tag             String?
+  status          Boolean   @default(true)
+  create_date     DateTime? @default(now())
+  update_date     DateTime? @default(now())
+}
+
+model category_goods {
+  id          Int       @id @default(autoincrement())
+  category_id String    @unique
+  store_id    String
+  pid         String?
+  rank        Int       @default(0)
+  name        String
+  status      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([store_id, name])
+}
+
+model store_goods {
+  id          Int       @id @default(autoincrement())
+  goods_id    String    @unique
+  store_id    String
+  category_id String
+  name        String
+  description String?
+  status      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([store_id, category_id, name])
+}
+
+model store_goods_version {
+  id             Int       @id @default(autoincrement())
+  version_id     String    @unique
+  goods_id       String
+  version_number String?
+  bar_code       String?
+  count          Int
+  price          Int
+  unit_name      String
+  supplier       String?
+  status         Int
+  create_date    DateTime? @default(now())
+  update_date    DateTime? @default(now())
+
+  @@unique([goods_id, unit_name, version_number])
+  @@unique([goods_id, unit_name, bar_code])
+}
+
+model user_order {
+  id            Int       @id @default(autoincrement())
+  order_id      String    @unique
+  user_id       String
+  store_id      String
+  status        Int
+  stage         Int
+  recipient     String
+  money         Int
+  phone         String
+  province      String
+  city          String
+  area          String
+  town          String
+  address       String
+  delivery_date DateTime
+  create_date   DateTime? @default(now())
+  update_date   DateTime? @default(now())
+}
+
+model user_order_info {
+  id               Int       @id @default(autoincrement())
+  order_info_id    String    @unique
+  order_id         String
+  goods_id         String
+  goods_name       String
+  goods_version_id String
+  count            Int
+  price            Int
+  create_date      DateTime? @default(now())
+  update_date      DateTime? @default(now())
+}
+
+model user_order_action {
+  id              Int       @id @default(autoincrement())
+  order_action_id String    @unique
+  user_id         String
+  order_id        String
+  status          Int
+  create_date     DateTime? @default(now())
+  update_date     DateTime? @default(now())
+}
+
+model province {
+  id       Int    @id @default(autoincrement())
+  code     String
+  name     String
+  province String
+  city     String
+  area     String
+  town     String
+}
+
+model store_apply {
+  id                Int       @id @default(autoincrement())
+  store_id          String
+  type              Int
+  applicant_user_id String
+  applicant_date    DateTime
+  applicant_summary String
+  applicant_content String
+  status            Int       @default(0)
+  replient_user_id  String?
+  replient_date     DateTime?
+  replient_content  String?
+  create_date       DateTime? @default(now())
+  update_date       DateTime? @default(now())
+}
+
+model auth {
+  id          Int       @id @default(autoincrement())
+  pid         String    @default("0")
+  auth_id     String    @unique
+  side        Int
+  path        String
+  method      String?
+  status      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([side, path])
+}
+
+model role {
+  id          Int       @id @default(autoincrement())
+  role_id     String    @unique
+  role_name   String    @unique
+  description String?
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+
+model user_auth {
+  id          Int       @id @default(autoincrement())
+  user_id     String    @unique
+  is_admin    Boolean
+  status      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+
+model user_role {
+  id          Int       @id @default(autoincrement())
+  role_id     String
+  user_id     String
+  status      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([user_id, role_id])
+}
+
+model auth_role {
+  id          Int       @id @default(autoincrement())
+  auth_id     String
+  role_id     String
+  status      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([role_id, auth_id])
+}
+
+model user_fetch {
+  id          Int       @id @default(autoincrement())
+  user_id     String
+  source      Int
+  url         String
+  method      String
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+
+model report_daily_user_fetch {
+  id          Int       @id @default(autoincrement())
+  user_id     String
+  times       Int
+  use_time    Int
+  record_date DateTime
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}

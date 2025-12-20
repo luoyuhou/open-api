@@ -366,3 +366,16 @@ CREATE TABLE `report_daily_user_fetch` (
     INDEX `fetch_daily_user_idx` (`user_id`) USING BTREE,
     INDEX `fetch_daily_record_date_idx` (`record_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `file` (
+    `id` int (10) unsigned NOT NULL AUTO_INCREMENT,
+    `file_name` varchar(128) NOT NULL,
+    `hash` varchar(256) NOT NULL,
+    `url` varchar(256) NOT NULL,
+    `create_date` datetime default CURRENT_TIMESTAMP,
+    `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `hash_id` (`hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `store_goods_version` ADD COLUMN `image_url` varchar(256) after `goods_id`;

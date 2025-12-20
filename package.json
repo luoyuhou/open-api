@@ -14,16 +14,20 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "ts-check": "bash -c tsc -p tsconfig.json --pretty --noEmit",
+    "ts-check": "tsc -p tsconfig.json --pretty --noEmit",
     "prepare": "husky install",
     "lint-staged": "lint-staged",
     "mysql2schema": "prisma db pull && prisma generate",
     "schema2mysql": "prisma db push",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "prisma:prod": "npx prisma generate",
+    "test": "npm run test:setup && cross-env NODE_ENV=test jest && npm run prisma:prod",
+    "test:watch": "cross-env NODE_ENV=test jest --watch",
+    "test:unit": "cross-env NODE_ENV=test jest",
+    "test:cov": "cross-env NODE_ENV=test jest --coverage && npm run prisma:prod",
+    "test:debug": "cross-env NODE_ENV=test node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:e2e": "cross-env NODE_ENV=test jest --config ./test/jest-e2e.json",
+    "test:setup": "cross-env NODE_ENV=test DATABASE_URL=file:./test.db npx prisma generate --schema=./prisma/schema.test.prisma && cross-env NODE_ENV=test DATABASE_URL=file:./test.db npx prisma db push --schema=./prisma/schema.test.prisma --force-reset",
+    "test:ci": "npm run test:setup && npm run test:cov"
   },
   "dependencies": {
     "@nestjs/common": "^9.0.0",
@@ -50,10 +54,12 @@
     "express-session": "^1.17.3",
     "ioredis": "^5.3.2",
     "moment": "^2.29.4",
+    "multer": "^2.0.2",
     "mysql": "^2.18.1",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
+    "qiniu": "^7.14.0",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0",
@@ -78,6 +84,7 @@
     "@types/express-session": "^1.17.10",
     "@types/ioredis-mock": "^8.2.5",
     "@types/jest": "28.1.4",
+    "@types/multer": "^2.0.0",
     "@types/node": "^16.0.0",
     "@types/passport-jwt": "^3.0.13",
     "@types/passport-local": "^1.0.38",
@@ -86,6 +93,7 @@
     "@types/uuid": "^9.0.7",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
+    "cross-env": "^7.0.3",
     "eslint": "^8.0.1",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
@@ -118,6 +126,9 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "<rootDir>/../jest.setup.ts"
+    ]
   }
 }

@@ -7,30 +7,16 @@ on:
         - main
         - develop
 
-
 jobs:
   unit-test:
     runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:5.7.26
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: storehouse
-        ports:
-          - "3306:3306"
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-
-      redis:
-        image: redis
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # 🎯 不再需要 MySQL 和 Redis 服务！
+    # services:
+    #   mysql:
+    #     ...
+    #   redis:
+    #     ...
 
     strategy:
       matrix:
@@ -48,21 +34,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Setup test database (SQLite)
+        run: |
+          chmod +x ./scripts/setup-test-db.sh
+          ./scripts/setup-test-db.sh
+        env:
+          DATABASE_URL: file:./test.db
+
       - name: Eslint check
         run: npm run ts-check
 
       - name: Build
         run: npm run build
 
-      - name: Connect to MySQL
-        env:
-          DATABASE_URL: mysql://root:root@localhost:3306/storehouse
-        run: npm run schema2mysql
-
       - name: Unit test
         env:
-          DATABASE_URL: mysql://root:root@localhost:3306/storehouse
+          DATABASE_URL: file:./test.db
+          ENV: test
           REDIS_HOST: localhost
           REDIS_PORT: 6379
-          REDIS_DB: 0
+          REDIS_DB: 1
+          APP_SECRET: test-secret-key
+          SERVER_PORT: 3001
+          WX_APP_ID: test-wx-app-id
+          WX_SECRET: test-wx-secret
+          IS_UNIT_TEST: true
         run: npm run test:cov
+
+      - name: Upload coverage to Codecov (optional)
+        if: success()
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
