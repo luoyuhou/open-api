@@ -29,18 +29,18 @@ import { FileModule } from './file/file.module';
     ThrottlerModule.forRoot([
       {
         name: 'short',
-        ttl: 1000,
-        limit: 3,
+        ttl: 1000, // 1秒
+        limit: 10, // 允许10个请求
       },
       {
         name: 'medium',
-        ttl: 10000,
-        limit: 20,
+        ttl: 10000, // 10秒
+        limit: 50, // 允许50个请求
       },
       {
         name: 'long',
-        ttl: 60000,
-        limit: 100,
+        ttl: 60000, // 1分钟
+        limit: 200, // 允许200个请求
       },
     ]),
     PrismaModule,

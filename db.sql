@@ -377,3 +377,5 @@ CREATE TABLE `file` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `hash_id` (`hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `store_goods_version` ADD COLUMN `image_url` varchar(256) after `goods_id`;
