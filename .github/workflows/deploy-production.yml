@@ -52,6 +52,8 @@ jobs:
           source: "deploy.tar.gz"
           target: "/tmp/"
           overwrite: true
+          debug: true
+          strip_components: 0
 
       # 在服务器上解压并重启服务
       - name: Extract and restart service
