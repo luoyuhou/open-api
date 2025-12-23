@@ -52,55 +52,61 @@ jobs:
         run: |
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
       
-      # 测试服务器环境（使用 sh）
+      # 测试服务器环境（强制不使用登录shell）
       - name: Test server shell
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} /bin/sh -c "echo 'Shell test OK'; pwd; whoami"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          echo "Shell test OK"
+          pwd
+          whoami
+          EOF
 
       - name: Upload to server via SSH
         run: |
-          cat deploy.tar.gz | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} /bin/sh -c "cat > deploy.tar.gz"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF' < deploy.tar.gz
+          cat > deploy.tar.gz
+          EOF
 
       # 在服务器上解压并重启服务
       - name: Extract and restart service
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} /bin/sh << 'ENDSSH'
-            # 备份环境变量文件
-            if [ -f /home/apps/open-api/.env ]; then
-              cp /home/apps/open-api/.env ~/open-api.env.backup
-              echo "Backed up .env file"
-            fi
-            
-            # 备份旧版本
-            if [ -d /home/apps/open-api ]; then
-              mv /home/apps/open-api ~/open-api.backup.$(date +%Y%m%d_%H%M%S)
-            fi
-            
-            # 解压新版本
-            mkdir -p /home/apps/open-api
-            tar -xzf ~/deploy.tar.gz -C /home/apps/open-api
-            
-            # 恢复环境变量文件
-            if [ -f ~/open-api.env.backup ]; then
-              cp ~/open-api.env.backup /home/apps/open-api/.env
-              rm ~/open-api.env.backup
-              echo "Restored .env file"
-            else
-              echo "No .env backup found"
-            fi
-            
-            # 重启服务 (使用 PM2)
-            cd /home/apps/open-api
-            pm2 restart open-api || pm2 start dist/src/main.js --name open-api
-            
-            # 清理临时文件
-            rm ~/deploy.tar.gz
-            
-            # 只保留最近3个备份
-            cd ~ && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          # 备份环境变量文件
+          if [ -f /home/apps/open-api/.env ]; then
+            cp /home/apps/open-api/.env ~/open-api.env.backup
+            echo "Backed up .env file"
+          fi
+          
+          # 备份旧版本
+          if [ -d /home/apps/open-api ]; then
+            mv /home/apps/open-api ~/open-api.backup.$(date +%Y%m%d_%H%M%S)
+          fi
+          
+          # 解压新版本
+          mkdir -p /home/apps/open-api
+          tar -xzf ~/deploy.tar.gz -C /home/apps/open-api
+          
+          # 恢复环境变量文件
+          if [ -f ~/open-api.env.backup ]; then
+            cp ~/open-api.env.backup /home/apps/open-api/.env
+            rm ~/open-api.env.backup
+            echo "Restored .env file"
+          else
+            echo "No .env backup found"
+          fi
+          
+          # 重启服务 (使用 PM2)
+          cd /home/apps/open-api
+          pm2 restart open-api || pm2 start dist/src/main.js --name open-api
+          
+          # 清理临时文件
+          rm ~/deploy.tar.gz
+          
+          # 只保留最近3个备份
+          cd ~ && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf
           ENDSSH
 
       # 健康检查
