@@ -97,8 +97,12 @@ jobs:
               echo 'No .env backup found'
             fi
             
-            # 重启服务
+            # 生成 Prisma Client
             cd /home/apps/open-api
+            npx prisma generate
+            echo 'Prisma Client generated'
+            
+            # 重启服务
             pm2 restart open-api || pm2 start dist/src/main.js --name open-api
             echo 'Service restarted'
             
@@ -112,4 +116,4 @@ jobs:
       - name: Health check
         run: |
           sleep 10
-          curl --fail http://${{ secrets.SERVER_HOST }}:3001/health || exit 1
+          curl --fail http://${{ secrets.SERVER_HOST }}/api || exit 1
