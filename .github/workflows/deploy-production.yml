@@ -43,13 +43,15 @@ jobs:
 
       # 上传到服务器
       - name: Deploy to server
-        uses: appleboy/scp-action@master
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
           source: "deploy.tar.gz"
-          target: "/tmp"
+          target: "."
+          overwrite: true
 
       # 在服务器上解压并重启服务
       - name: Extract and restart service
@@ -58,26 +60,27 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
           script: |
             # 🔑 备份环境变量文件
             if [ -f /home/apps/open-api/.env ]; then
-              cp /home/apps/open-api/.env /tmp/open-api.env.backup
+              cp /home/apps/open-api/.env ~/open-api.env.backup
               echo "✅ Backed up .env file"
             fi
             
             # 备份旧版本
             if [ -d /home/apps/open-api ]; then
-              mv /home/apps/open-api /home/apps/open-api.backup.$(date +%Y%m%d_%H%M%S)
+              mv /home/apps/open-api ~/open-api.backup.$(date +%Y%m%d_%H%M%S)
             fi
             
             # 解压新版本
             mkdir -p /home/apps/open-api
-            tar -xzf /tmp/deploy.tar.gz -C /home/apps/open-api
+            tar -xzf ~/deploy.tar.gz -C /home/apps/open-api
             
             # 🔑 恢复环境变量文件
-            if [ -f /tmp/open-api.env.backup ]; then
-              cp /tmp/open-api.env.backup /home/apps/open-api/.env
-              rm /tmp/open-api.env.backup
+            if [ -f ~/open-api.env.backup ]; then
+              cp ~/open-api.env.backup /home/apps/open-api/.env
+              rm ~/open-api.env.backup
               echo "✅ Restored .env file"
             else
               echo "⚠️ No .env backup found, please create it manually"
@@ -88,10 +91,10 @@ jobs:
             pm2 restart open-api || pm2 start dist/src/main.js --name open-api
             
             # 清理临时文件
-            rm /tmp/deploy.tar.gz
+            rm ~/deploy.tar.gz
             
             # 只保留最近3个备份
-            cd /home/apps && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf
+            cd ~ && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf
 
       # 健康检查
       - name: Health check
