@@ -41,7 +41,7 @@ jobs:
           cp -r prisma deploy/
           cd deploy && tar -czf ../deploy.tar.gz .
 
-      # 使用原生 SCP 上传（替代 appleboy）
+      # 使用 SSH + tar 传输（不依赖 SFTP）
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
@@ -52,16 +52,16 @@ jobs:
         run: |
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Upload to server
+      - name: Upload to server via SSH
         run: |
-          scp -v -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            deploy.tar.gz ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/deploy.tar.gz
+          cat deploy.tar.gz | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'cat > ~/deploy.tar.gz'
 
       # 在服务器上解压并重启服务
       - name: Extract and restart service
         run: |
-          ssh -v -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} bash << 'ENDSSH'
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' << 'ENDSSH'
             # 🔑 备份环境变量文件
             if [ -f /home/apps/open-api/.env ]; then
               cp /home/apps/open-api/.env ~/open-api.env.backup
