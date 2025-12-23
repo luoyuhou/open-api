@@ -51,39 +51,45 @@ jobs:
       - name: Add known hosts
         run: |
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+      
+      # 测试服务器环境
+      - name: Test server shell
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "which bash; which sh; echo SHELL=\$SHELL; ls -la /bin/bash /bin/sh /usr/bin/bash 2>&1 || true"
 
       - name: Upload to server via SSH
         run: |
           cat deploy.tar.gz | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'cat > ~/deploy.tar.gz'
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "cat > deploy.tar.gz"
 
       # 在服务器上解压并重启服务
       - name: Extract and restart service
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' << 'ENDSSH'
-            # 🔑 备份环境变量文件
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            # 备份环境变量文件
             if [ -f /home/apps/open-api/.env ]; then
               cp /home/apps/open-api/.env ~/open-api.env.backup
-              echo "✅ Backed up .env file"
+              echo '✅ Backed up .env file'
             fi
             
             # 备份旧版本
             if [ -d /home/apps/open-api ]; then
-              mv /home/apps/open-api ~/open-api.backup.$(date +%Y%m%d_%H%M%S)
+              mv /home/apps/open-api ~/open-api.backup.\$(date +%Y%m%d_%H%M%S)
             fi
             
             # 解压新版本
             mkdir -p /home/apps/open-api
             tar -xzf ~/deploy.tar.gz -C /home/apps/open-api
             
-            # 🔑 恢复环境变量文件
+            # 恢复环境变量文件
             if [ -f ~/open-api.env.backup ]; then
               cp ~/open-api.env.backup /home/apps/open-api/.env
               rm ~/open-api.env.backup
-              echo "✅ Restored .env file"
+              echo '✅ Restored .env file'
             else
-              echo "⚠️ No .env backup found, please create it manually"
+              echo '⚠️ No .env backup found, please create it manually'
             fi
             
             # 重启服务 (使用 PM2)
@@ -95,7 +101,7 @@ jobs:
             
             # 只保留最近3个备份
             cd ~ && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf
-          ENDSSH
+            "
 
       # 健康检查
       - name: Health check
