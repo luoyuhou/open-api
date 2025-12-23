@@ -1,0 +1,100 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.10.0'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      # 打包构建产物
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy
+          cp -r dist deploy/
+          cp -r node_modules deploy/
+          cp package.json deploy/
+          cp package-lock.json deploy/
+          cp -r prisma deploy/
+          cd deploy && tar -czf ../deploy.tar.gz .
+
+      # 上传到服务器
+      - name: Deploy to server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "deploy.tar.gz"
+          target: "/tmp"
+
+      # 在服务器上解压并重启服务
+      - name: Extract and restart service
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            # 🔑 备份环境变量文件
+            if [ -f /home/apps/open-api/.env ]; then
+              cp /home/apps/open-api/.env /tmp/open-api.env.backup
+              echo "✅ Backed up .env file"
+            fi
+            
+            # 备份旧版本
+            if [ -d /home/apps/open-api ]; then
+              mv /home/apps/open-api /home/apps/open-api.backup.$(date +%Y%m%d_%H%M%S)
+            fi
+            
+            # 解压新版本
+            mkdir -p /home/apps/open-api
+            tar -xzf /tmp/deploy.tar.gz -C /home/apps/open-api
+            
+            # 🔑 恢复环境变量文件
+            if [ -f /tmp/open-api.env.backup ]; then
+              cp /tmp/open-api.env.backup /home/apps/open-api/.env
+              rm /tmp/open-api.env.backup
+              echo "✅ Restored .env file"
+            else
+              echo "⚠️ No .env backup found, please create it manually"
+            fi
+            
+            # 重启服务 (使用 PM2)
+            cd /home/apps/open-api
+            pm2 restart open-api || pm2 start dist/src/main.js --name open-api
+            
+            # 清理临时文件
+            rm /tmp/deploy.tar.gz
+            
+            # 只保留最近3个备份
+            cd /home/apps && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf
+
+      # 健康检查
+      - name: Health check
+        run: |
+          sleep 10
+          curl --fail http://${{ secrets.SERVER_HOST }}:3001/health || exit 1
