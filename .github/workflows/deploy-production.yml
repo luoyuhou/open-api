@@ -50,7 +50,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
           source: "deploy.tar.gz"
-          target: "."
+          target: "/tmp/"
           overwrite: true
 
       # 在服务器上解压并重启服务
@@ -75,7 +75,7 @@ jobs:
             
             # 解压新版本
             mkdir -p /home/apps/open-api
-            tar -xzf ~/deploy.tar.gz -C /home/apps/open-api
+            tar -xzf /tmp/deploy.tar.gz -C /home/apps/open-api
             
             # 🔑 恢复环境变量文件
             if [ -f ~/open-api.env.backup ]; then
@@ -91,7 +91,7 @@ jobs:
             pm2 restart open-api || pm2 start dist/src/main.js --name open-api
             
             # 清理临时文件
-            rm ~/deploy.tar.gz
+            rm /tmp/deploy.tar.gz
             
             # 只保留最近3个备份
             cd ~ && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf
