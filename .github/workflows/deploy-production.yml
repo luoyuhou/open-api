@@ -41,45 +41,24 @@ jobs:
           cp -r prisma deploy/
           cd deploy && tar -czf ../deploy.tar.gz .
 
-      # SSH 连接测试
-      - name: Test SSH connection
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          script: |
-            echo "✅ SSH connection successful"
-            echo "Current user: $(whoami)"
-            echo "Home directory: $HOME"
-            echo "Can write to home: $(touch ~/test.txt && rm ~/test.txt && echo 'YES' || echo 'NO')"
-            mkdir -p /home/apps/open-api
-            echo "Deployment directory ready: /home/apps/open-api"
+      # 使用原生 SCP 上传（替代 appleboy）
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      # 上传到服务器
-      - name: Deploy to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          source: "deploy.tar.gz"
-          target: "~/"
-          overwrite: true
-          debug: true
-          strip_components: 0
+      - name: Upload to server
+        run: |
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            deploy.tar.gz ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/
 
       # 在服务器上解压并重启服务
       - name: Extract and restart service
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          script: |
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
             # 🔑 备份环境变量文件
             if [ -f /home/apps/open-api/.env ]; then
               cp /home/apps/open-api/.env ~/open-api.env.backup
@@ -113,6 +92,7 @@ jobs:
             
             # 只保留最近3个备份
             cd ~ && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf
+          ENDSSH
 
       # 健康检查
       - name: Health check
