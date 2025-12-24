@@ -62,22 +62,51 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            'set -e && \
-            echo "🚀 Starting backend deployment..." && \
-            if [ -f /home/apps/open-api/.env ]; then sudo cp /home/apps/open-api/.env ~/open-api.env.backup && echo "✅ Backed up .env"; fi && \
-            if [ -d /home/apps/open-api ]; then BACKUP_NAME="open-api.backup.$(date +%Y%m%d_%H%M%S)" && sudo mv /home/apps/open-api ~/"$BACKUP_NAME" && echo "✅ Backed up old version to $BACKUP_NAME"; fi && \
-            sudo mkdir -p /home/apps/open-api && \
-            sudo tar -xzf ~/deploy-backend.tar.gz -C /home/apps/open-api && \
-            echo "📦 Extracted files" && \
-            if [ -f ~/open-api.env.backup ]; then sudo cp ~/open-api.env.backup /home/apps/open-api/.env && rm ~/open-api.env.backup && echo "✅ Restored .env"; else echo "⚠️  No .env backup found, please create it manually at /home/apps/open-api/.env"; fi && \
-            cd /home/apps/open-api && \
-            sudo pm2 restart open-api || sudo pm2 start dist/src/main.js --name open-api && \
-            sudo pm2 save && \
-            echo "🔄 Service restarted" && \
-            rm ~/deploy-backend.tar.gz && \
-            cd ~ && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf && \
-            echo "🧹 Cleaned up old backups" && \
-            echo "✅ Backend deployment completed!"'
+            /bin/sh << 'ENDSH'
+          set -e
+          
+          echo "Starting backend deployment..."
+          
+          # 备份环境变量文件
+          if [ -f /home/apps/open-api/.env ]; then
+            cp /home/apps/open-api/.env ~/open-api.env.backup
+            echo "Backed up .env"
+          fi
+          
+          # 备份旧版本
+          if [ -d /home/apps/open-api ]; then
+            BACKUP_NAME="open-api.backup.$(date +%Y%m%d_%H%M%S)"
+            mv /home/apps/open-api ~/"$BACKUP_NAME"
+            echo "Backed up old version to $BACKUP_NAME"
+          fi
+          
+          # 部署
+          mkdir -p /home/apps/open-api
+          tar -xzf ~/deploy-backend.tar.gz -C /home/apps/open-api
+          echo "Extracted files"
+          
+          # 恢复环境变量文件
+          if [ -f ~/open-api.env.backup ]; then
+            cp ~/open-api.env.backup /home/apps/open-api/.env
+            rm ~/open-api.env.backup
+            echo "Restored .env"
+          else
+            echo "No .env backup found, please create it manually at /home/apps/open-api/.env"
+          fi
+          
+          # 重启服务
+          cd /home/apps/open-api
+          pm2 restart open-api || pm2 start dist/src/main.js --name open-api
+          pm2 save
+          echo "Service restarted"
+          
+          # 清理
+          rm ~/deploy-backend.tar.gz
+          cd ~ && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf
+          echo "Cleaned up old backups"
+          
+          echo "Backend deployment completed!"
+          ENDSH
 
       # 健康检查
       - name: Health check
