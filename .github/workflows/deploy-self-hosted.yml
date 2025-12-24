@@ -1,0 +1,113 @@
+name: Deploy to Production (Self-hosted)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.10.0'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      # 直接本地部署，无需 SSH/SCP
+      - name: Deploy to production
+        run: |
+          set -e
+          
+          echo "🚀 Starting deployment..."
+          
+          # 备份环境变量文件
+          if [ -f /home/apps/open-api/.env ]; then
+            cp /home/apps/open-api/.env /tmp/open-api.env.backup
+            echo "✅ Backed up .env file"
+          fi
+          
+          # 备份旧版本
+          if [ -d /home/apps/open-api ]; then
+            BACKUP_NAME="open-api.backup.$(date +%Y%m%d_%H%M%S)"
+            sudo mv /home/apps/open-api "/home/apps/$BACKUP_NAME"
+            echo "✅ Backed up old version to $BACKUP_NAME"
+          fi
+          
+          # 创建部署目录
+          sudo mkdir -p /home/apps/open-api
+          echo "📁 Created deployment directory"
+          
+          # 复制构建产物
+          sudo cp -r dist /home/apps/open-api/
+          sudo cp -r node_modules /home/apps/open-api/
+          sudo cp -r prisma /home/apps/open-api/
+          sudo cp package.json /home/apps/open-api/
+          sudo cp package-lock.json /home/apps/open-api/
+          echo "📦 Copied build artifacts"
+          
+          # 恢复环境变量文件
+          if [ -f /tmp/open-api.env.backup ]; then
+            sudo cp /tmp/open-api.env.backup /home/apps/open-api/.env
+            rm /tmp/open-api.env.backup
+            echo "✅ Restored .env file"
+          else
+            echo "⚠️  No .env backup found, please create it manually at /home/apps/open-api/.env"
+          fi
+          
+          # 设置权限
+          sudo chown -R root:root /home/apps/open-api
+          
+          # 重启服务 (使用 PM2)
+          cd /home/apps/open-api
+          sudo pm2 restart open-api || sudo pm2 start dist/src/main.js --name open-api
+          sudo pm2 save
+          echo "🔄 Service restarted"
+          
+          # 清理旧备份（只保留最近3个）
+          cd /home/apps
+          sudo ls -t | grep "open-api.backup" | tail -n +4 | sudo xargs -r rm -rf
+          echo "🧹 Cleaned up old backups"
+          
+          echo "✅ Deployment completed successfully!"
+
+      # 健康检查
+      - name: Health check
+        run: |
+          echo "🏥 Running health check..."
+          sleep 10
+          
+          if curl --fail --silent http://localhost:3001/health > /dev/null 2>&1; then
+            echo "✅ Health check passed!"
+          else
+            echo "❌ Health check failed!"
+            exit 1
+          fi
+
+      # 显示部署信息
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "========================================="
+          echo "  Deployment Summary"
+          echo "========================================="
+          echo "Deployed to: /home/apps/open-api"
+          echo "PM2 Status:"
+          sudo pm2 list | grep open-api || echo "Service not found"
+          echo "========================================="
