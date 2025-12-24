@@ -1,0 +1,139 @@
+name: Deploy Backend to Production
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest  # ✅ 在 GitHub 云端构建，不占用你的服务器
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.10.0'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      # 打包构建产物为 tar.gz
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy
+          cp -r dist deploy/
+          cp -r node_modules deploy/
+          cp -r prisma deploy/
+          cp package.json deploy/
+          cp package-lock.json deploy/
+          cd deploy && tar -czf ../deploy.tar.gz .
+
+      # SSH 传输
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          
+      - name: Add known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Upload to server via SSH
+        run: |
+          cat deploy.tar.gz | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "cat > ~/deploy-backend.tar.gz"
+
+      # 解压并重启
+      - name: Extract and restart
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            set -e
+            
+            echo '🚀 Starting backend deployment...'
+            
+            # 备份环境变量文件
+            if [ -f /home/apps/open-api/.env ]; then
+              cp /home/apps/open-api/.env /root/open-api.env.backup
+              echo '✅ Backed up .env'
+            fi
+            
+            # 备份旧版本
+            if [ -d /home/apps/open-api ]; then
+              BACKUP_NAME=open-api.backup.\$(date +%Y%m%d_%H%M%S)
+              mv /home/apps/open-api /root/\$BACKUP_NAME
+              echo \"✅ Backed up old version to \$BACKUP_NAME\"
+            fi
+            
+            # 部署
+            mkdir -p /home/apps/open-api
+            tar -xzf /root/deploy-backend.tar.gz -C /home/apps/open-api
+            echo '📦 Extracted files'
+            
+            # 恢复环境变量文件
+            if [ -f /root/open-api.env.backup ]; then
+              cp /root/open-api.env.backup /home/apps/open-api/.env
+              rm /root/open-api.env.backup
+              echo '✅ Restored .env'
+            else
+              echo '⚠️  No .env backup found, please create it manually at /home/apps/open-api/.env'
+            fi
+            
+            # 重启服务
+            cd /home/apps/open-api
+            pm2 restart open-api || pm2 start dist/src/main.js --name open-api
+            pm2 save
+            echo '🔄 Service restarted'
+            
+            # 清理
+            rm /root/deploy-backend.tar.gz
+            cd /root && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf
+            echo '🧹 Cleaned up old backups'
+            
+            echo '✅ Backend deployment completed!'
+            "
+
+      # 健康检查
+      - name: Health check
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            echo '🏥 Running health check...'
+            sleep 10
+            
+            if curl --fail --silent http://localhost:3001/health > /dev/null 2>&1; then
+              echo '✅ Health check passed!'
+            else
+              echo '❌ Health check failed!'
+              exit 1
+            fi
+            "
+
+      # 显示部署信息
+      - name: Deployment summary
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            echo '========================================='
+            echo '  Backend Deployment Summary'
+            echo '========================================='
+            echo 'Deployed to: /home/apps/open-api'
+            echo 'PM2 Status:'
+            pm2 list | grep open-api || echo 'Service not found'
+            echo '========================================='
+            "
