@@ -13,6 +13,7 @@ import { SessionSerializer } from './session.serializer';
 import { RoleManagementModule } from './role-management/role-management.module';
 import { WxLocalStrategy } from './strategies/wx-local.strategy';
 import { CacheModule } from '../common/cache-manager/cache.module';
+import { LocalScanStrategy } from './strategies/local-scan.strategy';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { CacheModule } from '../common/cache-manager/cache.module';
     LocalStrategy,
     SessionSerializer,
     WxLocalStrategy,
+    LocalScanStrategy,
   ],
 })
 export class AuthModule {}

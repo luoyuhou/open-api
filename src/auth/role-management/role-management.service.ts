@@ -437,7 +437,8 @@ export class RoleManagementService {
   }
 
   public async getResourcesByUserId(userId: string) {
-    const userAuth = await this.prisma.user_auth.findUnique({
+    // 🔧 修复：findUnique 不支持 status 条件，改用 findFirst
+    const userAuth = await this.prisma.user_auth.findFirst({
       where: { user_id: userId, status: EUSER_AUTH_STATUS.active },
     });
 

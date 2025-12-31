@@ -24,7 +24,8 @@ export class RecordFetchMiddleware implements NestMiddleware {
       source = isMobile ? API_SOURCE_TYPES.MOBILE : source;
     }
 
-    if (user) {
+    // 只有在用户已登录（存在 user 对象）时才记录
+    if (user && (user as UserEntity).user_id) {
       new PrismaClient().user_fetch
         .create({
           data: {
