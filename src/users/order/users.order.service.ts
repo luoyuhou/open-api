@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { CreateOrderDto } from '../../order/dto/create-order.dto';
+import { UserEntity } from '../entities/user.entity';
+import { OrderService } from '../../order/order.service';
 
 @Injectable()
-export class OrderService {
-  create(createOrderDto: CreateOrderDto) {
-    return 'This action adds a new order';
+export class UsersOrderService {
+  constructor(private orderService: OrderService) {}
+
+  create(user: UserEntity, createOrderDto: CreateOrderDto) {
+    return this.orderService.create(user, createOrderDto);
   }
 
   findAll() {

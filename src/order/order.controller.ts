@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Patch,
   Param,
@@ -10,7 +9,6 @@ import {
   Req,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
-import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { Request } from 'express';
@@ -24,11 +22,6 @@ import { ApiTags } from '@nestjs/swagger';
 @ApiTags('order')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
-
-  @Post()
-  create(@Req() request: Request, @Body() createOrderDto: CreateOrderDto) {
-    return this.orderService.create(request.user as UserEntity, createOrderDto);
-  }
 
   @Get()
   pagination(@Body() pagination: Pagination) {

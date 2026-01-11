@@ -3,14 +3,14 @@ import { Module } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { PrismaModule } from '../prisma/prisma.module';
-import { OrderModule } from './order/order.module';
+import { UsersOrderModule } from './order/users.order.module';
 import { AddressModule } from './address/address.module';
 import { UsersFetchModule } from './users-fetch/users-fetch.module';
 
 @Module({
   controllers: [UsersController],
   providers: [UsersService],
-  imports: [PrismaModule, OrderModule, AddressModule, UsersFetchModule],
+  imports: [PrismaModule, UsersOrderModule, AddressModule, UsersFetchModule],
   exports: [UsersService],
 })
 export class UsersModule {}

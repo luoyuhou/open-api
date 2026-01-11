@@ -12,7 +12,7 @@ export class OrderService {
   async create(user: UserEntity, createOrderDto: CreateOrderDto) {
     const { user_id } = user;
     const order_id = `order-${v4()}`;
-    const { goods, user_address_id } = createOrderDto;
+    const { goods, user_address_id, store_id, delivery_date } = createOrderDto;
     const money = goods.reduce((t, { price, count }) => t + price * count, 0);
     const formatGoods = goods.map((item) => {
       return { ...item, order_info_id: `order-info-${v4()}`, order_id };
@@ -32,7 +32,8 @@ export class OrderService {
     await this.prisma.$transaction([
       this.prisma.user_order.create({
         data: {
-          ...createOrderDto,
+          store_id,
+          delivery_date,
           user_id,
           order_id,
           money,

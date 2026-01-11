@@ -45,5 +45,8 @@ export class Pagination {
 
   @IsArray()
   @ApiProperty()
-  filtered: { id: string; value: boolean | number | string | never[] }[];
+  filtered: {
+    id: string;
+    value: boolean | number | string | string[] | never[];
+  }[];
 }
