@@ -160,7 +160,6 @@ export class CategoryService {
         `未能找到您要修改的分类，请你刷新页面后重试。`,
       );
     }
-    console.log('category', category);
 
     const brothers = await this.prisma.category_goods.findMany({
       where: { store_id: category.store_id, pid: category.pid },

@@ -18,7 +18,7 @@ export class StoreOrderService {
     });
 
     if (!stores.length) {
-      return {};
+      return { rows: 0, pages: 0, data: [] };
     }
 
     const storeIds = stores.map((s) => s.store_id);
