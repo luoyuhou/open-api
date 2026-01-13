@@ -12,7 +12,7 @@ export class OrderService {
   async create(user: UserEntity, createOrderDto: CreateOrderDto) {
     const { user_id } = user;
     const order_id = `order-${v4()}`;
-    const { goods, user_address_id } = createOrderDto;
+    const { goods, user_address_id, store_id, delivery_date } = createOrderDto;
     const money = goods.reduce((t, { price, count }) => t + price * count, 0);
     const formatGoods = goods.map((item) => {
       return { ...item, order_info_id: `order-info-${v4()}`, order_id };
@@ -32,7 +32,8 @@ export class OrderService {
     await this.prisma.$transaction([
       this.prisma.user_order.create({
         data: {
-          ...createOrderDto,
+          store_id,
+          delivery_date,
           user_id,
           order_id,
           money,
@@ -84,7 +85,7 @@ export class OrderService {
       where: where,
       orderBy: { [order.id]: order.desc ? 'desc' : 'acs' },
       take: pageSize,
-      skip: pageNum * pageNum,
+      skip: pageNum * pageSize,
     });
 
     const count = await this.prisma.user_order.count({ where });
@@ -92,8 +93,43 @@ export class OrderService {
     return { rows: count, pages: Math.ceil(count / pageSize), data };
   }
 
-  findOne(id: string) {
-    return this.prisma.user_order_info.findMany({ where: { order_id: id } });
+  public async orderDetail(id: string) {
+    // 获取订单商品信息
+    const orderItems = await this.prisma.user_order_info.findMany({
+      where: { order_id: id },
+    });
+
+    // 获取所有相关的商品版本ID
+    const versionIds = orderItems.map((item) => item.goods_version_id);
+
+    // 查询商品版本信息
+    const goodsVersions = await this.prisma.store_goods_version.findMany({
+      where: { version_id: { in: versionIds } },
+    });
+
+    // 获取所有相关的商品ID
+    const goodsIds = goodsVersions.map((version) => version.goods_id);
+
+    // 查询商品基本信息
+    const goods = await this.prisma.store_goods.findMany({
+      where: { goods_id: { in: goodsIds } },
+    });
+
+    // 组合数据
+    return orderItems.map((item) => {
+      const version = goodsVersions.find(
+        (v) => v.version_id === item.goods_version_id,
+      );
+      const goodsInfo = version
+        ? goods.find((g) => g.goods_id === version.goods_id)
+        : null;
+
+      return {
+        ...item,
+        version: version || null,
+        goods: goodsInfo || null,
+      };
+    });
   }
 
   async cancel(user: UserEntity, id: string) {
@@ -121,12 +157,41 @@ export class OrderService {
     ]);
   }
 
-  async delivery(user: UserEntity, id: string) {
+  async accept(user: UserEntity, id: string) {
     const order = await this.prisma.user_order.findUnique({
       where: {
         order_id: id,
         status: E_USER_ORDER_STATUS.active,
         stage: E_USER_ORDER_STAGE.create,
+      },
+    });
+
+    if (!order) {
+      throw new BadRequestException('');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user_order.update({
+        where: { order_id: id },
+        data: { stage: E_USER_ORDER_STAGE.accept },
+      }),
+      this.prisma.user_order_action.create({
+        data: {
+          order_id: id,
+          user_id: user.user_id,
+          order_action_id: `action-${v4()}`,
+          status: E_USER_ORDER_STAGE.accept,
+        },
+      }),
+    ]);
+  }
+
+  async delivery(user: UserEntity, id: string) {
+    const order = await this.prisma.user_order.findUnique({
+      where: {
+        order_id: id,
+        status: E_USER_ORDER_STATUS.active,
+        stage: E_USER_ORDER_STAGE.accept,
       },
     });
 
@@ -250,6 +315,10 @@ export class OrderService {
       return this.cancel(user, id);
     }
 
+    if (type === E_USER_ORDER_STAGE.accept) {
+      return this.accept(user, id);
+    }
+
     if (type === E_USER_ORDER_STAGE.delivery) {
       return this.delivery(user, id);
     }
@@ -270,6 +339,7 @@ export class OrderService {
   }
 
   public async orderDetailInfo(order_id: string) {
-    return this.prisma.user_order_info.findMany({ where: { order_id } });
+    // 复用 orderDetail 方法，保持一致性
+    return this.orderDetail(order_id);
   }
 }

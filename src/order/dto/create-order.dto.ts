@@ -1,6 +1,6 @@
 import {
   IsArray,
-  IsDate,
+  IsDateString,
   IsNotEmpty,
   IsString,
   ValidateNested,
@@ -26,7 +26,7 @@ export class CreateOrderDto {
   @Type(() => CreateOrderGoodsDto)
   goods: CreateOrderGoodsDto[];
 
-  @IsDate()
+  @IsDateString()
   @IsNotEmpty()
   @ApiProperty()
   delivery_date: Date;
