@@ -6,7 +6,8 @@ export enum E_USER_ORDER_STATUS {
 
 export enum E_USER_ORDER_STAGE {
   create = 1,
-  delivery = 2,
-  received = 3,
-  finished = 4,
+  accept = 2,
+  delivery = 3,
+  received = 4,
+  finished = 5,
 }
