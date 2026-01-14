@@ -110,4 +110,11 @@ export class WxService {
   ) {
     return this.userService.updateUserProfileWithPassword(user, profile);
   }
+
+  public async homeBannersForMiniApp() {
+    return this.prisma.home_banner.findMany({
+      where: { status: 1 },
+      orderBy: [{ sort: 'asc' }, { create_date: 'desc' }],
+    });
+  }
 }

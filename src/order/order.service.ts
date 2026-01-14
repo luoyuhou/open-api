@@ -5,10 +5,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { v4 } from 'uuid';
 import { E_USER_ORDER_STAGE, E_USER_ORDER_STATUS } from './const';
 import { Pagination } from '../common/dto/pagination';
+import { ChatGateway } from '../chat/chat.gateway';
 
 @Injectable()
 export class OrderService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private chatGateway: ChatGateway,
+  ) {}
   async create(user: UserEntity, createOrderDto: CreateOrderDto) {
     const { user_id } = user;
     const order_id = `order-${v4()}`;
@@ -23,12 +27,13 @@ export class OrderService {
     });
 
     if (!userAddress) {
-      throw new BadRequestException('');
+      throw new BadRequestException('收货地址不存在');
     }
 
     const { province, city, area, town, address, phone, recipient } =
       userAddress;
 
+    // 2. 创建订单并减少库存
     await this.prisma.$transaction([
       this.prisma.user_order.create({
         data: {
@@ -61,6 +66,32 @@ export class OrderService {
         },
       }),
     ]);
+
+    // 3. 发送 WebSocket 通知给 storehouse
+    try {
+      // 获取商店信息以便获取商店所有者ID
+      const store = await this.prisma.store.findUnique({
+        where: { store_id },
+      });
+
+      if (store?.user_id) {
+        // 发送新订单通知
+        this.chatGateway.sendToUser(store.user_id, 'newOrder', {
+          order_id,
+          store_name: store.store_name,
+          recipient,
+          money,
+          goods_count: goods.length,
+          total_items: goods.reduce((sum, item) => sum + item.count, 0),
+          create_time: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      // WebSocket 通知失败不影响订单创建
+      console.error('Failed to send WebSocket notification:', error);
+    }
+
+    return { order_id };
   }
 
   public async findAll(pagination: Pagination) {
@@ -167,7 +198,39 @@ export class OrderService {
     });
 
     if (!order) {
-      throw new BadRequestException('');
+      throw new BadRequestException('订单不存在或者订单状态已发生改变');
+    }
+
+    const goods = await this.prisma.user_order_info.findMany({
+      where: { order_id: id },
+    });
+
+    // 1. 检查库存
+    const versionIds = goods.map((item) => item.goods_version_id);
+    const goodsVersions = await this.prisma.store_goods_version.findMany({
+      where: { version_id: { in: versionIds } },
+    });
+
+    // 创建版本ID到库存的映射
+    const versionStockMap = new Map(
+      goodsVersions.map((v) => [v.version_id, v.count]),
+    );
+
+    // 检查每个商品的库存
+    for (const item of goods) {
+      const stock = versionStockMap.get(item.goods_version_id);
+      if (stock === undefined) {
+        throw new BadRequestException(
+          `商品版本 ${item.goods_version_id} 不存在`,
+        );
+      }
+      if (stock < item.count) {
+        throw new BadRequestException(
+          `商品 ${
+            item.goods_name || item.goods_version_id
+          } 库存不足，当前库存：${stock}，需要：${item.count}`,
+        );
+      }
     }
 
     await this.prisma.$transaction([
@@ -183,6 +246,18 @@ export class OrderService {
           status: E_USER_ORDER_STAGE.accept,
         },
       }),
+
+      // 减少库存
+      ...goods.map((item) =>
+        this.prisma.store_goods_version.update({
+          where: { version_id: item.goods_version_id },
+          data: {
+            count: {
+              decrement: item.count,
+            },
+          },
+        }),
+      ),
     ]);
   }
 

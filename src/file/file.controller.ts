@@ -24,6 +24,6 @@ export class FileController {
       file.buffer,
       file.originalname,
     );
-    return { hash, url };
+    return { hash, url: `http://${url}` };
   }
 }

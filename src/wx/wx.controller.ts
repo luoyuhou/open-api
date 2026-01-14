@@ -171,4 +171,11 @@ export class WxController {
 
     return { message: 'ok', data: result };
   }
+
+  @Get('home/banners')
+  @ApiProperty()
+  async getHomeBanners() {
+    const data = await this.wxService.homeBannersForMiniApp();
+    return { message: 'ok', data };
+  }
 }
