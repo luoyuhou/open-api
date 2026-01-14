@@ -8,6 +8,8 @@ import { GoodsService } from '../store/goods/goods.service';
 import { CategoryService } from '../store/category/category.service';
 import { AddressService } from '../users/address/address.service';
 import { UsersService } from '../users/users.service';
+import { ChatGateway } from '../chat/chat.gateway';
+import { CacheService } from '../common/cache-manager/cache.service';
 
 describe('WxController', () => {
   let controller: WxController;
@@ -24,6 +26,8 @@ describe('WxController', () => {
         CategoryService,
         AddressService,
         UsersService,
+        ChatGateway,
+        CacheService,
       ],
     }).compile();
 

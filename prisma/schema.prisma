@@ -343,3 +343,19 @@ model file {
   create_date DateTime @default(now()) @db.DateTime(6)
   update_date DateTime @default(now()) @db.DateTime(6)
 }
+
+model home_banner {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  banner_id   String    @unique(map: "banner_id") @db.VarChar(64)
+  title       String    @db.VarChar(64)
+  description String?   @db.VarChar(256)
+  image_url   String    @db.VarChar(256)
+  width       Int?      @db.UnsignedInt
+  height      Int?      @db.UnsignedInt
+  sort        Int       @default(0) @db.UnsignedTinyInt
+  status      Int       @default(1) @db.TinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([status, sort])
+}

@@ -2,6 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UsersOrderController } from './users.order.controller';
 import { UsersOrderService } from './users.order.service';
 import { OrderService } from '../../order/order.service';
+import { ChatGateway } from '../../chat/chat.gateway';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CacheService } from '../../common/cache-manager/cache.service';
 
 describe('OrderController', () => {
   let controller: UsersOrderController;
@@ -26,6 +29,9 @@ describe('OrderController', () => {
       controllers: [UsersOrderController],
       providers: [
         UsersOrderService,
+        PrismaService,
+        ChatGateway,
+        CacheService,
         {
           provide: OrderService,
           useValue: mockOrderService,

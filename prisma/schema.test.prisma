@@ -289,3 +289,17 @@ model report_daily_user_fetch {
   create_date DateTime? @default(now())
   update_date DateTime? @default(now())
 }
+
+model home_banner {
+  id          Int       @id @default(autoincrement())
+  banner_id   String    @unique(map: "banner_id")
+  title       String
+  description String?
+  image_url   String
+  width       Int?
+  height      Int?
+  sort        Int       @default(0)
+  status      Int       @default(1)
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}

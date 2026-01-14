@@ -23,6 +23,7 @@ import { ChatGateway } from './chat/chat.gateway';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { FileModule } from './file/file.module';
+import { HomeBannerModule } from './home-banner/home-banner.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { FileModule } from './file/file.module';
     GeneralModule,
     WxModule,
     FileModule,
+    HomeBannerModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       url: Env.DATABASE_URL,

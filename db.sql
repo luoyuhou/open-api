@@ -379,3 +379,20 @@ CREATE TABLE `file` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 ALTER TABLE `store_goods_version` ADD COLUMN `image_url` varchar(256) after `goods_id`;
+
+CREATE TABLE `home_banner` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `banner_id` varchar(64) NOT NULL,
+  `title` varchar(64) NOT NULL,
+  `description` varchar(256) DEFAULT NULL,
+  `image_url` varchar(256) NOT NULL,
+  `width` int unsigned DEFAULT NULL,
+  `height` int unsigned DEFAULT NULL,
+  `sort` tinyint unsigned NOT NULL DEFAULT 0,
+  `status` tinyint NOT NULL DEFAULT 1,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `banner_id` (`banner_id`),
+  KEY `home_banner_status_sort_idx` (`status`,`sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
