@@ -423,3 +423,11 @@ CREATE TABLE `chat_group_user` (
   KEY `chat_group_user_user_idx` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+ALTER TABLE `user_order` ADD COLUMN `payment_method` varchar(32) NOT NUll after `stage`;
+ALTER TABLE `user_order` ADD COLUMN `payment_channel` varchar(32) after `payment_method`;
+ALTER TABLE `user_order` ADD COLUMN `pay_status` tinyint NOT NULL DEFAULT 0 after `payment_channel`;
+ALTER TABLE `user_order` ADD COLUMN `paid_at` datetime after `pay_status`;
+ALTER TABLE `user_order` ADD COLUMN `pay_proof_url` varchar(256) after `paid_at`;
+
+ALTER TABLE `store` ADD COLUMN `wechat_qr_url` varchar(256) after `address`;
+ALTER TABLE `store` ADD COLUMN `alipay_qr_url` varchar(256) after `wechat_qr_url`;

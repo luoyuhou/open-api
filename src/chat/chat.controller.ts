@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
@@ -99,6 +107,47 @@ export class ChatController {
     return groups.map((g) => ({
       groupId: g.group_id,
       name: g.name,
+    }));
+  }
+
+  @Get('groups/:groupId/members')
+  @ApiBearerAuth()
+  async getGroupMembers(@Req() req: any, @Param('groupId') groupId: string) {
+    const userId = req.user?.user_id || req.user?.id;
+    if (!userId) {
+      throw new Error('未找到用户信息');
+    }
+
+    // 确认当前用户在该群中，避免越权查看
+    const relation = await this.prisma.chat_group_user.findFirst({
+      where: { user_id: userId, group_id: groupId },
+    });
+
+    if (!relation) {
+      throw new Error('无权限查看该群成员');
+    }
+
+    const members = await this.prisma.chat_group_user.findMany({
+      where: { group_id: groupId },
+    });
+
+    if (!members.length) {
+      return [];
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        user_id: { in: members.map((m) => m.user_id) },
+      },
+    });
+
+    return users.map((u) => ({
+      userId: u.user_id,
+      firstName: u.first_name,
+      lastName: u.last_name,
+      phone: u.phone,
+      email: u.email,
+      avatar: u.avatar,
     }));
   }
 }

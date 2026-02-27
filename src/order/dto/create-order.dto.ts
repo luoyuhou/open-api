@@ -2,6 +2,7 @@ import {
   IsArray,
   IsDateString,
   IsNotEmpty,
+  IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
@@ -30,4 +31,9 @@ export class CreateOrderDto {
   @IsNotEmpty()
   @ApiProperty()
   delivery_date: Date;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ required: false, enum: ['online_qr', 'cod', 'pickup_pay'] })
+  payment_method?: string;
 }

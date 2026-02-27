@@ -17,11 +17,16 @@ export class UsersOrderService {
     return this.orderService.create(user, createOrderDto);
   }
 
+  // 用户上传订单支付凭证（仅记录 URL，不做实际支付）
+  async updatePayProof(user: UserEntity, orderId: string, payProofUrl: string) {
+    return this.orderService.updatePayProof(user, orderId, payProofUrl);
+  }
+
   async pagination(pagination: Pagination) {
     const { rows, pages, data } = await this.orderService.findAll(pagination);
 
-    const codeIds = [];
-    const orderIds = [];
+    const codeIds: string[] = [];
+    const orderIds: string[] = [];
     data.forEach((o) => {
       codeIds.push(...[o.province, o.city, o.area]);
       orderIds.push(o.order_id);
@@ -35,8 +40,15 @@ export class UsersOrderService {
       where: { store_id: { in: storeIds } },
     });
 
+    // 查询所有订单的商品行
     const goodsItems = await this.prisma.user_order_info.findMany({
       where: { order_id: { in: orderIds } },
+    });
+
+    // 基于 goods_version_id 一次性查出所有版本信息（含 unit_name 等）
+    const versionIds = goodsItems.map((g) => g.goods_version_id);
+    const goodsVersions = await this.prisma.store_goods_version.findMany({
+      where: { version_id: { in: versionIds } },
     });
 
     const formatedData = data.map((o) => {
@@ -50,7 +62,24 @@ export class UsersOrderService {
         (p) => p.code === o.area && p.town === o.town,
       )?.name;
 
-      const items = goodsItems.filter((g) => g.order_id === o.order_id);
+      // 为当前订单的每个商品挂上版本信息里的 unit_name 等字段
+      const items = goodsItems
+        .filter((g) => g.order_id === o.order_id)
+        .map((g) => {
+          const version = goodsVersions.find(
+            (v) => v.version_id === g.goods_version_id,
+          );
+          return {
+            ...g,
+            unit_name: version?.unit_name,
+            version_number: version?.version_number,
+            bar_code: version?.bar_code,
+          } as typeof g & {
+            unit_name?: string;
+            version_number?: string | null;
+            bar_code?: string | null;
+          };
+        });
 
       return {
         ...o,

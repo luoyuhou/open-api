@@ -346,6 +346,31 @@ export class StoreService {
     ]);
   }
 
+  public async updatePaymentQrs(
+    id: string,
+    data: { wechat_qr_url?: string; alipay_qr_url?: string },
+    user: UserEntity,
+  ) {
+    await this.prisma.$transaction([
+      this.prisma.store.update({
+        where: { store_id: id },
+        data: {
+          wechat_qr_url: data.wechat_qr_url,
+          alipay_qr_url: data.alipay_qr_url,
+        },
+      }),
+      this.prisma.store_history.create({
+        data: {
+          store_id: id,
+          action_content: `更新收款码`,
+          action_type: STORE_ACTION_TYPES.UPDATED,
+          action_date: new Date(),
+          action_user_id: user.user_id,
+        },
+      }),
+    ]);
+  }
+
   public async approve(id: number) {
     return `This action removes a #${id} store`;
   }

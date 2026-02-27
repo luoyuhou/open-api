@@ -7,6 +7,7 @@ import {
   UseGuards,
   Query,
   Req,
+  Patch,
 } from '@nestjs/common';
 import { StoreService } from './store.service';
 import { CreateStoreInputDto } from './dto/create-store.dto';
@@ -79,6 +80,15 @@ export class StoreController {
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.storeService.findOne(id);
+  }
+
+  @Patch(':id/qr')
+  async updatePaymentQrs(
+    @Param('id') id: string,
+    @Body() body: { wechat_qr_url?: string; alipay_qr_url?: string },
+    @Req() req: Request,
+  ) {
+    return this.storeService.updatePaymentQrs(id, body, req.user as UserEntity);
   }
 
   @Post('/approver')

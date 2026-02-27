@@ -54,22 +54,25 @@ model user_signin_wechat {
 }
 
 model store {
-  id          Int       @id @default(autoincrement())
-  store_id    String    @unique
-  id_code     String
-  id_name     String
-  user_id     String
-  store_name  String
-  phone       String
-  province    String
-  city        String
-  area        String
-  town        String
-  address     String
-  status      Int       @default(0)
-  create_date DateTime? @default(now())
-  update_date DateTime? @default(now())
+  id            Int       @id @default(autoincrement())
+  store_id      String    @unique
+  id_code       String
+  id_name       String
+  user_id       String
+  store_name    String
+  phone         String
+  province      String
+  city          String
+  area          String
+  town          String
+  address       String
+  wechat_qr_url String?
+  alipay_qr_url String?
+  status        Int       @default(0)
+  create_date   DateTime? @default(now())
+  update_date   DateTime? @default(now())
 }
+
 
 model store_history {
   id             Int       @id @default(autoincrement())
@@ -148,23 +151,28 @@ model store_goods_version {
 }
 
 model user_order {
-  id            Int       @id @default(autoincrement())
-  order_id      String    @unique
-  user_id       String
-  store_id      String
-  status        Int
-  stage         Int
-  recipient     String
-  money         Int
-  phone         String
-  province      String
-  city          String
-  area          String
-  town          String
-  address       String
-  delivery_date DateTime
-  create_date   DateTime? @default(now())
-  update_date   DateTime? @default(now())
+  id             Int       @id @default(autoincrement())
+  order_id       String    @unique
+  user_id        String
+  store_id       String
+  status         Int
+  stage          Int
+  payment_method String    @default("cod")
+  payment_channel String?
+  pay_status     Int       @default(0)
+  paid_at        DateTime?
+  pay_proof_url  String?
+  recipient      String
+  money          Int
+  phone          String
+  province       String
+  city           String
+  area           String
+  town           String
+  address        String
+  delivery_date  DateTime
+  create_date    DateTime? @default(now())
+  update_date    DateTime? @default(now())
 }
 
 model user_order_info {
