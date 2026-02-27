@@ -359,3 +359,28 @@ model home_banner {
 
   @@index([status, sort])
 }
+
+model chat_group {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  group_id    String    @unique(map: "group_id") @db.VarChar(64)
+  name        String    @db.VarChar(64)
+  owner_id    String    @db.VarChar(64)
+  type        Int       @db.UnsignedTinyInt
+  status      Int       @default(1) @db.TinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([owner_id], map: "chat_group_owner_idx")
+}
+
+model chat_group_user {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  group_id    String    @db.VarChar(64)
+  user_id     String    @db.VarChar(64)
+  role        Int       @default(0) @db.UnsignedTinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([group_id, user_id], map: "chat_group_user_unique")
+  @@index([user_id], map: "chat_group_user_user_idx")
+}

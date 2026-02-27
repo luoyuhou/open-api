@@ -396,3 +396,30 @@ CREATE TABLE `home_banner` (
   UNIQUE KEY `banner_id` (`banner_id`),
   KEY `home_banner_status_sort_idx` (`status`,`sort`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `chat_group` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `group_id` varchar(64) NOT NULL,
+  `name` varchar(64) NOT NULL,
+  `owner_id` varchar(64) NOT NULL,
+  `type` tinyint unsigned NOT NULL COMMENT '1: 单聊(两人会话) 2: 群聊',
+  `status` tinyint NOT NULL DEFAULT 1,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `group_id` (`group_id`),
+  KEY `chat_group_owner_idx` (`owner_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `chat_group_user` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `group_id` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `role` tinyint unsigned NOT NULL DEFAULT 0 COMMENT '0: 普通成员 1: 管理员',
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `chat_group_user_unique` (`group_id`,`user_id`),
+  KEY `chat_group_user_user_idx` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
