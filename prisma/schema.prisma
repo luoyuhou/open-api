@@ -391,3 +391,38 @@ model chat_group_user {
   @@unique([group_id, user_id], map: "chat_group_user_unique")
   @@index([user_id], map: "chat_group_user_user_idx")
 }
+
+model store_rating {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  store_id    String    @unique(map: "store_rating_store_id") @db.VarChar(64)
+  rating      Float     @default(0) @db.Float
+  order_count Int       @default(0) @db.UnsignedInt
+  avg_star    Float     @default(0) @db.Float
+  updated_at  DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([rating])
+}
+
+model user_favorite_store {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  user_id     String    @db.VarChar(64)
+  store_id    String    @db.VarChar(64)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([user_id, store_id], map: "user_favorite_store_unique")
+  @@index([user_id], map: "user_favorite_store_user_idx")
+}
+
+model user_store_browse_history {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  user_id     String    @db.VarChar(64)
+  store_id    String    @db.VarChar(64)
+  visit_date  DateTime  @db.DateTime(0)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([user_id, store_id], map: "user_store_browse_unique")
+  @@index([user_id], map: "user_store_browse_user_idx")
+  @@index([visit_date], map: "user_store_browse_visit_idx")
+}
