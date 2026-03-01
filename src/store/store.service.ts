@@ -229,12 +229,12 @@ export class StoreService {
           B2.name AS city_name,
           B3.name AS area_name,
           B4.name AS town_name
-        FROM storehouse.store AS A
-          LEFT JOIN storehouse.province AS B1 ON A.province = B1.code
-          LEFT JOIN storehouse.province AS B2 ON A.city = B2.code
-          LEFT JOIN storehouse.province AS B3 ON A.area = B3.code
+        FROM store AS A
+          LEFT JOIN province AS B1 ON A.province = B1.code
+          LEFT JOIN province AS B2 ON A.city = B2.code
+          LEFT JOIN province AS B3 ON A.area = B3.code
             AND B3.town = 0
-          LEFT JOIN storehouse.province AS B4 ON A.area = B4.code
+          LEFT JOIN province AS B4 ON A.area = B4.code
             AND A.town = B4.town
         WHERE store_id IN (${Prisma.join(storeIds)})
         `;
@@ -338,6 +338,31 @@ export class StoreService {
         data: {
           store_id: id,
           action_content: ``,
+          action_type: STORE_ACTION_TYPES.UPDATED,
+          action_date: new Date(),
+          action_user_id: user.user_id,
+        },
+      }),
+    ]);
+  }
+
+  public async updatePaymentQrs(
+    id: string,
+    data: { wechat_qr_url?: string; alipay_qr_url?: string },
+    user: UserEntity,
+  ) {
+    await this.prisma.$transaction([
+      this.prisma.store.update({
+        where: { store_id: id },
+        data: {
+          wechat_qr_url: data.wechat_qr_url,
+          alipay_qr_url: data.alipay_qr_url,
+        },
+      }),
+      this.prisma.store_history.create({
+        data: {
+          store_id: id,
+          action_content: `更新收款码`,
           action_type: STORE_ACTION_TYPES.UPDATED,
           action_date: new Date(),
           action_user_id: user.user_id,

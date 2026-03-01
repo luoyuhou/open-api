@@ -1,5 +1,6 @@
 import { Injectable, ExecutionContext } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import customLogger from '../../common/logger';
 
 @Injectable()
 export class LocalAuthGuard extends AuthGuard('local') {
@@ -13,18 +14,14 @@ export class LocalAuthGuard extends AuthGuard('local') {
 
       // 🔑 显式保存 session 到 Redis
       await new Promise<void>((resolve, reject) => {
-        request.session.save((err) => {
+        request.session.save((err: object) => {
           if (err) {
-            console.error(
-              '❌ LocalAuthGuard: 保存 session 到 Redis 失败:',
-              err,
-            );
+            customLogger.error({
+              message: '❌ LocalAuthGuard: 保存 session 到 Redis 失败:',
+              error: err,
+            });
             reject(err);
           } else {
-            console.log(
-              '✅ LocalAuthGuard: Session 已保存到 Redis, sessionID:',
-              request.sessionID,
-            );
             resolve();
           }
         });

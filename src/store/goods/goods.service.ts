@@ -68,7 +68,7 @@ export class GoodsService {
     // const ids = 'goods-6d662ec5-dade-4e5d-b90d-bf96b1b04224';
     const versions: { goods_id: string; count: number }[] =
       await this.prisma.$queryRawUnsafe(
-        `SELECT goods_id, count(1) count FROM storehouse.store_goods_version WHERE goods_id IN (` +
+        `SELECT goods_id, count(1) count FROM store_goods_version WHERE goods_id IN (` +
           goodsIds.join(',') +
           ') GROUP BY goods_id',
       );
@@ -135,9 +135,9 @@ export class GoodsService {
 
   async findOne(goods_id: string) {
     const goods = await this.prisma.$queryRawUnsafe<{ id: number }[]>(
-      `SELECT a.*, b.store_name AS store_name, c.name AS category_name FROM storehouse.store_goods a
-        JOIN storehouse.store b ON a.store_id = b.store_id
-        JOIN storehouse.category_goods c ON a.category_id = c.category_id
+      `SELECT a.*, b.store_name AS store_name, c.name AS category_name FROM store_goods a
+        JOIN store b ON a.store_id = b.store_id
+        JOIN category_goods c ON a.category_id = c.category_id
         WHERE a.goods_id = '${goods_id}' LIMIT 1`,
     );
 

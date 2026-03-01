@@ -73,6 +73,11 @@ export class StoreOrderService {
         finished: 0,
         total: 0,
         totalAmount: 0,
+        today: {
+          total: 0,
+          totalAmount: 0,
+        },
+        byStore: [],
       };
     }
 
@@ -125,10 +130,49 @@ export class StoreOrderService {
     // 总金额统计（active 状态的订单）
     const orders = await this.prisma.user_order.findMany({
       where: baseWhere,
-      select: { money: true },
+      select: { money: true, store_id: true, create_date: true },
     });
 
     const totalAmount = orders.reduce((sum, order) => sum + order.money, 0);
+
+    // 今日 00:00
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayOrders = orders.filter((o) => {
+      return o.create_date && new Date(o.create_date) >= today;
+    });
+
+    const todayTotal = todayOrders.length;
+    const todayTotalAmount = todayOrders.reduce((sum, o) => sum + o.money, 0);
+
+    // 按店铺拆分
+    const byStoreMap = new Map<
+      string,
+      { storeId: string; storeName: string; total: number; totalAmount: number }
+    >();
+
+    orders.forEach((o) => {
+      const store = stores.find((s) => s.store_id === o.store_id);
+      const key = o.store_id;
+      const existed = byStoreMap.get(key);
+      if (!existed) {
+        byStoreMap.set(key, {
+          storeId: o.store_id,
+          storeName: store?.store_name || o.store_id,
+          total: 1,
+          totalAmount: o.money,
+        });
+      } else {
+        byStoreMap.set(key, {
+          ...existed,
+          total: existed.total + 1,
+          totalAmount: existed.totalAmount + o.money,
+        });
+      }
+    });
+
+    const byStore = Array.from(byStoreMap.values());
 
     return {
       pending,
@@ -137,6 +181,143 @@ export class StoreOrderService {
       finished,
       total,
       totalAmount,
+      today: {
+        total: todayTotal,
+        totalAmount: todayTotalAmount,
+      },
+      byStore,
+    };
+  }
+
+  public async getTrend(sessUserId: string, days: number) {
+    const stores = await this.prisma.store.findMany({
+      where: { user_id: sessUserId },
+    });
+
+    if (!stores.length) {
+      return { days, points: [] };
+    }
+
+    const storeIds = stores.map((s) => s.store_id);
+
+    const baseWhere = {
+      store_id: { in: storeIds },
+      status: E_USER_ORDER_STATUS.active,
+    };
+
+    const end = new Date();
+    end.setHours(0, 0, 0, 0);
+
+    const start = new Date(end);
+    start.setDate(start.getDate() - (days - 1));
+
+    const orders = await this.prisma.user_order.findMany({
+      where: {
+        ...baseWhere,
+        create_date: {
+          gte: start,
+          lt: new Date(end.getTime() + 24 * 60 * 60 * 1000),
+        },
+      },
+      select: { create_date: true, money: true },
+    });
+
+    const pointsMap = new Map<
+      string,
+      { date: string; total: number; totalAmount: number }
+    >();
+
+    for (let i = 0; i < days; i += 1) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      pointsMap.set(key, { date: key, total: 0, totalAmount: 0 });
+    }
+
+    orders.forEach((o) => {
+      if (!o.create_date) return;
+      const key = new Date(o.create_date).toISOString().slice(0, 10);
+      const existed = pointsMap.get(key);
+      if (existed) {
+        pointsMap.set(key, {
+          ...existed,
+          total: existed.total + 1,
+          totalAmount: existed.totalAmount + o.money,
+        });
+      }
+    });
+
+    const points = Array.from(pointsMap.values()).sort((a, b) =>
+      a.date < b.date ? -1 : 1,
+    );
+
+    return { days, points };
+  }
+
+  public async getMetrics(sessUserId: string, days: number) {
+    const stores = await this.prisma.store.findMany({
+      where: { user_id: sessUserId },
+    });
+
+    if (!stores.length) {
+      return {
+        windowDays: days,
+        totalOrders: 0,
+        totalAmount: 0,
+        avgOrderValue: 0,
+        cancelRate: 0,
+        repurchaseRate: 0,
+      };
+    }
+
+    const storeIds = stores.map((s) => s.store_id);
+
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - (days - 1));
+
+    const orders = await this.prisma.user_order.findMany({
+      where: {
+        store_id: { in: storeIds },
+        status: {
+          in: [E_USER_ORDER_STATUS.active, E_USER_ORDER_STATUS.cancel],
+        },
+        create_date: {
+          gte: start,
+        },
+      },
+      select: { user_id: true, money: true, status: true },
+    });
+
+    const totalOrders = orders.length;
+    const totalAmount = orders.reduce((sum, o) => sum + o.money, 0);
+    const avgOrderValue =
+      totalOrders > 0 ? Math.round(totalAmount / totalOrders) : 0;
+
+    const cancelCount = orders.filter(
+      (o) => o.status === E_USER_ORDER_STATUS.cancel,
+    ).length;
+    const cancelRate = totalOrders > 0 ? cancelCount / totalOrders : 0;
+
+    const userOrderCountMap = new Map<string, number>();
+    orders.forEach((o) => {
+      const count = userOrderCountMap.get(o.user_id) ?? 0;
+      userOrderCountMap.set(o.user_id, count + 1);
+    });
+
+    const totalUsers = userOrderCountMap.size;
+    const repurchaseUsers = Array.from(userOrderCountMap.values()).filter(
+      (count) => count > 1,
+    ).length;
+    const repurchaseRate = totalUsers > 0 ? repurchaseUsers / totalUsers : 0;
+
+    return {
+      windowDays: days,
+      totalOrders,
+      totalAmount,
+      avgOrderValue,
+      cancelRate,
+      repurchaseRate,
     };
   }
 
@@ -146,6 +327,10 @@ export class StoreOrderService {
 
   public async shipOrder(user: UserEntity, orderId: string) {
     return this.orderService.delivery(user, orderId);
+  }
+
+  public async confirmPayment(user: UserEntity, orderId: string) {
+    return this.orderService.confirmPayment(user, orderId);
   }
 
   public async getOrderHistory(orderId: string) {

@@ -178,4 +178,140 @@ export class WxController {
     const data = await this.wxService.homeBannersForMiniApp();
     return { message: 'ok', data };
   }
+
+  /**
+   * 小程序首页推荐商家列表
+   * GET /wx/home/recommend-stores?page=1&pageSize=5
+   */
+  @Get('home/recommend-stores')
+  @ApiProperty()
+  async getRecommendStores(
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '5',
+  ) {
+    const pageNum = Math.max(0, Number(page) - 1) || 0;
+    const size = Math.max(1, Number(pageSize)) || 5;
+    const data = await this.wxService.recommendStoresForMiniApp(pageNum, size);
+    return { message: 'ok', data };
+  }
+
+  /**
+   * 用户收藏店铺：添加收藏
+   */
+  @Post('user/favorites')
+  @ApiProperty()
+  async addFavoriteStore(
+    @Req() request: Request,
+    @Body() body: { store_id: string },
+  ) {
+    await this.wxService.addFavoriteStore(
+      request.user as UserEntity,
+      body.store_id,
+    );
+    return { message: 'ok' };
+  }
+
+  /**
+   * 用户收藏店铺：取消收藏
+   */
+  @Delete('user/favorites/:storeId')
+  @ApiProperty()
+  async removeFavoriteStore(
+    @Req() request: Request,
+    @Param('storeId') storeId: string,
+  ) {
+    await this.wxService.removeFavoriteStore(
+      request.user as UserEntity,
+      storeId,
+    );
+    return { message: 'ok' };
+  }
+
+  /**
+   * 查询当前店铺是否已收藏
+   */
+  @Get('user/favorites/:storeId')
+  @ApiProperty()
+  async isFavoriteStore(
+    @Req() request: Request,
+    @Param('storeId') storeId: string,
+  ) {
+    const isFavorite = await this.wxService.isFavoriteStore(
+      request.user as UserEntity,
+      storeId,
+    );
+    return { message: 'ok', data: { isFavorite } };
+  }
+
+  /**
+   * 用户收藏店铺列表
+   */
+  @Get('user/favorites')
+  @ApiProperty()
+  async getFavoriteStores(
+    @Req() request: Request,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '10',
+  ) {
+    const pageNum = Math.max(0, Number(page) - 1) || 0;
+    const size = Math.max(1, Number(pageSize)) || 10;
+    const data = await this.wxService.listFavoriteStores(
+      request.user as UserEntity,
+      pageNum,
+      size,
+    );
+    return { message: 'ok', data };
+  }
+
+  /**
+   * 记录用户浏览店铺
+   */
+  @Post('user/history/store')
+  @ApiProperty()
+  async recordStoreBrowse(
+    @Req() request: Request,
+    @Body() body: { store_id: string },
+  ) {
+    await this.wxService.recordStoreBrowse(
+      request.user as UserEntity,
+      body.store_id,
+    );
+    return { message: 'ok' };
+  }
+
+  /**
+   * 用户浏览店铺记录列表
+   */
+  @Get('user/history/stores')
+  @ApiProperty()
+  async getStoreBrowseHistory(
+    @Req() request: Request,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '10',
+  ) {
+    const pageNum = Math.max(0, Number(page) - 1) || 0;
+    const size = Math.max(1, Number(pageSize)) || 10;
+    const data = await this.wxService.listStoreBrowseHistory(
+      request.user as UserEntity,
+      pageNum,
+      size,
+    );
+    return { message: 'ok', data };
+  }
+
+  /**
+   * 删除用户浏览店铺记录
+   */
+  @Delete('user/history/store/:storeId')
+  @ApiProperty()
+  async deleteStoreBrowse(
+    @Req() request: Request,
+    @Param('storeId') storeId: string,
+  ) {
+    await this.wxService.deleteStoreBrowseHistory(
+      request.user as UserEntity,
+      storeId,
+    );
+    return { message: 'ok' };
+  }
 }

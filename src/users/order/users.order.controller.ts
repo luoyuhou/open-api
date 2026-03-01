@@ -18,6 +18,7 @@ import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
 import { Request } from 'express';
 import { UserEntity } from '../entities/user.entity';
 import { ListOrderDto } from './dto/list-order.dto';
+import { UpdatePayProofDto } from './dto/update-pay-proof.dto';
 
 @UseGuards(SessionAuthGuard)
 @Controller('users/order')
@@ -50,6 +51,18 @@ export class UsersOrderController {
       (request.user as { user: UserEntity }).user,
       createOrderDto,
     );
+  }
+
+  @Post(':id/pay-proof')
+  @ApiOperation({ summary: '上传订单支付凭证 URL（用户端）' })
+  async uploadPayProof(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Body() body: UpdatePayProofDto,
+  ) {
+    const user = (request.user as { user: UserEntity }).user;
+    await this.userOrderService.updatePayProof(user, id, body.pay_proof_url);
+    return { message: 'ok' };
   }
 
   @Get()
