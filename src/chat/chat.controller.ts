@@ -64,14 +64,15 @@ export class ChatController {
       },
     });
 
-    await this.prisma.chat_group_user.createMany({
-      data: uniqueMemberIds.map((userId) => ({
-        group_id: groupId,
-        user_id: userId,
-        role: userId === ownerId ? 1 : 0,
-      })),
-      skipDuplicates: true,
-    });
+    uniqueMemberIds.map((userId) =>
+      this.prisma.chat_group_user.create({
+        data: {
+          group_id: groupId,
+          user_id: userId,
+          role: userId === ownerId ? 1 : 0,
+        },
+      }),
+    );
 
     return {
       groupId,
