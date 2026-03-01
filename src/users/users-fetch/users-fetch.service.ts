@@ -148,7 +148,7 @@ export class UsersFetchService {
       { max_date: Date; min_date: Date }[]
     >(`
     SELECT MAX(create_date) AS max_date, MIN(create_date) AS min_date
-    FROM storehouse.user_fetch
+    FROM user_fetch
     WHERE user_id = '${user_id}'
     AND create_date >= '${start}' and create_date <= '${end}'
     `);

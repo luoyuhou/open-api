@@ -19,11 +19,12 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { SchedulesService } from './schedules/schedules.service';
 import { UsersFetchModule } from './users/users-fetch/users-fetch.module';
 import { CacheModule } from './common/cache-manager/cache.module';
-import { ChatGateway } from './chat/chat.gateway';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { FileModule } from './file/file.module';
 import { HomeBannerModule } from './home-banner/home-banner.module';
+import { ChatController } from './chat/chat.controller';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { HomeBannerModule } from './home-banner/home-banner.module';
     WxModule,
     FileModule,
     HomeBannerModule,
+    ChatModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       url: Env.DATABASE_URL,
@@ -74,11 +76,10 @@ import { HomeBannerModule } from './home-banner/home-banner.module';
     UsersFetchModule,
     ScheduleModule.forRoot(),
   ],
-  controllers: [AppController, HealthController],
+  controllers: [AppController, HealthController, ChatController],
   providers: [
     AppService,
     SchedulesService,
-    ChatGateway,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

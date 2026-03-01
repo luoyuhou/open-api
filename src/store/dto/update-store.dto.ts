@@ -1,6 +1,7 @@
 import { CreateStoreDto } from './create-store.dto';
 import { PickType } from '@nestjs/mapped-types';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString, MaxLength } from 'class-validator';
 
 export class UpdateStoreDto extends PickType(CreateStoreDto, [
   'user_id',
@@ -25,6 +26,16 @@ export class UpdateStoreDto extends PickType(CreateStoreDto, [
 
   @ApiProperty()
   id_code: string;
+
+  @ApiProperty({ required: false, description: '微信收款码 URL' })
+  @IsString()
+  @MaxLength(256)
+  wechat_qr_url?: string;
+
+  @ApiProperty({ required: false, description: '支付宝收款码 URL' })
+  @IsString()
+  @MaxLength(256)
+  alipay_qr_url?: string;
 
   @ApiProperty()
   phone: string;

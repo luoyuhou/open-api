@@ -47,21 +47,23 @@ model user_signin_password {
 }
 
 model store {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  store_id    String    @unique(map: "store_id") @db.VarChar(64)
-  id_code     String    @db.VarChar(32)
-  id_name     String    @db.VarChar(32)
-  user_id     String    @db.VarChar(64)
-  store_name  String    @db.VarChar(64)
-  phone       String    @db.VarChar(11)
-  province    String    @db.VarChar(8)
-  city        String    @db.VarChar(8)
-  area        String    @db.VarChar(8)
-  town        String    @db.VarChar(8)
-  address     String    @db.VarChar(128)
-  status      Int       @default(0) @db.TinyInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
+  id            Int       @id @default(autoincrement()) @db.UnsignedInt
+  store_id      String    @unique(map: "store_id") @db.VarChar(64)
+  id_code       String    @db.VarChar(32)
+  id_name       String    @db.VarChar(32)
+  user_id       String    @db.VarChar(64)
+  store_name    String    @db.VarChar(64)
+  phone         String    @db.VarChar(11)
+  province      String    @db.VarChar(8)
+  city          String    @db.VarChar(8)
+  area          String    @db.VarChar(8)
+  town          String    @db.VarChar(8)
+  address       String    @db.VarChar(128)
+  wechat_qr_url String?   @db.VarChar(256)
+  alipay_qr_url String?   @db.VarChar(256)
+  status        Int       @default(0) @db.TinyInt
+  create_date   DateTime? @default(now()) @db.DateTime(0)
+  update_date   DateTime? @default(now()) @db.DateTime(0)
 
   @@index([store_name], map: "store_name_idx")
   @@index([user_id], map: "store_user_idx")
@@ -158,23 +160,28 @@ model store_goods_version {
 }
 
 model user_order {
-  id            Int       @id @default(autoincrement()) @db.UnsignedInt
-  order_id      String    @unique(map: "order_id") @db.VarChar(64)
-  user_id       String    @db.VarChar(64)
-  store_id      String    @db.VarChar(64)
-  status        Int       @db.TinyInt
-  stage         Int       @db.TinyInt
-  recipient     String    @db.VarChar(16)
-  money         Int       @db.UnsignedInt
-  phone         String    @db.VarChar(16)
-  province      String    @db.VarChar(8)
-  city          String    @db.VarChar(8)
-  area          String    @db.VarChar(8)
-  town          String    @db.VarChar(8)
-  address       String    @db.VarChar(128)
-  delivery_date DateTime  @db.DateTime(0)
-  create_date   DateTime? @default(now()) @db.DateTime(0)
-  update_date   DateTime? @default(now()) @db.DateTime(0)
+  id              Int       @id @default(autoincrement()) @db.UnsignedInt
+  order_id        String    @unique(map: "order_id") @db.VarChar(64)
+  user_id         String    @db.VarChar(64)
+  store_id        String    @db.VarChar(64)
+  status          Int       @db.TinyInt
+  stage           Int       @db.TinyInt
+  payment_method  String    @db.VarChar(32)
+  payment_channel String?   @db.VarChar(32)
+  pay_status      Int       @default(0) @db.TinyInt
+  paid_at         DateTime? @db.DateTime(0)
+  pay_proof_url   String?   @db.VarChar(256)
+  recipient       String    @db.VarChar(16)
+  money           Int       @db.UnsignedInt
+  phone           String    @db.VarChar(16)
+  province        String    @db.VarChar(8)
+  city            String    @db.VarChar(8)
+  area            String    @db.VarChar(8)
+  town            String    @db.VarChar(8)
+  address         String    @db.VarChar(128)
+  delivery_date   DateTime  @db.DateTime(0)
+  create_date     DateTime? @default(now()) @db.DateTime(0)
+  update_date     DateTime? @default(now()) @db.DateTime(0)
 
   @@index([user_id, store_id], map: "user_order_idx")
   @@index([store_id], map: "user_order_store_idx")
@@ -358,4 +365,64 @@ model home_banner {
   update_date DateTime? @default(now()) @db.DateTime(0)
 
   @@index([status, sort])
+}
+
+model chat_group {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  group_id    String    @unique(map: "group_id") @db.VarChar(64)
+  name        String    @db.VarChar(64)
+  owner_id    String    @db.VarChar(64)
+  type        Int       @db.UnsignedTinyInt
+  status      Int       @default(1) @db.TinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([owner_id], map: "chat_group_owner_idx")
+}
+
+model chat_group_user {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  group_id    String    @db.VarChar(64)
+  user_id     String    @db.VarChar(64)
+  role        Int       @default(0) @db.UnsignedTinyInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([group_id, user_id], map: "chat_group_user_unique")
+  @@index([user_id], map: "chat_group_user_user_idx")
+}
+
+model store_rating {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  store_id    String    @unique(map: "store_rating_store_id") @db.VarChar(64)
+  rating      Float     @default(0) @db.Float
+  order_count Int       @default(0) @db.UnsignedInt
+  avg_star    Float     @default(0) @db.Float
+  updated_at  DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([rating])
+}
+
+model user_favorite_store {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  user_id     String    @db.VarChar(64)
+  store_id    String    @db.VarChar(64)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([user_id, store_id], map: "user_favorite_store_unique")
+  @@index([user_id], map: "user_favorite_store_user_idx")
+}
+
+model user_store_browse_history {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  user_id     String    @db.VarChar(64)
+  store_id    String    @db.VarChar(64)
+  visit_date  DateTime  @db.DateTime(0)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([user_id, store_id], map: "user_store_browse_unique")
+  @@index([user_id], map: "user_store_browse_user_idx")
+  @@index([visit_date], map: "user_store_browse_visit_idx")
 }

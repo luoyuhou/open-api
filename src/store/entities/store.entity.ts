@@ -71,6 +71,14 @@ export class StoreEntity {
   @MaxLength(128)
   address: string;
 
+  @IsString()
+  @MaxLength(256)
+  wechat_qr_url?: string;
+
+  @IsString()
+  @MaxLength(256)
+  alipay_qr_url?: string;
+
   @IsInt()
   @Max(9999)
   status: number;

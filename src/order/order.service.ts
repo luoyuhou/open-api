@@ -3,7 +3,12 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UserEntity } from '../users/entities/user.entity';
 import { PrismaService } from '../prisma/prisma.service';
 import { v4 } from 'uuid';
-import { E_USER_ORDER_STAGE, E_USER_ORDER_STATUS } from './const';
+import {
+  E_USER_ORDER_STAGE,
+  E_USER_ORDER_STATUS,
+  E_USER_ORDER_PAY_STATUS,
+  E_USER_ORDER_PAYMENT_METHOD,
+} from './const';
 import { Pagination } from '../common/dto/pagination';
 import { ChatGateway } from '../chat/chat.gateway';
 
@@ -16,11 +21,14 @@ export class OrderService {
   async create(user: UserEntity, createOrderDto: CreateOrderDto) {
     const { user_id } = user;
     const order_id = `order-${v4()}`;
-    const { goods, user_address_id, store_id, delivery_date } = createOrderDto;
+    const { goods, user_address_id, store_id, delivery_date, payment_method } =
+      createOrderDto;
     const money = goods.reduce((t, { price, count }) => t + price * count, 0);
     const formatGoods = goods.map((item) => {
       return { ...item, order_info_id: `order-info-${v4()}`, order_id };
     });
+
+    const method = payment_method || E_USER_ORDER_PAYMENT_METHOD.ONLINE_QR;
 
     const userAddress = await this.prisma.user_address.findFirst({
       where: { user_address_id },
@@ -33,7 +41,7 @@ export class OrderService {
     const { province, city, area, town, address, phone, recipient } =
       userAddress;
 
-    // 2. 创建订单并减少库存
+    // 2. 创建订单并记录支付方式（统一为未支付，后续由商家确认收款）
     await this.prisma.$transaction([
       this.prisma.user_order.create({
         data: {
@@ -51,6 +59,8 @@ export class OrderService {
           recipient,
           status: E_USER_ORDER_STATUS.active,
           stage: E_USER_ORDER_STAGE.create,
+          payment_method: method,
+          pay_status: E_USER_ORDER_PAY_STATUS.unpaid,
         },
       }),
       // SQLite 不支持 createMany，使用 Promise.all 批量创建
@@ -346,6 +356,52 @@ export class OrderService {
         },
       }),
     ]);
+  }
+
+  // 用户上传或更新订单支付凭证（仅记录 URL）
+  async updatePayProof(user: UserEntity, id: string, payProofUrl: string) {
+    const order = await this.prisma.user_order.findUnique({
+      where: { order_id: id },
+    });
+
+    if (!order) {
+      throw new BadRequestException('订单不存在');
+    }
+
+    if (order.user_id !== user.user_id) {
+      throw new BadRequestException('无权操作该订单');
+    }
+
+    await this.prisma.user_order.update({
+      where: { order_id: id },
+      data: {
+        pay_proof_url: payProofUrl,
+      },
+    });
+  }
+
+  // 商家确认已收款（线下完成支付）
+  async confirmPayment(user: UserEntity, id: string) {
+    const order = await this.prisma.user_order.findUnique({
+      where: { order_id: id },
+    });
+
+    if (!order) {
+      throw new BadRequestException('订单不存在');
+    }
+
+    if (order.pay_status === E_USER_ORDER_PAY_STATUS.paid) {
+      // 已经确认过收款，直接返回
+      return;
+    }
+
+    await this.prisma.user_order.update({
+      where: { order_id: id },
+      data: {
+        pay_status: E_USER_ORDER_PAY_STATUS.paid,
+        paid_at: new Date(),
+      },
+    });
   }
 
   async remove(user: UserEntity, id: string) {

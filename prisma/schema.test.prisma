@@ -54,22 +54,25 @@ model user_signin_wechat {
 }
 
 model store {
-  id          Int       @id @default(autoincrement())
-  store_id    String    @unique
-  id_code     String
-  id_name     String
-  user_id     String
-  store_name  String
-  phone       String
-  province    String
-  city        String
-  area        String
-  town        String
-  address     String
-  status      Int       @default(0)
-  create_date DateTime? @default(now())
-  update_date DateTime? @default(now())
+  id            Int       @id @default(autoincrement())
+  store_id      String    @unique
+  id_code       String
+  id_name       String
+  user_id       String
+  store_name    String
+  phone         String
+  province      String
+  city          String
+  area          String
+  town          String
+  address       String
+  wechat_qr_url String?
+  alipay_qr_url String?
+  status        Int       @default(0)
+  create_date   DateTime? @default(now())
+  update_date   DateTime? @default(now())
 }
+
 
 model store_history {
   id             Int       @id @default(autoincrement())
@@ -148,23 +151,28 @@ model store_goods_version {
 }
 
 model user_order {
-  id            Int       @id @default(autoincrement())
-  order_id      String    @unique
-  user_id       String
-  store_id      String
-  status        Int
-  stage         Int
-  recipient     String
-  money         Int
-  phone         String
-  province      String
-  city          String
-  area          String
-  town          String
-  address       String
-  delivery_date DateTime
-  create_date   DateTime? @default(now())
-  update_date   DateTime? @default(now())
+  id             Int       @id @default(autoincrement())
+  order_id       String    @unique
+  user_id        String
+  store_id       String
+  status         Int
+  stage          Int
+  payment_method String    @default("cod")
+  payment_channel String?
+  pay_status     Int       @default(0)
+  paid_at        DateTime?
+  pay_proof_url  String?
+  recipient      String
+  money          Int
+  phone          String
+  province       String
+  city           String
+  area           String
+  town           String
+  address        String
+  delivery_date  DateTime
+  create_date    DateTime? @default(now())
+  update_date    DateTime? @default(now())
 }
 
 model user_order_info {
@@ -303,3 +311,65 @@ model home_banner {
   create_date DateTime? @default(now())
   update_date DateTime? @default(now())
 }
+
+model file {
+  id          Int      @id @default(autoincrement())
+  file_name   String?
+  hash        String   @unique
+  url         String
+  create_date DateTime @default(now())
+  update_date DateTime @default(now())
+}
+
+model chat_group {
+  id          Int       @id @default(autoincrement())
+  group_id    String    @unique
+  name        String
+  owner_id    String
+  type        Int
+  status      Int       @default(1)
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+
+model chat_group_user {
+  id          Int       @id @default(autoincrement())
+  group_id    String
+  user_id     String
+  role        Int       @default(0)
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([group_id, user_id])
+}
+
+model store_rating {
+  id          Int       @id @default(autoincrement())
+  store_id    String    @unique
+  rating      Float     @default(0)
+  order_count Int       @default(0)
+  avg_star    Float     @default(0)
+  updated_at  DateTime? @default(now())
+}
+
+model user_favorite_store {
+  id          Int       @id @default(autoincrement())
+  user_id     String
+  store_id    String
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([user_id, store_id])
+}
+
+model user_store_browse_history {
+  id          Int       @id @default(autoincrement())
+  user_id     String
+  store_id    String
+  visit_date  DateTime
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([user_id, store_id])
+}
+

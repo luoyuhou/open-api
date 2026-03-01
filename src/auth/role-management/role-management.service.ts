@@ -458,8 +458,8 @@ export class RoleManagementService {
         A.path AS path,
         A.method AS method,
         A.status AS status
-    FROM storehouse.auth AS A
-        JOIN storehouse.auth_role AS B ON A.auth_id = B.auth_id
+    FROM auth AS A
+        JOIN auth_role AS B ON A.auth_id = B.auth_id
     WHERE B.role_id IN (${Prisma.join(roleIds)})
     AND A.status = ${EAUTH_STATUS.active}
     AND B.status = ${EAUTH_ROLE_STATUS.active}

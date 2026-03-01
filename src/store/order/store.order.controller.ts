@@ -51,10 +51,34 @@ export class StoreOrderController {
     return this.storeOrderService.shipOrder(user, body.order_id);
   }
 
+  @Post('confirm-payment')
+  @ApiOperation({ summary: '商家确认收款' })
+  async confirmPayment(
+    @Req() req: Request,
+    @Body() body: { order_id: string },
+  ) {
+    const user = req.user as UserEntity;
+    return this.storeOrderService.confirmPayment(user, body.order_id);
+  }
+
   @Post('statistics')
   @ApiOperation({ summary: '商家订单总览' })
   async statistics(@Req() req: Request) {
     const user = req.user as UserEntity;
     return this.storeOrderService.getStatistics(user.user_id);
+  }
+
+  @Post('trend')
+  @ApiOperation({ summary: '商家订单趋势' })
+  async trend(@Req() req: Request, @Body() body: { days?: number }) {
+    const user = req.user as UserEntity;
+    return this.storeOrderService.getTrend(user.user_id, body?.days ?? 10);
+  }
+
+  @Post('metrics')
+  @ApiOperation({ summary: '商家运营指标' })
+  async metrics(@Req() req: Request, @Body() body: { days?: number }) {
+    const user = req.user as UserEntity;
+    return this.storeOrderService.getMetrics(user.user_id, body?.days ?? 30);
   }
 }

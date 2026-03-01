@@ -396,3 +396,98 @@ CREATE TABLE `home_banner` (
   UNIQUE KEY `banner_id` (`banner_id`),
   KEY `home_banner_status_sort_idx` (`status`,`sort`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `chat_group` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `group_id` varchar(64) NOT NULL,
+  `name` varchar(64) NOT NULL,
+  `owner_id` varchar(64) NOT NULL,
+  `type` tinyint unsigned NOT NULL,
+  `status` tinyint NOT NULL DEFAULT 1,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `group_id` (`group_id`),
+  KEY `chat_group_owner_idx` (`owner_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `chat_group_user` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `group_id` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `role` tinyint unsigned NOT NULL DEFAULT 0,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `chat_group_user_unique` (`group_id`,`user_id`),
+  KEY `chat_group_user_user_idx` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `user_order` ADD COLUMN `payment_method` varchar(32) NOT NUll after `stage`;
+ALTER TABLE `user_order` ADD COLUMN `payment_channel` varchar(32) after `payment_method`;
+ALTER TABLE `user_order` ADD COLUMN `pay_status` tinyint NOT NULL DEFAULT 0 after `payment_channel`;
+ALTER TABLE `user_order` ADD COLUMN `paid_at` datetime after `pay_status`;
+ALTER TABLE `user_order` ADD COLUMN `pay_proof_url` varchar(256) after `paid_at`;
+
+ALTER TABLE `store` ADD COLUMN `wechat_qr_url` varchar(256) after `address`;
+ALTER TABLE `store` ADD COLUMN `alipay_qr_url` varchar(256) after `wechat_qr_url`;
+
+CREATE TABLE `store_rating` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `store_id` varchar(64) NOT NULL,
+  `rating` float NOT NULL DEFAULT 0,
+  `order_count` int unsigned NOT NULL DEFAULT 0,
+  `avg_star` float NOT NULL DEFAULT 0,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `store_rating_store_id` (`store_id`),
+  KEY `store_rating_rating_idx` (`rating`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `user_favorite_store` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` varchar(64) NOT NULL,
+  `store_id` varchar(64) NOT NULL,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_favorite_store_unique` (`user_id`, `store_id`),
+  KEY `user_favorite_store_user_idx` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `user_store_browse_history` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` varchar(64) NOT NULL,
+  `store_id` varchar(64) NOT NULL,
+  `visit_date` datetime NOT NULL,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_store_browse_unique` (`user_id`, `store_id`),
+  KEY `user_store_browse_user_idx` (`user_id`),
+  KEY `user_store_browse_visit_idx` (`visit_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `user_favorite_store` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` varchar(64) NOT NULL,
+  `store_id` varchar(64) NOT NULL,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_favorite_store_unique` (`user_id`, `store_id`),
+  KEY `user_favorite_store_user_idx` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `user_store_browse_history` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` varchar(64) NOT NULL,
+  `store_id` varchar(64) NOT NULL,
+  `visit_date` datetime NOT NULL,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_store_browse_unique` (`user_id`, `store_id`),
+  KEY `user_store_browse_user_idx` (`user_id`),
+  KEY `user_store_browse_visit_idx` (`visit_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

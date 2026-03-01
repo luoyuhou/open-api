@@ -16,12 +16,16 @@ import { CacheService } from '../common/cache-manager/cache.service';
 import customLogger from '../common/logger';
 import { sleep } from '@nestjs/terminus/dist/utils';
 import Env from '../common/const/Env';
+import { PrismaService } from '../prisma/prisma.service';
 
 type SendMessageItemProps = {
   senderId: string;
   sender: string;
-  recipientId: string;
+  recipientId?: string; // 单聊时目标用户 ID
   message: string;
+  type?: 'single' | 'group';
+  groupId?: string; // 群聊时群组 ID
+  groupName?: string;
 };
 
 @WebSocketGateway({
@@ -35,7 +39,10 @@ type SendMessageItemProps = {
 export class ChatGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
-  constructor(private cacheService: CacheService) {}
+  constructor(
+    private cacheService: CacheService,
+    private prisma: PrismaService,
+  ) {}
 
   @WebSocketServer()
   server: Server;
@@ -135,26 +142,51 @@ export class ChatGateway
   }
 
   @SubscribeMessage('sendMessage')
-  handleMessage(
+  async handleMessage(
     @MessageBody()
     data: SendMessageItemProps,
     @ConnectedSocket() client: Socket,
   ) {
     const uuid = v4();
     const datetime = moment().format('YYYY-MM-DD HH:mm:ss');
-    client.emit('receiveMessage', {
+
+    const payload = {
       ...data,
       key: uuid,
       datetime,
+    };
+
+    // 先给自己回显
+    client.emit('receiveMessage', {
+      ...payload,
       isMe: true,
     });
 
-    this.sendToUser(data.recipientId, 'receiveMessage', {
-      ...data,
-      key: uuid,
-      datetime,
-      isMe: false,
-    });
+    // 群聊
+    if (data.type === 'group' && data.groupId) {
+      const members = await this.prisma.chat_group_user.findMany({
+        where: { group_id: data.groupId },
+      });
+
+      for (const member of members) {
+        // 不再单独给自己发，避免重复
+        if (member.user_id === data.senderId) continue;
+
+        await this.sendToUser(member.user_id, 'receiveMessage', {
+          ...payload,
+          isMe: false,
+        });
+      }
+      return;
+    }
+
+    // 单聊（兼容老数据：没有 type 时按单聊处理）
+    if (data.recipientId) {
+      this.sendToUser(data.recipientId, 'receiveMessage', {
+        ...payload,
+        isMe: false,
+      });
+    }
   }
 
   broadcastAll(data: any) {
