@@ -23,8 +23,22 @@ class Env {
     return Number(env.REDIS_DB!);
   }
 
+  static get REDIS_USERNAME() {
+    return env.REDIS_USERNAME || '';
+  }
+
+  static get REDIS_PASSWORD() {
+    return env.REDIS_PASSWORD || '';
+  }
+
+  static get REDIS_USE_TLS() {
+    return env.REDIS_USE_TLS === 'true';
+  }
+
   static get REDIS_URL() {
-    return `redis://${env.REDIS_HOST}:${env.REDIS_PORT}/${env.REDIS_DB}`;
+    const protocol = this.REDIS_USE_TLS ? 'rediss' : 'redis';
+    const auth = this.REDIS_PASSWORD ? `:${this.REDIS_PASSWORD}@` : '';
+    return `${protocol}://${auth}${env.REDIS_HOST}:${env.REDIS_PORT}/${env.REDIS_DB}`;
   }
 
   static get SERVER_PORT() {
