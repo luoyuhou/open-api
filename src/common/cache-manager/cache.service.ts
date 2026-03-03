@@ -16,6 +16,9 @@ export class CacheService implements OnModuleDestroy {
       host: Env.REDIS_HOST,
       port: Env.REDIS_PORT,
       db: Env.REDIS_DB,
+      username: Env.REDIS_USERNAME,
+      password: Env.REDIS_PASSWORD || undefined,
+      tls: Env.REDIS_USE_TLS ? {} : undefined,
       lazyConnect: false,
       retryStrategy: (times) => {
         if (times > 10) {
