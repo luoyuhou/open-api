@@ -25,6 +25,7 @@ import { FileModule } from './file/file.module';
 import { HomeBannerModule } from './home-banner/home-banner.module';
 import { ChatController } from './chat/chat.controller';
 import { ChatModule } from './chat/chat.module';
+import { FeedbackModule } from './feedback/feedback.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { ChatModule } from './chat/chat.module';
     FileModule,
     HomeBannerModule,
     ChatModule,
+    FeedbackModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       url: Env.DATABASE_URL,

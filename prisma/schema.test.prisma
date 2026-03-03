@@ -373,3 +373,33 @@ model user_store_browse_history {
   @@unique([user_id, store_id])
 }
 
+model user_feedback {
+  id          Int       @id @default(autoincrement())
+  user_id     String
+  title       String
+  content     String
+  category    String?
+  status      Int       @default(0)
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+
+model user_feedback_attachment {
+  id          Int       @id @default(autoincrement())
+  feedback_id Int
+  url         String
+  type        Int       @default(1)
+  description String?
+  create_date DateTime? @default(now())
+}
+
+model user_feedback_comment {
+  id          Int       @id @default(autoincrement())
+  feedback_id Int
+  user_id     String
+  content     String
+  parent_id   Int?
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+

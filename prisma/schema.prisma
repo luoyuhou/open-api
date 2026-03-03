@@ -426,3 +426,45 @@ model user_store_browse_history {
   @@index([user_id], map: "user_store_browse_user_idx")
   @@index([visit_date], map: "user_store_browse_visit_idx")
 }
+
+model user_feedback {
+  id                       Int                        @id @default(autoincrement()) @db.UnsignedInt
+  user_id                  String                     @db.VarChar(64)
+  title                    String                     @db.VarChar(128)
+  content                  String                     @db.Text
+  category                 String?                    @db.VarChar(64)
+  status                   Int                        @default(0) @db.TinyInt
+  create_date              DateTime                   @default(now()) @db.DateTime(0)
+  update_date              DateTime                   @default(now()) @db.DateTime(0)
+  user_feedback_attachment user_feedback_attachment[]
+  user_feedback_comment    user_feedback_comment[]
+
+  @@index([status, create_date], map: "idx_user_feedback_status_created_at")
+  @@index([user_id, create_date], map: "idx_user_feedback_user_created_at")
+}
+
+model user_feedback_attachment {
+  id            Int           @id @default(autoincrement()) @db.UnsignedInt
+  feedback_id   Int           @db.UnsignedInt
+  url           String        @db.VarChar(512)
+  type          Int           @default(1) @db.UnsignedTinyInt
+  description   String?       @db.VarChar(256)
+  create_date   DateTime      @default(now()) @db.DateTime(0)
+  user_feedback user_feedback @relation(fields: [feedback_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_user_feedback_attachment_feedback")
+
+  @@index([feedback_id], map: "idx_user_feedback_attachment_feedback_id")
+}
+
+model user_feedback_comment {
+  id            Int           @id @default(autoincrement()) @db.UnsignedInt
+  feedback_id   Int           @db.UnsignedInt
+  user_id       String        @db.VarChar(64)
+  content       String        @db.VarChar(1024)
+  parent_id     Int?          @db.UnsignedInt
+  create_date   DateTime      @default(now()) @db.DateTime(0)
+  update_date   DateTime      @default(now()) @db.DateTime(0)
+  user_feedback user_feedback @relation(fields: [feedback_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_user_feedback_comment_feedback")
+
+  @@index([feedback_id], map: "idx_user_feedback_comment_feedback_id")
+  @@index([user_id, create_date], map: "idx_user_feedback_comment_user_created_at")
+}

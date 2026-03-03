@@ -491,3 +491,48 @@ CREATE TABLE `user_store_browse_history` (
   KEY `user_store_browse_user_idx` (`user_id`),
   KEY `user_store_browse_visit_idx` (`visit_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 用户反馈主表
+CREATE TABLE `user_feedback` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` VARCHAR(64) NOT NULL,
+  `title` VARCHAR(128) NOT NULL,
+  `content` TEXT NOT NULL,
+  `category` VARCHAR(64) DEFAULT NULL,
+  `status` TINYINT NOT NULL DEFAULT 0,
+  `create_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_feedback_status_created_at` (`status`, `create_date`),
+  KEY `idx_user_feedback_user_created_at` (`user_id`, `create_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 用户反馈附件表
+CREATE TABLE `user_feedback_attachment` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `feedback_id` INT UNSIGNED NOT NULL,
+  `url` VARCHAR(512) NOT NULL,
+  `type` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  `description` VARCHAR(256) DEFAULT NULL,
+  `create_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_feedback_attachment_feedback_id` (`feedback_id`),
+  CONSTRAINT `fk_user_feedback_attachment_feedback`
+    FOREIGN KEY (`feedback_id`) REFERENCES `user_feedback` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 用户反馈评论表
+CREATE TABLE `user_feedback_comment` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `feedback_id` INT UNSIGNED NOT NULL,
+  `user_id` VARCHAR(64) NOT NULL,
+  `content` VARCHAR(1024) NOT NULL,
+  `parent_id` INT UNSIGNED DEFAULT NULL,
+  `create_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_feedback_comment_feedback_id` (`feedback_id`),
+  KEY `idx_user_feedback_comment_user_created_at` (`user_id`, `create_date`),
+  CONSTRAINT `fk_user_feedback_comment_feedback`
+    FOREIGN KEY (`feedback_id`) REFERENCES `user_feedback` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
