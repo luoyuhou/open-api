@@ -536,3 +536,59 @@ CREATE TABLE `user_feedback_comment` (
   CONSTRAINT `fk_user_feedback_comment_feedback`
     FOREIGN KEY (`feedback_id`) REFERENCES `user_feedback` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `store_service_plan` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(128) NOT NULL,
+  `description` text NULL,
+  `monthly_fee` SMALLINT unsigned NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `create_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `store_service_subscription` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `store_id` varchar(64) NOT NULL,
+  `plan_id` int unsigned NOT NULL,
+  `start_date` datetime(0) NOT NULL,
+  `end_date` datetime(0) NOT NULL,
+  `status` tinyint NOT NULL DEFAULT 1,
+  `create_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_store_service_subscription_store_id` (`store_id`),
+  KEY `idx_store_service_subscription_plan_id` (`plan_id`),
+  CONSTRAINT `fk_store_service_subscription_plan` FOREIGN KEY (`plan_id`) REFERENCES `store_service_plan` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `store_service_invoice` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `subscription_id` int unsigned NOT NULL,
+  `month` varchar(7) NOT NULL,
+  `start_date` datetime(0) NOT NULL,
+  `end_date` datetime(0) NOT NULL,
+  `amount` SMALLINT unsigned NOT NULL,
+  `status` tinyint NOT NULL DEFAULT 0,
+  `due_date` datetime(0) NOT NULL,
+  `paid_at` datetime(0) NULL,
+  `create_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_store_service_invoice_subscription_month` (`subscription_id`,`month`),
+  CONSTRAINT `fk_store_service_invoice_subscription` FOREIGN KEY (`subscription_id`) REFERENCES `store_service_subscription` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `store_service_payment` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `invoice_id` int unsigned NOT NULL,
+  `amount` SMALLINT unsigned NOT NULL,
+  `method` varchar(64) NOT NULL,
+  `remark` varchar(256) NULL,
+  `paid_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `create_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_store_service_payment_invoice_id` (`invoice_id`),
+  CONSTRAINT `fk_store_service_payment_invoice` FOREIGN KEY (`invoice_id`) REFERENCES `store_service_invoice` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -468,3 +468,61 @@ model user_feedback_comment {
   @@index([feedback_id], map: "idx_user_feedback_comment_feedback_id")
   @@index([user_id, create_date], map: "idx_user_feedback_comment_user_created_at")
 }
+
+model store_service_plan {
+  id                         Int                          @id @default(autoincrement()) @db.UnsignedInt
+  name                       String                       @db.VarChar(128)
+  description                String?                      @db.Text
+  monthly_fee                Int                          @db.UnsignedSmallInt
+  is_active                  Boolean                      @default(true)
+  create_date                DateTime                     @default(now()) @db.DateTime(0)
+  update_date                DateTime                     @default(now()) @db.DateTime(0)
+  store_service_subscription store_service_subscription[]
+}
+
+model store_service_subscription {
+  id          Int                     @id @default(autoincrement()) @db.UnsignedInt
+  store_id    String                  @db.VarChar(64)
+  plan_id     Int                     @db.UnsignedInt
+  start_date  DateTime                @db.DateTime(0)
+  end_date    DateTime                @db.DateTime(0)
+  status      Int                     @default(1) @db.TinyInt
+  create_date DateTime                @default(now()) @db.DateTime(0)
+  update_date DateTime                @default(now()) @db.DateTime(0)
+  invoice     store_service_invoice[]
+  plan        store_service_plan      @relation(fields: [plan_id], references: [id], onUpdate: Restrict, map: "fk_store_service_subscription_plan")
+
+  @@index([store_id], map: "idx_store_service_subscription_store_id")
+  @@index([plan_id], map: "idx_store_service_subscription_plan_id")
+}
+
+model store_service_invoice {
+  id              Int                        @id @default(autoincrement()) @db.UnsignedInt
+  subscription_id Int                        @db.UnsignedInt
+  month           String                     @db.VarChar(7)
+  start_date      DateTime                   @db.DateTime(0)
+  end_date        DateTime                   @db.DateTime(0)
+  amount          Int                        @db.UnsignedSmallInt
+  status          Int                        @default(0) @db.TinyInt
+  due_date        DateTime                   @db.DateTime(0)
+  paid_at         DateTime?                  @db.DateTime(0)
+  create_date     DateTime                   @default(now()) @db.DateTime(0)
+  update_date     DateTime                   @default(now()) @db.DateTime(0)
+  subscription    store_service_subscription @relation(fields: [subscription_id], references: [id], onUpdate: Restrict, map: "fk_store_service_invoice_subscription")
+  payment         store_service_payment[]
+
+  @@index([subscription_id, month], map: "idx_store_service_invoice_subscription_month")
+}
+
+model store_service_payment {
+  id          Int                   @id @default(autoincrement()) @db.UnsignedInt
+  invoice_id  Int                   @db.UnsignedInt
+  amount      Int                   @db.UnsignedSmallInt
+  method      String                @db.VarChar(64)
+  remark      String?               @db.VarChar(256)
+  paid_at     DateTime              @default(now()) @db.DateTime(0)
+  create_date DateTime              @default(now()) @db.DateTime(0)
+  invoice     store_service_invoice @relation(fields: [invoice_id], references: [id], onUpdate: Restrict, map: "fk_store_service_payment_invoice")
+
+  @@index([invoice_id], map: "idx_store_service_payment_invoice_id")
+}

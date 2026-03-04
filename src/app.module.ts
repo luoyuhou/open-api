@@ -26,24 +26,26 @@ import { HomeBannerModule } from './home-banner/home-banner.module';
 import { ChatController } from './chat/chat.controller';
 import { ChatModule } from './chat/chat.module';
 import { FeedbackModule } from './feedback/feedback.module';
+import { StoreSubscriptionModule } from './store/store-subscription/store-subscription.module';
+import { StoreServiceBillingCronService } from './schedules/store-service-billing.cron';
 
 @Module({
   imports: [
     ThrottlerModule.forRoot([
       {
         name: 'short',
-        ttl: 1000, // 1秒
-        limit: 10, // 允许10个请求
+        ttl: 1000,
+        limit: 10,
       },
       {
         name: 'medium',
-        ttl: 10000, // 10秒
-        limit: 50, // 允许50个请求
+        ttl: 10000,
+        limit: 50,
       },
       {
         name: 'long',
-        ttl: 60000, // 1分钟
-        limit: 200, // 允许200个请求
+        ttl: 60000,
+        limit: 200,
       },
     ]),
     PrismaModule,
@@ -59,6 +61,7 @@ import { FeedbackModule } from './feedback/feedback.module';
     HomeBannerModule,
     ChatModule,
     FeedbackModule,
+    StoreSubscriptionModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       url: Env.DATABASE_URL,
@@ -82,6 +85,7 @@ import { FeedbackModule } from './feedback/feedback.module';
   providers: [
     AppService,
     SchedulesService,
+    StoreServiceBillingCronService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
