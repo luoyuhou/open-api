@@ -18,6 +18,8 @@ import {
   ListStoreServiceSubscriptionsDto,
   PayStoreServiceInvoiceDto,
   UpdateStoreServicePlanStatusDto,
+  ListStoreServiceContractsDto,
+  CreateStoreServiceContractDto,
 } from '../dto/store-subscription.dto';
 
 @UseGuards(SessionAuthGuard)
@@ -29,7 +31,6 @@ export class StoreServiceController {
   @Get('plans')
   async listPlans() {
     const data = await this.storeService.listPlans();
-    console.log('data', data);
     return { data };
   }
 
@@ -104,6 +105,29 @@ export class StoreServiceController {
     @Body() body: PayStoreServiceInvoiceDto,
   ) {
     const data = await this.storeService.payInvoice(id, body);
+    return { data };
+  }
+
+  @Get('contracts')
+  async listContracts(@Query() query: ListStoreServiceContractsDto) {
+    const { items, total, page, pageSize } =
+      await this.storeService.listContracts({
+        store_id: query.store_id,
+        status: query.status,
+        page: query.page,
+        pageSize: query.pageSize,
+      });
+    return {
+      data: items,
+      total,
+      page: page || 1,
+      pageSize: pageSize || 20,
+    };
+  }
+
+  @Post('contracts')
+  async createContract(@Body() body: CreateStoreServiceContractDto) {
+    const data = await this.storeService.createContract(body);
     return { data };
   }
 }

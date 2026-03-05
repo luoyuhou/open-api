@@ -108,3 +108,68 @@ export class PayStoreServiceInvoiceDto {
   @IsString()
   remark?: string;
 }
+
+export class ListStoreServiceContractsDto {
+  @IsOptional()
+  @IsString()
+  store_id?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pageSize?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  status?: number;
+}
+
+export class CreateStoreServiceContractDto {
+  @IsString()
+  @IsNotEmpty()
+  store_id: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  plan_id: number;
+
+  @IsOptional()
+  @IsString()
+  contract_no?: string;
+
+  @Type(() => Date)
+  @IsDate()
+  start_date: Date;
+
+  @Type(() => Date)
+  @IsDate()
+  end_date: Date;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  total_amount: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  sign_type: number;
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  signed_at?: Date;
+
+  @IsOptional()
+  @IsString()
+  file_url?: string;
+}

@@ -592,3 +592,29 @@ CREATE TABLE `store_service_payment` (
   KEY `idx_store_service_payment_invoice_id` (`invoice_id`),
   CONSTRAINT `fk_store_service_payment_invoice` FOREIGN KEY (`invoice_id`) REFERENCES `store_service_invoice` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `store_service_contract` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `contract_no` varchar(64) NOT NULL,
+  `store_id` varchar(64) NOT NULL,
+  `plan_id` int unsigned NOT NULL,
+  `start_date` datetime(0) NOT NULL,
+  `end_date` datetime(0) NOT NULL,
+  `status` tinyint NOT NULL DEFAULT 1,
+  `sign_type` tinyint unsigned NOT NULL,
+  `signed_at` datetime(0) DEFAULT NULL,
+  `total_amount` int unsigned NOT NULL,
+  `file_url` varchar(256) DEFAULT NULL,
+  `create_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_store_service_contract_no` (`contract_no`),
+  KEY `idx_store_service_contract_store_id` (`store_id`),
+  KEY `idx_store_service_contract_plan_id` (`plan_id`),
+  CONSTRAINT `fk_store_service_contract_plan` FOREIGN KEY (`plan_id`) REFERENCES `store_service_plan` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `store_service_subscription`
+  ADD COLUMN `contract_id` int unsigned DEFAULT NULL,
+  ADD KEY `idx_store_service_subscription_contract_id` (`contract_id`),
+  ADD CONSTRAINT `fk_store_service_subscription_contract` FOREIGN KEY (`contract_id`) REFERENCES `store_service_contract` (`id`);

@@ -8,6 +8,7 @@ import {
   CreateStoreServicePlanDto,
   CreateStoreServiceSubscriptionDto,
   PayStoreServiceInvoiceDto,
+  CreateStoreServiceContractDto,
 } from '../dto/store-subscription.dto';
 
 @Injectable()
@@ -294,5 +295,104 @@ export class StoreServiceService {
     });
 
     return { success: true };
+  }
+
+  async listContracts(params: {
+    store_id?: string;
+    status?: number;
+    page?: number;
+    pageSize?: number;
+  }) {
+    const where: any = {};
+    if (params.store_id) {
+      where.store_id = params.store_id;
+    }
+    if (typeof params.status === 'number') {
+      where.status = params.status;
+    }
+
+    const page = params.page && params.page > 0 ? params.page : 1;
+    const pageSize =
+      params.pageSize && params.pageSize > 0 ? params.pageSize : 20;
+
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.store_service_contract.findMany({
+        where,
+        orderBy: { create_date: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.store_service_contract.count({ where }),
+    ]);
+
+    const storeIds = Array.from(new Set(rows.map((r) => r.store_id)));
+    const planIds = Array.from(new Set(rows.map((r) => r.plan_id)));
+    const [stores, plans] = await Promise.all([
+      storeIds.length
+        ? this.prisma.store.findMany({
+            where: { store_id: { in: storeIds } },
+            select: { store_id: true, store_name: true },
+          })
+        : Promise.resolve([]),
+      planIds.length
+        ? this.prisma.store_service_plan.findMany({
+            where: { id: { in: planIds } },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const storeMap = new Map(stores.map((s) => [s.store_id, s.store_name]));
+    const planMap = new Map(plans.map((p) => [p.id, p.name]));
+
+    const items = rows.map((c) => ({
+      ...c,
+      store_name: storeMap.get(c.store_id) || '',
+      plan_name: planMap.get(c.plan_id) || '',
+    }));
+
+    return { items, total, page, pageSize };
+  }
+
+  async createContract(payload: CreateStoreServiceContractDto) {
+    const store = await this.prisma.store.findUnique({
+      where: { store_id: payload.store_id },
+    });
+    if (!store) {
+      throw new NotFoundException('店铺不存在');
+    }
+
+    const plan = await this.prisma.store_service_plan.findUnique({
+      where: { id: payload.plan_id },
+    });
+    if (!plan) {
+      throw new NotFoundException('套餐不存在');
+    }
+
+    const start = new Date(payload.start_date);
+    const end = new Date(payload.end_date);
+    if (end <= start) {
+      throw new BadRequestException('合同结束日期必须大于开始日期');
+    }
+
+    const contractNo =
+      payload.contract_no && payload.contract_no.trim().length > 0
+        ? payload.contract_no.trim()
+        : `HT${Date.now()}`;
+
+    return this.prisma.store_service_contract.create({
+      data: {
+        contract_no: contractNo,
+        store_id: payload.store_id,
+        plan_id: payload.plan_id,
+        start_date: start,
+        end_date: end,
+        status: 1,
+        sign_type: payload.sign_type,
+        signed_at: payload.signed_at || null,
+        total_amount: payload.total_amount,
+        file_url: payload.file_url || null,
+      },
+    });
   }
 }
