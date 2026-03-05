@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Pagination } from '../../common/dto/pagination';
 import { OrderService } from '../../order/order.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { E_USER_ORDER_STAGE, E_USER_ORDER_STATUS } from '../../order/const';
 import { UserEntity } from '../../users/entities/user.entity';
+import { EUSER_AUTH_STATUS } from '../../auth/role-management/const';
 
 @Injectable()
 export class StoreOrderService {
@@ -252,6 +253,274 @@ export class StoreOrderService {
     );
 
     return { days, points };
+  }
+
+  // 管理员视角：按月查看有效订单（已完结且 active）的数量与金额趋势
+  // 为避免大表实时扫描，这里仅基于日报汇总表 report_store_daily_order 做统计，
+  // 并且使用数据库端按日聚合，减少传输和应用层计算压力
+  public async getMonthlyTrendForAllStores(
+    sessUserId: string,
+    month?: string,
+    storeId?: string,
+  ) {
+    // 校验是否后台管理者
+    const userAuth = await this.prisma.user_auth.findFirst({
+      where: { user_id: sessUserId, status: EUSER_AUTH_STATUS.active },
+    });
+
+    if (!userAuth || !userAuth.is_admin) {
+      throw new ForbiddenException('仅后台管理者可查看系统订单趋势');
+    }
+
+    // 解析月份：YYYY-MM，默认当前月
+    const now = new Date();
+    const defaultYear = now.getFullYear();
+    const defaultMonth = now.getMonth(); // 0-11
+
+    let year = defaultYear;
+    let monthIndex = defaultMonth;
+
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      const [y, m] = month.split('-').map((v) => Number(v));
+      if (!Number.isNaN(y) && !Number.isNaN(m) && m >= 1 && m <= 12) {
+        year = y;
+        monthIndex = m - 1;
+      }
+    }
+
+    const start = new Date(year, monthIndex, 1);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(year, monthIndex + 1, 1);
+    end.setHours(0, 0, 0, 0);
+
+    const monthStr = `${year}-${`${monthIndex + 1}`.padStart(2, '0')}`;
+
+    let grouped;
+    if (storeId) {
+      // 单店趋势：从 report_store_daily_order 表查询
+      grouped = await this.prisma.report_store_daily_order.groupBy({
+        by: ['record_date'],
+        where: {
+          store_id: storeId,
+          record_date: {
+            gte: start,
+            lt: end,
+          },
+        },
+        _sum: {
+          total_orders: true,
+          total_amount: true,
+        },
+        orderBy: {
+          record_date: 'asc',
+        },
+      });
+    } else {
+      // 全平台趋势：从 report_platform_daily_order 表查询
+      grouped = await this.prisma.report_platform_daily_order.groupBy({
+        by: ['record_date'],
+        where: {
+          record_date: {
+            gte: start,
+            lt: end,
+          },
+        },
+        _sum: {
+          total_orders: true,
+          total_amount: true,
+        },
+        orderBy: {
+          record_date: 'asc',
+        },
+      });
+    }
+
+    const daysMap = new Map<
+      string,
+      { date: string; totalOrders: number; totalAmount: number }
+    >();
+
+    // 初始化当前月的每一天，确保无订单的日期也返回 0
+    for (
+      let d = new Date(start.getTime());
+      d < end;
+      d.setDate(d.getDate() + 1)
+    ) {
+      const key = d.toISOString().slice(0, 10);
+      daysMap.set(key, { date: key, totalOrders: 0, totalAmount: 0 });
+    }
+
+    let totalOrders = 0;
+    let totalAmount = 0;
+
+    grouped.forEach((row) => {
+      if (!row.record_date) return;
+      const key = new Date(row.record_date).toISOString().slice(0, 10);
+      const existed = daysMap.get(key);
+      if (existed) {
+        const orders = Number(row._sum.total_orders) || 0;
+        const amount = Number(row._sum.total_amount) || 0;
+        existed.totalOrders += orders;
+        existed.totalAmount += amount;
+        totalOrders += orders;
+        totalAmount += amount;
+      }
+    });
+
+    const days = Array.from(daysMap.values()).sort((a, b) =>
+      a.date < b.date ? -1 : 1,
+    );
+
+    return {
+      month: monthStr,
+      startDate: start.toISOString().slice(0, 10),
+      endDate: end.toISOString().slice(0, 10),
+      totalOrders,
+      totalAmount,
+      days,
+    };
+  }
+
+  public async getDailyReport(sessUserId: string, recordDate?: string) {
+    // 获取当前用户的所有商铺
+    const stores = await this.prisma.store.findMany({
+      where: { user_id: sessUserId },
+    });
+
+    if (!stores.length) {
+      return {
+        date: recordDate || '',
+        totalStores: 0,
+        totalOrders: 0,
+        totalAmount: 0,
+        stores: [],
+      };
+    }
+
+    const storeIds = stores.map((s) => s.store_id);
+
+    // 解析报表日期（默认取昨天）
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const defaultStart = new Date(today);
+    defaultStart.setDate(defaultStart.getDate() - 1);
+
+    const start = recordDate ? new Date(recordDate) : defaultStart;
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    const dateStr = start.toISOString().slice(0, 10);
+
+    // 读取门店维度报表
+    const orderRows = await this.prisma.report_store_daily_order.findMany({
+      where: {
+        store_id: { in: storeIds },
+        record_date: {
+          gte: start,
+          lt: end,
+        },
+      },
+    });
+
+    if (!orderRows.length) {
+      return {
+        date: dateStr,
+        totalStores: 0,
+        totalOrders: 0,
+        totalAmount: 0,
+        stores: [],
+      };
+    }
+
+    // 读取商品维度报表
+    const goodsRows = await this.prisma.report_store_daily_goods.findMany({
+      where: {
+        store_id: { in: storeIds },
+        record_date: {
+          gte: start,
+          lt: end,
+        },
+      },
+    });
+
+    // 预加载商品版本信息（用于展示版本/规格）
+    const versionIds = Array.from(
+      new Set(goodsRows.map((g) => g.goods_version_id)),
+    );
+
+    const versions = versionIds.length
+      ? await this.prisma.store_goods_version.findMany({
+          where: { version_id: { in: versionIds } },
+          select: {
+            version_id: true,
+            unit_name: true,
+            version_number: true,
+            count: true,
+          },
+        })
+      : [];
+
+    const versionMap = new Map(versions.map((v) => [v.version_id, v]));
+
+    const storeMap = new Map(
+      stores.map((s) => [s.store_id, s.store_name] as [string, string]),
+    );
+
+    const goodsByStore = new Map<
+      string,
+      {
+        goods_id: string;
+        goods_version_id: string;
+        goods_name: string;
+        total_count: number;
+        total_amount: number;
+        unit_name?: string;
+        version_number?: string | null;
+        pack_count?: number;
+      }[]
+    >();
+
+    goodsRows.forEach((g) => {
+      const list = goodsByStore.get(g.store_id) || [];
+      const version = versionMap.get(g.goods_version_id);
+      list.push({
+        goods_id: g.goods_id,
+        goods_version_id: g.goods_version_id,
+        goods_name: g.goods_name,
+        total_count: g.total_count,
+        total_amount: g.total_amount,
+        unit_name: version?.unit_name,
+        version_number: version?.version_number ?? null,
+        pack_count: version?.count,
+      });
+      goodsByStore.set(g.store_id, list);
+    });
+
+    let totalOrders = 0;
+    let totalAmount = 0;
+
+    const storesResult = orderRows.map((row) => {
+      const goods = goodsByStore.get(row.store_id) || [];
+      totalOrders += row.total_orders;
+      totalAmount += row.total_amount;
+
+      return {
+        store_id: row.store_id,
+        store_name: storeMap.get(row.store_id) || row.store_id,
+        total_orders: row.total_orders,
+        total_amount: row.total_amount,
+        goods,
+      };
+    });
+
+    return {
+      date: dateStr,
+      totalStores: storesResult.length,
+      totalOrders,
+      totalAmount,
+      stores: storesResult,
+    };
   }
 
   public async getMetrics(sessUserId: string, days: number) {

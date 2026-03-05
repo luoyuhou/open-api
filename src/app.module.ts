@@ -28,6 +28,7 @@ import { ChatModule } from './chat/chat.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { StoreSubscriptionModule } from './store/store-subscription/store-subscription.module';
 import { StoreServiceBillingCronService } from './schedules/store-service-billing.cron';
+import { StoreOrderDailyReportCronService } from './schedules/store-order-daily-report.cron';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { StoreServiceBillingCronService } from './schedules/store-service-billin
     AppService,
     SchedulesService,
     StoreServiceBillingCronService,
+    StoreOrderDailyReportCronService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

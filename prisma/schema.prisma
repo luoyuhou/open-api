@@ -342,6 +342,47 @@ model report_daily_user_fetch {
   @@index([user_id], map: "fetch_daily_user_idx")
 }
 
+model report_store_daily_order {
+  id           Int       @id @default(autoincrement()) @db.UnsignedInt
+  store_id     String    @db.VarChar(64)
+  total_orders Int       @db.UnsignedInt
+  total_amount Int       @db.UnsignedInt
+  record_date  DateTime  @db.DateTime(0)
+  create_date  DateTime? @default(now()) @db.DateTime(0)
+  update_date  DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([record_date], map: "report_store_daily_order_date_idx")
+  @@index([store_id], map: "report_store_daily_order_store_idx")
+}
+
+model report_platform_daily_order {
+  id           Int       @id @default(autoincrement()) @db.UnsignedInt
+  total_orders Int       @db.UnsignedInt
+  total_amount Int       @db.UnsignedInt
+  record_date  DateTime  @db.DateTime(0)
+  create_date  DateTime? @default(now()) @db.DateTime(0)
+  update_date  DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([record_date], map: "report_platform_daily_order_date_idx")
+}
+
+model report_store_daily_goods {
+  id               Int       @id @default(autoincrement()) @db.UnsignedInt
+  store_id         String    @db.VarChar(64)
+  goods_id         String    @db.VarChar(64)
+  goods_version_id String    @db.VarChar(64)
+  goods_name       String    @db.VarChar(64)
+  total_count      Int       @db.UnsignedInt
+  total_amount     Int       @db.UnsignedInt
+  record_date      DateTime  @db.DateTime(0)
+  create_date      DateTime? @default(now()) @db.DateTime(0)
+  update_date      DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([record_date], map: "report_store_daily_goods_date_idx")
+  @@index([store_id, goods_id], map: "report_store_daily_goods_store_goods_idx")
+  @@index([store_id, goods_id, goods_version_id], map: "report_store_daily_goods_store_goods_version_idx")
+}
+
 model file {
   id          Int      @id @default(autoincrement())
   file_name   String?  @db.VarChar(128)

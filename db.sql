@@ -367,6 +367,47 @@ CREATE TABLE `report_daily_user_fetch` (
     INDEX `fetch_daily_record_date_idx` (`record_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+CREATE TABLE `report_store_daily_order` (
+    `id` int (10) unsigned NOT NULL AUTO_INCREMENT,
+    `store_id` varchar(64) NOT NULL,
+    `total_orders` int unsigned NOT NULL,
+    `total_amount` int unsigned NOT NULL,
+    `record_date` datetime NOT NULL,
+    `create_date` datetime default CURRENT_TIMESTAMP,
+    `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `report_store_daily_order_store_idx` (`store_id`) USING BTREE,
+    INDEX `report_store_daily_order_date_idx` (`record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `report_store_daily_goods` (
+    `id` int (10) unsigned NOT NULL AUTO_INCREMENT,
+    `store_id` varchar(64) NOT NULL,
+    `goods_id` varchar(64) NOT NULL,
+    `goods_version_id` varchar(64) NOT NULL,
+    `goods_name` varchar(64) NOT NULL,
+    `total_count` int unsigned NOT NULL,
+    `total_amount` int unsigned NOT NULL,
+    `record_date` datetime NOT NULL,
+    `create_date` datetime default CURRENT_TIMESTAMP,
+    `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `report_store_daily_goods_store_goods_idx` (`store_id`, `goods_id`) USING BTREE,
+    INDEX `report_store_daily_goods_store_goods_version_idx` (`store_id`, `goods_id`, `goods_version_id`) USING BTREE,
+    INDEX `report_store_daily_goods_date_idx` (`record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `report_platform_daily_order` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `total_orders` int(10) unsigned NOT NULL,
+  `total_amount` int(10) unsigned NOT NULL,
+  `record_date` datetime NOT NULL,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `report_platform_daily_order_date_idx` (`record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE `file` (
     `id` int (10) unsigned NOT NULL AUTO_INCREMENT,
     `file_name` varchar(128) NOT NULL,
