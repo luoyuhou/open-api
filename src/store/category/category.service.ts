@@ -105,10 +105,6 @@ export class CategoryService {
     });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} category`;
-  }
-
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
     const category = await this.prisma.category_goods.findUnique({
       where: { category_id: id, status: E_CATEGORY_STATUS_TYPE.active },

@@ -66,14 +66,16 @@ export class FeedbackService {
     });
 
     if (dto.attachments?.length) {
-      await this.prisma.user_feedback_attachment.createMany({
-        data: dto.attachments.map((att) => ({
-          feedback_id: feedback.id,
-          url: att.url,
-          type: this.mapAttachmentType(att.type),
-          description: att.description ?? null,
-        })),
-      });
+      dto.attachments.map((att) =>
+        this.prisma.user_feedback_attachment.create({
+          data: {
+            feedback_id: feedback.id,
+            url: att.url,
+            type: this.mapAttachmentType(att.type),
+            description: att.description ?? null,
+          },
+        }),
+      );
     }
 
     return feedback;
@@ -209,7 +211,7 @@ export class FeedbackService {
       }
     }
 
-    const comment = await this.prisma.user_feedback_comment.create({
+    return this.prisma.user_feedback_comment.create({
       data: {
         feedback_id: feedbackId,
         user_id: user.user_id,
@@ -217,7 +219,5 @@ export class FeedbackService {
         parent_id: dto.parent_id ?? null,
       },
     });
-
-    return comment;
   }
 }

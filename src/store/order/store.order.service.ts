@@ -23,6 +23,9 @@ export class StoreOrderService {
     }
 
     const storeIds = stores.map((s) => s.store_id);
+    if (!pagination.filtered) {
+      pagination.filtered = [];
+    }
     pagination.filtered.push({ id: 'store_id', value: storeIds });
     const { rows, pages, data } = await this.orderService.findAll(pagination);
 

@@ -1,7 +1,13 @@
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { CategoryGoods } from '../entities/category.entity';
+import { PickType } from '@nestjs/mapped-types';
 
-export class CreateCategoryDto {
+export class CreateCategoryDto extends PickType(CategoryGoods, [
+  'store_id',
+  'name',
+  'pid',
+]) {
   @IsString()
   @IsNotEmpty()
   @ApiProperty()

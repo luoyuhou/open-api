@@ -300,7 +300,7 @@ model report_daily_user_fetch {
 
 model home_banner {
   id          Int       @id @default(autoincrement())
-  banner_id   String    @unique(map: "banner_id")
+  banner_id   String    @unique
   title       String
   description String?
   image_url   String
@@ -403,3 +403,126 @@ model user_feedback_comment {
   update_date DateTime? @default(now())
 }
 
+model report_store_daily_order {
+  id           Int       @id @default(autoincrement())
+  store_id     String
+  total_orders Int
+  total_amount Int
+  record_date  DateTime
+  create_date  DateTime? @default(now())
+  update_date  DateTime? @default(now())
+
+  @@index([record_date])
+  @@index([store_id])
+}
+
+model report_platform_daily_order {
+  id           Int       @id @default(autoincrement())
+  total_orders Int
+  total_amount Int
+  record_date  DateTime
+  create_date  DateTime? @default(now())
+  update_date  DateTime? @default(now())
+
+  @@index([record_date])
+}
+
+model report_store_daily_goods {
+  id               Int       @id @default(autoincrement())
+  store_id         String
+  goods_id         String
+  goods_version_id String
+  goods_name       String
+  total_count      Int
+  total_amount     Int
+  record_date      DateTime
+  create_date      DateTime? @default(now())
+  update_date      DateTime? @default(now())
+
+  @@index([record_date])
+  @@index([store_id, goods_id])
+  @@index([store_id, goods_id, goods_version_id])
+}
+
+model store_service_plan {
+  id                         Int                          @id @default(autoincrement())
+  name                       String
+  description                String?
+  monthly_fee                Int
+  is_active                  Boolean                      @default(true)
+  create_date                DateTime                     @default(now())
+  update_date                DateTime                     @default(now())
+  store_service_contract     store_service_contract[]
+  store_service_subscription store_service_subscription[]
+}
+
+model store_service_subscription {
+  id          Int                     @id @default(autoincrement())
+  store_id    String
+  plan_id     Int
+  start_date  DateTime
+  end_date    DateTime
+  status      Int                     @default(1)
+  create_date DateTime                @default(now())
+  update_date DateTime                @default(now())
+  contract_id Int?
+  invoice     store_service_invoice[]
+  contract    store_service_contract? @relation(fields: [contract_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  plan        store_service_plan      @relation(fields: [plan_id], references: [id], onUpdate: Restrict)
+  
+  @@index([store_id])
+  @@index([plan_id])
+  @@index([contract_id])
+}
+
+model store_service_invoice {
+  id              Int                        @id @default(autoincrement())
+  subscription_id Int
+  month           String
+  start_date      DateTime
+  end_date        DateTime
+  amount          Int
+  status          Int                        @default(0)
+  due_date        DateTime
+  paid_at         DateTime?
+  create_date     DateTime                   @default(now())
+  update_date     DateTime                   @default(now())
+  subscription    store_service_subscription @relation(fields: [subscription_id], references: [id], onUpdate: Restrict)
+  payment         store_service_payment[]
+  
+  @@index([subscription_id, month])
+}
+
+model store_service_payment {
+  id          Int                   @id @default(autoincrement())
+  invoice_id  Int
+  amount      Int
+  method      String
+  remark      String?
+  paid_at     DateTime              @default(now())
+  create_date DateTime              @default(now())
+  invoice     store_service_invoice @relation(fields: [invoice_id], references: [id], onUpdate: Restrict)
+  
+  @@index([invoice_id])
+}
+
+model store_service_contract {
+  id                 Int                          @id @default(autoincrement())
+  contract_no        String                       @unique
+  store_id           String
+  plan_id            Int
+  start_date         DateTime
+  end_date           DateTime
+  status             Int                          @default(1)
+  sign_type          Int
+  signed_at          DateTime?
+  total_amount       Int
+  file_url           String?
+  create_date        DateTime                     @default(now())
+  update_date        DateTime                     @default(now())
+  store_service_plan store_service_plan           @relation(fields: [plan_id], references: [id], onUpdate: Restrict)
+  subscription       store_service_subscription[]
+  
+  @@index([store_id])
+  @@index([plan_id])
+}

@@ -44,11 +44,6 @@ export class CategoryController {
     return this.categoryService.findAll({ store_id: id, pid });
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.categoryService.findOne(+id);
-  }
-
   @Get(':id/tree')
   async categoryTree(@Param('id') id: string) {
     const data = await this.categoryService.categoryTree(id);

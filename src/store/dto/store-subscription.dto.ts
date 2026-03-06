@@ -11,7 +11,6 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { Optional } from '@nestjs/common';
 
 export class CreateStoreServicePlanDto {
   @IsString()

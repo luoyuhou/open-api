@@ -7,24 +7,11 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiProperty, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
-import { IsArray, ArrayNotEmpty, IsString, IsNotEmpty } from 'class-validator';
-
-class CreateChatGroupDto {
-  @ApiProperty({ description: '群聊名称' })
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @ApiProperty({ type: [String], description: '群成员 user_id 列表' })
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsString({ each: true })
-  memberIds: string[];
-}
+import { CreateChatGroupDto } from './dto/create-chat-group.dto';
 
 @UseGuards(SessionAuthGuard)
 @Controller('chat')
