@@ -23,10 +23,6 @@ class Env {
     return Number(env.REDIS_DB!);
   }
 
-  static get REDIS_USERNAME() {
-    return env.REDIS_USERNAME || '';
-  }
-
   static get REDIS_PASSWORD() {
     return env.REDIS_PASSWORD || '';
   }
