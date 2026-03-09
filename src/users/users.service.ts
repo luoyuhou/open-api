@@ -134,7 +134,7 @@ export class UsersService {
   }
 
   async reactive(user_id: string) {
-    return this.prisma.user.update({ where: { user_id }, data: { status: 0 } });
+    return this.prisma.user.update({ where: { user_id }, data: { status: 1 } });
   }
 
   async resetPassword(

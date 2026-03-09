@@ -6,6 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { RoleManagementService } from './role-management/role-management.service';
 import { UsersService } from '../users/users.service';
 import { CacheService } from '../common/cache-manager/cache.service';
+import { SmsService } from '../common/sms/sms.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -19,6 +20,12 @@ describe('AuthService', () => {
         PrismaService,
         JwtService,
         RoleManagementService,
+        {
+          provide: SmsService,
+          useValue: {
+            sendVerificationCode: jest.fn().mockResolvedValue(true),
+          },
+        },
       ],
     }).compile();
 
@@ -33,6 +40,7 @@ describe('AuthService', () => {
       first_name: password.slice(0, 5),
       last_name: password.slice(5, 10),
       phone: password,
+      code: password.slice(-6),
       password,
     };
 

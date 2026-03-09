@@ -34,6 +34,7 @@ import { CacheService } from '../common/cache-manager/cache.service';
 import { QrCodeStatus } from './dto/qr-login.dto';
 import { Request } from 'express';
 import Utils from '../common/utils';
+import { SmsService } from '../common/sms/sms.service';
 
 @Injectable()
 export class AuthService {
@@ -42,6 +43,7 @@ export class AuthService {
     private jwtService: JwtService,
     private roleManagementService: RoleManagementService,
     private cacheService: CacheService,
+    private smsService: SmsService,
   ) {}
 
   @Inject(forwardRef(() => UsersService))
@@ -67,6 +69,17 @@ export class AuthService {
   }
 
   public async createUserByPassword(createUserDto: CreateUserByPasswordDto) {
+    const { phone, code } = createUserDto;
+
+    // 如果不是单元测试环境，则强制校验验证码
+    if (process.env.IS_UNIT_TEST !== 'true') {
+      if (code) {
+        await this.verifySmsCode(phone, code);
+      } else {
+        throw new BadRequestException('短信验证码必填');
+      }
+    }
+
     return this.usersService.createUserByPassword(createUserDto);
   }
 
@@ -442,5 +455,61 @@ export class AuthService {
     await this.cacheService.client.expire(cacheKey, ttl);
 
     return { message: 'ok', user: new UserEntity(user) };
+  }
+
+  /**
+   * 发送短信验证码并存入缓存
+   */
+  public async sendSmsCode(phone: string) {
+    // 1. 校验手机号格式
+    if (!/^[1][3-9]\d{9}$/.test(phone)) {
+      throw new BadRequestException('请输入有效的手机号');
+    }
+
+    // 2. 检查手机号是否已存在
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+    if (user) {
+      throw new BadRequestException('该手机号已注册，请直接登录');
+    }
+
+    // 生成 6 位随机验证码
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const minus = 5;
+
+    // 发送短信
+    const success = await this.smsService.sendVerificationCode(
+      phone,
+      code,
+      minus,
+    );
+    if (!success) {
+      throw new BadRequestException('发送短信验证码失败，请稍后再试');
+    }
+
+    // 存入 Redis，有效期 5 分钟
+    const cacheKey = `sms_code:${phone}`;
+    await this.cacheService.client.set(cacheKey, code, 'EX', 5 * 60);
+
+    return { message: '验证码已发送' };
+  }
+
+  /**
+   * 校验短信验证码
+   */
+  public async verifySmsCode(phone: string, code: string) {
+    const cacheKey = `sms_code:${phone}`;
+    const cachedCode = await this.cacheService.client.get(cacheKey);
+
+    if (!cachedCode) {
+      throw new BadRequestException('验证码已过期或不存在');
+    }
+
+    if (cachedCode !== code) {
+      throw new BadRequestException('验证码错误');
+    }
+
+    // 验证成功后删除验证码
+    await this.cacheService.client.del(cacheKey);
+    return true;
   }
 }

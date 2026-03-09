@@ -43,6 +43,7 @@ import {
   QrCodeStatusResponse,
   ScanQrCodeDto,
 } from './dto/qr-login.dto';
+import { SendSmsDto } from './dto/sms.dto';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -289,5 +290,11 @@ export class AuthController {
     );
 
     return { message: 'ok', data: result };
+  }
+
+  @Post('send-sms')
+  @HttpCode(HttpStatus.OK)
+  async sendSms(@Body() sendSmsDto: SendSmsDto) {
+    return this.authService.sendSmsCode(sendSmsDto.phone);
   }
 }

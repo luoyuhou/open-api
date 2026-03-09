@@ -19,6 +19,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { SchedulesService } from './schedules/schedules.service';
 import { UsersFetchModule } from './users/users-fetch/users-fetch.module';
 import { CacheModule } from './common/cache-manager/cache.module';
+import { SmsModule } from './common/sms/sms.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { FileModule } from './file/file.module';
@@ -51,6 +52,7 @@ import { StoreOrderDailyReportCronService } from './schedules/store-order-daily-
     ]),
     PrismaModule,
     CacheModule,
+    SmsModule,
     TerminusModule,
     UsersModule,
     AuthModule,
