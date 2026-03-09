@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Post,
   UploadedFile,
@@ -18,7 +19,19 @@ export class FileController {
   constructor(private readonly fileService: FileService) {}
 
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      },
+      fileFilter: (_req, file, cb) => {
+        if (!file.mimetype?.startsWith('image/')) {
+          return cb(new BadRequestException('仅支持上传图片文件'), false);
+        }
+        cb(null, true);
+      },
+    }),
+  )
   async upload(@UploadedFile() file: Express.Multer.File) {
     const { hash, url } = await this.fileService.uploadFile(
       file.buffer,

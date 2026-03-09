@@ -280,7 +280,7 @@ export class StoreService {
   public async searchMany({ type, value }: SearchStoreDto) {
     if (type === 'name') {
       return this.prisma.store.findMany({
-        where: { store_name: `%${value}%` },
+        where: { store_name: { contains: value } },
       });
     }
 

@@ -367,6 +367,47 @@ CREATE TABLE `report_daily_user_fetch` (
     INDEX `fetch_daily_record_date_idx` (`record_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+CREATE TABLE `report_store_daily_order` (
+    `id` int (10) unsigned NOT NULL AUTO_INCREMENT,
+    `store_id` varchar(64) NOT NULL,
+    `total_orders` int unsigned NOT NULL,
+    `total_amount` int unsigned NOT NULL,
+    `record_date` datetime NOT NULL,
+    `create_date` datetime default CURRENT_TIMESTAMP,
+    `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `report_store_daily_order_store_idx` (`store_id`) USING BTREE,
+    INDEX `report_store_daily_order_date_idx` (`record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `report_store_daily_goods` (
+    `id` int (10) unsigned NOT NULL AUTO_INCREMENT,
+    `store_id` varchar(64) NOT NULL,
+    `goods_id` varchar(64) NOT NULL,
+    `goods_version_id` varchar(64) NOT NULL,
+    `goods_name` varchar(64) NOT NULL,
+    `total_count` int unsigned NOT NULL,
+    `total_amount` int unsigned NOT NULL,
+    `record_date` datetime NOT NULL,
+    `create_date` datetime default CURRENT_TIMESTAMP,
+    `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `report_store_daily_goods_store_goods_idx` (`store_id`, `goods_id`) USING BTREE,
+    INDEX `report_store_daily_goods_store_goods_version_idx` (`store_id`, `goods_id`, `goods_version_id`) USING BTREE,
+    INDEX `report_store_daily_goods_date_idx` (`record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `report_platform_daily_order` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `total_orders` int(10) unsigned NOT NULL,
+  `total_amount` int(10) unsigned NOT NULL,
+  `record_date` datetime NOT NULL,
+  `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `report_platform_daily_order_date_idx` (`record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE `file` (
     `id` int (10) unsigned NOT NULL AUTO_INCREMENT,
     `file_name` varchar(128) NOT NULL,
@@ -491,3 +532,130 @@ CREATE TABLE `user_store_browse_history` (
   KEY `user_store_browse_user_idx` (`user_id`),
   KEY `user_store_browse_visit_idx` (`visit_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 用户反馈主表
+CREATE TABLE `user_feedback` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` VARCHAR(64) NOT NULL,
+  `title` VARCHAR(128) NOT NULL,
+  `content` TEXT NOT NULL,
+  `category` VARCHAR(64) DEFAULT NULL,
+  `status` TINYINT NOT NULL DEFAULT 0,
+  `create_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_feedback_status_created_at` (`status`, `create_date`),
+  KEY `idx_user_feedback_user_created_at` (`user_id`, `create_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 用户反馈附件表
+CREATE TABLE `user_feedback_attachment` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `feedback_id` INT UNSIGNED NOT NULL,
+  `url` VARCHAR(512) NOT NULL,
+  `type` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  `description` VARCHAR(256) DEFAULT NULL,
+  `create_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_feedback_attachment_feedback_id` (`feedback_id`),
+  CONSTRAINT `fk_user_feedback_attachment_feedback`
+    FOREIGN KEY (`feedback_id`) REFERENCES `user_feedback` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 用户反馈评论表
+CREATE TABLE `user_feedback_comment` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `feedback_id` INT UNSIGNED NOT NULL,
+  `user_id` VARCHAR(64) NOT NULL,
+  `content` VARCHAR(1024) NOT NULL,
+  `parent_id` INT UNSIGNED DEFAULT NULL,
+  `create_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_feedback_comment_feedback_id` (`feedback_id`),
+  KEY `idx_user_feedback_comment_user_created_at` (`user_id`, `create_date`),
+  CONSTRAINT `fk_user_feedback_comment_feedback`
+    FOREIGN KEY (`feedback_id`) REFERENCES `user_feedback` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `store_service_plan` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(128) NOT NULL,
+  `description` text NULL,
+  `monthly_fee` SMALLINT unsigned NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `create_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `store_service_subscription` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `store_id` varchar(64) NOT NULL,
+  `plan_id` int unsigned NOT NULL,
+  `start_date` datetime(0) NOT NULL,
+  `end_date` datetime(0) NOT NULL,
+  `status` tinyint NOT NULL DEFAULT 1,
+  `create_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_store_service_subscription_store_id` (`store_id`),
+  KEY `idx_store_service_subscription_plan_id` (`plan_id`),
+  CONSTRAINT `fk_store_service_subscription_plan` FOREIGN KEY (`plan_id`) REFERENCES `store_service_plan` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `store_service_invoice` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `subscription_id` int unsigned NOT NULL,
+  `month` varchar(7) NOT NULL,
+  `start_date` datetime(0) NOT NULL,
+  `end_date` datetime(0) NOT NULL,
+  `amount` SMALLINT unsigned NOT NULL,
+  `status` tinyint NOT NULL DEFAULT 0,
+  `due_date` datetime(0) NOT NULL,
+  `paid_at` datetime(0) NULL,
+  `create_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_store_service_invoice_subscription_month` (`subscription_id`,`month`),
+  CONSTRAINT `fk_store_service_invoice_subscription` FOREIGN KEY (`subscription_id`) REFERENCES `store_service_subscription` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `store_service_payment` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `invoice_id` int unsigned NOT NULL,
+  `amount` SMALLINT unsigned NOT NULL,
+  `method` varchar(64) NOT NULL,
+  `remark` varchar(256) NULL,
+  `paid_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `create_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_store_service_payment_invoice_id` (`invoice_id`),
+  CONSTRAINT `fk_store_service_payment_invoice` FOREIGN KEY (`invoice_id`) REFERENCES `store_service_invoice` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `store_service_contract` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `contract_no` varchar(64) NOT NULL,
+  `store_id` varchar(64) NOT NULL,
+  `plan_id` int unsigned NOT NULL,
+  `start_date` datetime(0) NOT NULL,
+  `end_date` datetime(0) NOT NULL,
+  `status` tinyint NOT NULL DEFAULT 1,
+  `sign_type` tinyint unsigned NOT NULL,
+  `signed_at` datetime(0) DEFAULT NULL,
+  `total_amount` int unsigned NOT NULL,
+  `file_url` varchar(256) DEFAULT NULL,
+  `create_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_date` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_store_service_contract_no` (`contract_no`),
+  KEY `idx_store_service_contract_store_id` (`store_id`),
+  KEY `idx_store_service_contract_plan_id` (`plan_id`),
+  CONSTRAINT `fk_store_service_contract_plan` FOREIGN KEY (`plan_id`) REFERENCES `store_service_plan` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `store_service_subscription`
+  ADD COLUMN `contract_id` int unsigned DEFAULT NULL,
+  ADD KEY `idx_store_service_subscription_contract_id` (`contract_id`),
+  ADD CONSTRAINT `fk_store_service_subscription_contract` FOREIGN KEY (`contract_id`) REFERENCES `store_service_contract` (`id`);

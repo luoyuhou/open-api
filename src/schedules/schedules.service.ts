@@ -18,7 +18,7 @@ export class SchedulesService {
     customLogger.log({ message: '执行定时任务' });
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  @Cron(CronExpression.EVERY_DAY_AT_3AM)
   reportUserDailyFetch() {
     this.usersFetchService.dailyUsersFetch();
   }

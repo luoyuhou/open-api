@@ -81,4 +81,31 @@ export class StoreOrderController {
     const user = req.user as UserEntity;
     return this.storeOrderService.getMetrics(user.user_id, body?.days ?? 30);
   }
+
+  @Post('daily-report')
+  @ApiOperation({ summary: '商家每日订单与商品消耗报表（前一天聚合结果）' })
+  async dailyReport(
+    @Req() req: Request,
+    @Body() body: { recordDate?: string },
+  ) {
+    const user = req.user as UserEntity;
+    return this.storeOrderService.getDailyReport(
+      user.user_id,
+      body?.recordDate,
+    );
+  }
+
+  @Post('admin/monthly-trend')
+  @ApiOperation({ summary: '后台：按月查看有效订单数量与金额趋势' })
+  async adminMonthlyTrend(
+    @Req() req: Request,
+    @Body() body: { month?: string; store_id?: string },
+  ) {
+    const user = req.user as UserEntity;
+    return this.storeOrderService.getMonthlyTrendForAllStores(
+      user.user_id,
+      body?.month,
+      body?.store_id,
+    );
+  }
 }
