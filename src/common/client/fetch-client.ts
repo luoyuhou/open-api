@@ -9,10 +9,7 @@ class FetchClient {
     return response.data;
   }
 
-  public async post<T>(
-    url: string,
-    payload: Record<string, never>,
-  ): Promise<T> {
+  public async post<T>(url: string, payload: Record<string, any>): Promise<T> {
     const responses = await this.instance.post(url, payload);
     return responses.data;
   }

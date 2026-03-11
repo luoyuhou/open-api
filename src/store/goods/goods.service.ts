@@ -49,7 +49,7 @@ export class GoodsService {
     };
     if (sorted.length) {
       searchPayload['orderBy'] = {
-        [sorted[0].id]: sorted[0].desc ? 'desc' : 'acs',
+        [sorted[0].id]: sorted[0].desc ? 'desc' : 'asc',
       };
     }
     const data = await this.prisma.store_goods.findMany(searchPayload);

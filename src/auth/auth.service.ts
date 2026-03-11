@@ -34,6 +34,7 @@ import { CacheService } from '../common/cache-manager/cache.service';
 import { QrCodeStatus } from './dto/qr-login.dto';
 import { Request } from 'express';
 import Utils from '../common/utils';
+import { SmsService } from '../common/sms/sms.service';
 
 @Injectable()
 export class AuthService {
@@ -42,6 +43,7 @@ export class AuthService {
     private jwtService: JwtService,
     private roleManagementService: RoleManagementService,
     private cacheService: CacheService,
+    private smsService: SmsService,
   ) {}
 
   @Inject(forwardRef(() => UsersService))
@@ -67,6 +69,17 @@ export class AuthService {
   }
 
   public async createUserByPassword(createUserDto: CreateUserByPasswordDto) {
+    const { phone, code } = createUserDto;
+
+    // 如果不是单元测试环境，则强制校验验证码
+    if (process.env.IS_UNIT_TEST !== 'true') {
+      if (code) {
+        await this.verifySmsCode(phone, code);
+      } else {
+        throw new BadRequestException('短信验证码必填');
+      }
+    }
+
     return this.usersService.createUserByPassword(createUserDto);
   }
 
@@ -442,5 +455,133 @@ export class AuthService {
     await this.cacheService.client.expire(cacheKey, ttl);
 
     return { message: 'ok', user: new UserEntity(user) };
+  }
+
+  /**
+   * 生成发送短信的临时 Token
+   */
+  public async generateSmsToken(phone: string) {
+    // 1. 校验手机号格式
+    if (!/^[1][3-9]\d{9}$/.test(phone)) {
+      throw new BadRequestException('请输入有效的手机号');
+    }
+
+    // 2. 检查手机号是否已存在
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+    if (user) {
+      throw new BadRequestException('该手机号已注册，请直接登录');
+    }
+
+    const token = v4();
+    const cacheKey = `sms_token:${phone}:${token}`;
+
+    // Token 有效期 2 分钟，仅限一次使用
+    await this.cacheService.client.set(cacheKey, '1', 'EX', 120);
+
+    return { token };
+  }
+
+  /**
+   * 发送短信验证码并存入缓存
+   */
+  public async sendSmsCode(phone: string, token: string, ip?: string) {
+    // 1. 验证 Token 是否合法
+    const tokenKey = `sms_token:${phone}:${token}`;
+    const isValid = await this.cacheService.client.get(tokenKey);
+    if (!isValid) {
+      throw new BadRequestException('滑块校验失败或已过期，请重试');
+    }
+    // 立即消耗 Token
+    await this.cacheService.client.del(tokenKey);
+
+    // 2. 校验手机号格式
+    if (!/^[1][3-9]\d{9}$/.test(phone)) {
+      throw new BadRequestException('请输入有效的手机号');
+    }
+
+    // 2. 检查手机号是否已存在
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+    if (user) {
+      throw new BadRequestException('该手机号已注册，请直接登录');
+    }
+
+    // --- 安全防护逻辑开始 ---
+    const cooldownKey = `sms_cooldown:${phone}`;
+    const dailyLimitKey = `sms_daily_limit:${phone}`;
+    const ipLimitKey = `sms_ip_limit:${ip}`;
+
+    // A. 60秒冷却时间检查
+    const inCooldown = await this.cacheService.client.get(cooldownKey);
+    if (inCooldown) {
+      throw new BadRequestException('请求过于频繁，请在 60 秒后重试');
+    }
+
+    // B. 每日手机号发送限额 (例如每天最多 5 次)
+    const dailyCount = await this.cacheService.client.get(dailyLimitKey);
+    if (dailyCount && parseInt(dailyCount) >= 5) {
+      throw new BadRequestException('该手机号今日发送验证码次数已达上限');
+    }
+
+    // C. 每日 IP 发送限额 (例如每个 IP 每天最多 20 次)
+    if (ip) {
+      const ipCount = await this.cacheService.client.get(ipLimitKey);
+      if (ipCount && parseInt(ipCount) >= 20) {
+        throw new BadRequestException('您的网络环境今日请求次数已达上限');
+      }
+    }
+    // --- 安全防护逻辑结束 ---
+
+    // 生成 6 位随机验证码
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const minus = 5;
+
+    // 发送短信
+    const success = await this.smsService.sendVerificationCode(
+      phone,
+      code,
+      minus,
+    );
+    if (!success) {
+      throw new BadRequestException('发送短信验证码失败，请稍后再试');
+    }
+
+    // 存入 Redis
+    const cacheKey = `sms_code:${phone}`;
+    const pipeline = this.cacheService.client.pipeline();
+
+    // 验证码有效期 5 分钟
+    pipeline.set(cacheKey, code, 'EX', 5 * 60);
+    // 设置 60 秒冷却标记
+    pipeline.set(cooldownKey, '1', 'EX', 60);
+    // 增加每日计数
+    pipeline.incr(dailyLimitKey);
+    pipeline.expire(dailyLimitKey, 24 * 60 * 60);
+    if (ip) {
+      pipeline.incr(ipLimitKey);
+      pipeline.expire(ipLimitKey, 24 * 60 * 60);
+    }
+    await pipeline.exec();
+
+    return { message: '验证码已发送' };
+  }
+
+  /**
+   * 校验短信验证码
+   */
+  public async verifySmsCode(phone: string, code: string) {
+    const cacheKey = `sms_code:${phone}`;
+    const cachedCode = await this.cacheService.client.get(cacheKey);
+
+    if (!cachedCode) {
+      throw new BadRequestException('验证码已过期或不存在');
+    }
+
+    if (cachedCode !== code) {
+      throw new BadRequestException('验证码错误');
+    }
+
+    // 验证成功后删除验证码
+    await this.cacheService.client.del(cacheKey);
+    return true;
   }
 }

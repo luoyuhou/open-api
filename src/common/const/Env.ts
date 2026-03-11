@@ -92,6 +92,10 @@ class Env {
   static get Q_DOMAIN(): string {
     return env.Q_DOMAIN!;
   }
+
+  static get SPUG_SMS_URL(): string {
+    return env.SPUG_SMS_URL!;
+  }
 }
 
 export default Env;

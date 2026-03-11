@@ -11,6 +11,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
   UseInterceptors,
@@ -43,6 +44,7 @@ import {
   QrCodeStatusResponse,
   ScanQrCodeDto,
 } from './dto/qr-login.dto';
+import { SendSmsDto } from './dto/sms.dto';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -289,5 +291,18 @@ export class AuthController {
     );
 
     return { message: 'ok', data: result };
+  }
+
+  @Get('sms-token')
+  @HttpCode(HttpStatus.OK)
+  async getSmsToken(@Req() req: Request, @Query('phone') phone: string) {
+    return this.authService.generateSmsToken(phone);
+  }
+
+  @Post('send-sms')
+  @HttpCode(HttpStatus.OK)
+  async sendSms(@Req() req: Request, @Body() sendSmsDto: SendSmsDto) {
+    const ip = (req.headers['x-forwarded-for'] as string) || req.ip;
+    return this.authService.sendSmsCode(sendSmsDto.phone, sendSmsDto.token, ip);
   }
 }

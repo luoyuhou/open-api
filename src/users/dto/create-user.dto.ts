@@ -83,4 +83,9 @@ export class CreateUserByPasswordDto extends PickType(CreateUserDto, [
   @IsStrongPassword()
   @ApiProperty()
   password: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty()
+  code?: string;
 }
