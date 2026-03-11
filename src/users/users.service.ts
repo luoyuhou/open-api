@@ -13,6 +13,7 @@ import { WxUserInfo } from '../auth/dto/login.dto';
 import { Pagination } from '../common/dto/pagination';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { UserEntity } from './entities/user.entity';
+import * as moment from 'moment';
 
 @Injectable()
 export class UsersService {
@@ -147,6 +148,71 @@ export class UsersService {
       where: { user_id },
       data: data,
     });
+  }
+
+  /**
+   * 获取用户留存率统计
+   * 计算过去 30 天内，每日新注册用户在第 1, 3, 7 天的留存率
+   */
+  async getRetentionRate() {
+    const days = 30;
+    const retentionDays = [1, 3, 7];
+    const results = [];
+
+    for (let i = days; i >= 0; i--) {
+      const date = moment().subtract(i, 'days').startOf('day');
+      const nextDay = moment(date).add(1, 'days');
+
+      // 1. 获取该日期注册的用户
+      const cohortUsers = await this.prisma.user.findMany({
+        where: {
+          create_date: {
+            gte: date.toDate(),
+            lt: nextDay.toDate(),
+          },
+        },
+        select: { user_id: true },
+      });
+
+      const cohortSize = cohortUsers.length;
+      const cohortUserIds = cohortUsers.map((u) => u.user_id);
+
+      const retentionData: any = {
+        date: date.format('MM-DD'), // 缩短日期格式，方便前端展示
+        newUsers: cohortSize,
+      };
+
+      if (cohortSize > 0) {
+        for (const n of retentionDays) {
+          const targetDate = moment(date).add(n, 'days').startOf('day');
+          const targetNextDay = moment(targetDate).add(1, 'days');
+
+          // 检查留存：在该目标日期有登录记录的用户数
+          const activeCount = await this.prisma.user_signin_history.groupBy({
+            by: ['user_id'],
+            where: {
+              user_id: { in: cohortUserIds },
+              create_date: {
+                gte: targetDate.toDate(),
+                lt: targetNextDay.toDate(),
+              },
+            },
+          });
+
+          const count = activeCount.length;
+          retentionData[`day${n}`] =
+            Math.round((count / cohortSize) * 10000) / 100; // 保留两位小数
+        }
+      } else {
+        retentionDays.forEach((n) => {
+          retentionData[`day${n}`] = 0;
+        });
+      }
+
+      results.push(retentionData);
+    }
+
+    return results;
   }
 
   public async createByWechat(wxUserInfo: WxUserInfo, openid: string) {

@@ -11,6 +11,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
   UseInterceptors,
@@ -292,9 +293,16 @@ export class AuthController {
     return { message: 'ok', data: result };
   }
 
+  @Get('sms-token')
+  @HttpCode(HttpStatus.OK)
+  async getSmsToken(@Req() req: Request, @Query('phone') phone: string) {
+    return this.authService.generateSmsToken(phone);
+  }
+
   @Post('send-sms')
   @HttpCode(HttpStatus.OK)
-  async sendSms(@Body() sendSmsDto: SendSmsDto) {
-    return this.authService.sendSmsCode(sendSmsDto.phone);
+  async sendSms(@Req() req: Request, @Body() sendSmsDto: SendSmsDto) {
+    const ip = (req.headers['x-forwarded-for'] as string) || req.ip;
+    return this.authService.sendSmsCode(sendSmsDto.phone, sendSmsDto.token, ip);
   }
 }

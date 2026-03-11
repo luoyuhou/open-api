@@ -41,6 +41,12 @@ export class UsersController {
     return new UserEntity(await this.usersService.findOne(id));
   }
 
+  @Get('stats/retention-rate')
+  @ApiOkResponse({ description: '获取用户留存率统计' })
+  async getRetentionRate() {
+    return this.usersService.getRetentionRate();
+  }
+
   @Post('pagination')
   @ApiProperty()
   async usersPagination(@Body() pagination: Pagination) {

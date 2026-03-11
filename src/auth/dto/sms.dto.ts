@@ -5,6 +5,10 @@ export class SendSmsDto {
   @ApiProperty({ example: '13800138000' })
   @IsPhoneNumber('CN')
   phone: string;
+
+  @ApiProperty({ example: '123abc' })
+  @IsString()
+  token: string;
 }
 
 export class RegisterWithSmsDto {
