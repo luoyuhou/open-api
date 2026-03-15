@@ -7,8 +7,11 @@ import {
   Param,
   Delete,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { GoodsService } from './goods.service';
 import { CreateGoodDto } from './dto/create-good.dto';
 import { UpdateGoodDto } from './dto/update-good.dto';
@@ -27,8 +30,14 @@ export class GoodsController {
   constructor(private readonly goodsService: GoodsService) {}
 
   @Post()
-  async create(@Body() createGoodDto: CreateGoodDto & CreateGoodsVersionDto) {
-    return this.goodsService.create(createGoodDto);
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async create(
+    @Body() createGoodDto: CreateGoodDto & CreateGoodsVersionDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.goodsService.create(createGoodDto, file);
   }
 
   @Post('pagination')
@@ -46,11 +55,19 @@ export class GoodsController {
 
   @Post('version/:goodsId')
   @ApiProperty()
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
   async upsertGoodsVersion(
     @Param('goodsId') goodsId: string,
     @Body() upsertGoodsVersionDto: UpsertGoodsVersionDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.goodsService.upsertGoodsVersion(goodsId, upsertGoodsVersionDto);
+    return this.goodsService.upsertGoodsVersion(
+      goodsId,
+      upsertGoodsVersionDto,
+      file,
+    );
   }
 
   @Get('category/:id')

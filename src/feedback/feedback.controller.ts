@@ -8,8 +8,11 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
 import { ApiProperty, ApiTags } from '@nestjs/swagger';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { FeedbackService } from './feedback.service';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
@@ -26,9 +29,14 @@ export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
   @Post()
-  async create(@Req() req: Request, @Body() dto: CreateFeedbackDto) {
+  @UseInterceptors(FilesInterceptor('files'))
+  async create(
+    @Req() req: Request,
+    @Body() dto: CreateFeedbackDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
     const user = req.user as UserEntity;
-    const data = await this.feedbackService.create(user, dto);
+    const data = await this.feedbackService.create(user, dto, files);
     return { message: 'ok', data };
   }
 

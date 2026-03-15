@@ -6,8 +6,11 @@ import {
   Patch,
   Post,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { ApiProperty, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { Pagination } from '../common/dto/pagination';
 import { HomeBannerService } from './home-banner.service';
@@ -27,16 +30,26 @@ export class HomeBannerController {
   }
 
   @Post()
-  async create(@Body() dto: CreateHomeBannerDto) {
-    return this.homeBannerService.create(dto);
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async create(
+    @Body() dto: CreateHomeBannerDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.homeBannerService.create(dto, file);
   }
 
   @Patch(':id')
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
   async update(
     @Param('id') banner_id: string,
     @Body() dto: UpdateHomeBannerDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.homeBannerService.update(banner_id, dto);
+    return this.homeBannerService.update(banner_id, dto, file);
   }
 
   @Delete(':id')

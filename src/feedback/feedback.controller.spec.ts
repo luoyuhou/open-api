@@ -47,9 +47,13 @@ describe('FeedbackController', () => {
       const mockFeedback = { id: 1, title: 'Test' };
       feedbackService.create.mockResolvedValue(mockFeedback as any);
 
-      const result = await controller.create(mockRequest, createDto);
+      const result = await controller.create(mockRequest, createDto, undefined);
 
-      expect(feedbackService.create).toHaveBeenCalledWith(mockUser, createDto);
+      expect(feedbackService.create).toHaveBeenCalledWith(
+        mockUser,
+        createDto,
+        undefined,
+      );
       expect(result).toEqual({ message: 'ok', data: mockFeedback });
     });
   });

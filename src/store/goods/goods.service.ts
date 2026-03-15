@@ -2,16 +2,21 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateGoodDto } from './dto/create-good.dto';
 import { UpdateGoodDto } from './dto/update-good.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { FileService } from '../../file/file.service';
 import { E_GOODS_STATUS, E_GOODS_VERSION_STATUS } from './const';
 import { v4 } from 'uuid';
 import { CreateGoodsVersionDto } from './dto/create-goods-version.dto';
 import { UpdateGoodsVersionDto } from './dto/update-goods-version.dto';
 import { Pagination } from '../../common/dto/pagination';
 import { UpsertGoodsVersionDto } from './dto/upsert-goods-version.dto';
+import customLogger from '../../common/logger';
 
 @Injectable()
 export class GoodsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private fileService: FileService,
+  ) {}
 
   public async pagination(pagination: Pagination) {
     const { filtered, pageNum, pageSize, sorted } = pagination;
@@ -98,35 +103,91 @@ export class GoodsService {
     return this.prisma.store_goods_version.findMany({ where: { goods_id } });
   }
 
-  async create({
-    store_id,
-    name,
-    category_id,
-    description,
-    ...createGoodDto
-  }: CreateGoodDto & CreateGoodsVersionDto) {
+  async create(
+    {
+      store_id,
+      name,
+      category_id,
+      description,
+      ...createGoodDto
+    }: CreateGoodDto &
+      CreateGoodsVersionDto & { image_url?: string; image_hash?: string },
+    file?: Express.Multer.File,
+  ) {
+    if (file) {
+      const { url, hash } = await this.fileService.uploadFile(
+        file.buffer,
+        file.originalname,
+      );
+      createGoodDto.image_url = url;
+      createGoodDto.image_hash = hash;
+    }
+
     const goods = await this.prisma.store_goods.findFirst({
       where: { store_id, category_id, name },
     });
 
-    let goodsId: string;
-    if (!goods) {
-      goodsId = `goods-${v4()}`;
-      await this.prisma.store_goods.create({
-        data: {
-          store_id,
-          category_id,
-          name,
-          description,
-          goods_id: goodsId,
-          status: E_GOODS_STATUS.active,
-        },
-      });
-    } else {
-      goodsId = goods.goods_id;
-    }
+    try {
+      return this.prisma.$transaction(async (prisma) => {
+        let goodsId: string;
+        if (!goods) {
+          goodsId = `goods-${v4()}`;
+          await prisma.store_goods.create({
+            data: {
+              store_id,
+              category_id,
+              name,
+              description,
+              goods_id: goodsId,
+              status: E_GOODS_STATUS.active,
+            },
+          });
+        } else {
+          goodsId = goods.goods_id;
+        }
 
-    return this.createGoodsVersion(goodsId, createGoodDto);
+        if (createGoodDto.version_number) {
+          const goodsVersion = await prisma.store_goods_version.findFirst({
+            where: {
+              goods_id: goodsId,
+              unit_name: createGoodDto.unit_name,
+              version_number: createGoodDto.version_number,
+            },
+          });
+
+          if (goodsVersion) {
+            throw new BadRequestException(
+              `该批次 ${createGoodDto.version_number}/${createGoodDto.unit_name} 已经创建`,
+            );
+          }
+        }
+
+        const version_id = `version-${v4()}`;
+
+        return prisma.store_goods_version.create({
+          data: {
+            goods_id: goodsId,
+            supplier: createGoodDto.supplier,
+            unit_name: createGoodDto.unit_name,
+            image_url: createGoodDto.image_url,
+            image_hash: createGoodDto.image_hash,
+            price: Number(createGoodDto.price),
+            count: Number(createGoodDto.count),
+            version_id,
+            status: E_GOODS_VERSION_STATUS.active,
+          } as any,
+        });
+      });
+    } catch (e) {
+      customLogger.error({
+        summary: '创建商品失败',
+        store_id,
+        goods_name: name,
+        unit_name: createGoodDto.unit_name,
+        error: e.message,
+      });
+      throw e;
+    }
   }
 
   async findAll(id: string) {
@@ -191,8 +252,21 @@ export class GoodsService {
 
   async upsertGoodsVersion(
     goods_id: string,
-    { version_id, ...upsertGoodsVersionDto }: UpsertGoodsVersionDto,
+    {
+      version_id,
+      ...upsertGoodsVersionDto
+    }: UpsertGoodsVersionDto & { image_url?: string; image_hash?: string },
+    file?: Express.Multer.File,
   ) {
+    if (file) {
+      const { url, hash } = await this.fileService.uploadFile(
+        file.buffer,
+        file.originalname,
+      );
+      upsertGoodsVersionDto.image_url = url;
+      upsertGoodsVersionDto.image_hash = hash;
+    }
+
     if (version_id) {
       return this.prisma.store_goods_version.update({
         where: { version_id },
@@ -224,16 +298,13 @@ export class GoodsService {
     }
 
     const version_id = `version-${v4()}`;
-    const version_number = `${new Date().getTime()}.${Math.random()}`;
-
-    const data = createGoodsVersionDto.version_number
-      ? createGoodsVersionDto
-      : { ...createGoodsVersionDto, version_number };
 
     return this.prisma.store_goods_version.create({
       data: {
         goods_id,
-        ...data,
+        ...createGoodsVersionDto,
+        price: Number(createGoodsVersionDto.price),
+        count: Number(createGoodsVersionDto.count),
         version_id,
         status: E_GOODS_VERSION_STATUS.active,
       },

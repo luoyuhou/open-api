@@ -175,12 +175,14 @@ describe('StoreController', () => {
         storeId,
         body,
         mockRequest,
+        undefined,
       );
 
       expect(storeService.updatePaymentQrs).toHaveBeenCalledWith(
         storeId,
         body,
         mockUser,
+        undefined,
       );
       expect(result).toEqual(mockStore);
     });

@@ -411,8 +411,8 @@ CREATE TABLE `report_platform_daily_order` (
 CREATE TABLE `file` (
     `id` int (10) unsigned NOT NULL AUTO_INCREMENT,
     `file_name` varchar(128) NOT NULL,
-    `hash` varchar(256) NOT NULL,
-    `url` varchar(256) NOT NULL,
+    `hash` varchar(32) NOT NULL,
+    `url` varchar(128) NOT NULL,
     `create_date` datetime default CURRENT_TIMESTAMP,
     `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -659,3 +659,8 @@ ALTER TABLE `store_service_subscription`
   ADD COLUMN `contract_id` int unsigned DEFAULT NULL,
   ADD KEY `idx_store_service_subscription_contract_id` (`contract_id`),
   ADD CONSTRAINT `fk_store_service_subscription_contract` FOREIGN KEY (`contract_id`) REFERENCES `store_service_contract` (`id`);
+
+
+ALTER TABLE `store_goods_version` ADD COLUMN `image_hash` varchar(32) DEFAULT NULL AFTER `image_url`;
+ALTER TABLE `store_goods_version`
+    MODIFY COLUMN `image_url` varchar(128) NULL DEFAULT NULL AFTER `goods_id`;

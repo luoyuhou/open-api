@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { FileService } from '../file/file.service';
 import { v4 as uuidv4 } from 'uuid';
 import { Pagination } from '../common/dto/pagination';
 import { CreateHomeBannerDto } from './dto/create-home-banner.dto';
@@ -7,7 +8,10 @@ import { UpdateHomeBannerDto } from './dto/update-home-banner.dto';
 
 @Injectable()
 export class HomeBannerService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private fileService: FileService,
+  ) {}
 
   public async pagination(pagination: Pagination) {
     const { pageNum, pageSize, sorted, filtered } = pagination;
@@ -50,7 +54,14 @@ export class HomeBannerService {
     };
   }
 
-  public async create(dto: CreateHomeBannerDto) {
+  public async create(dto: CreateHomeBannerDto, file?: Express.Multer.File) {
+    if (file) {
+      const { url } = await this.fileService.uploadFile(
+        file.buffer,
+        file.originalname,
+      );
+      dto.image_url = url;
+    }
     const banner_id = `banner-${uuidv4()}`;
 
     return this.prisma.home_banner.create({
@@ -59,15 +70,26 @@ export class HomeBannerService {
         title: dto.title,
         description: dto.description,
         image_url: dto.image_url,
-        width: dto.width,
-        height: dto.height,
-        sort: dto.sort ?? 0,
-        status: dto.status ?? 1,
+        width: dto.width ? Number(dto.width) : undefined,
+        height: dto.height ? Number(dto.height) : undefined,
+        sort: dto.sort ? Number(dto.sort) : 0,
+        status: dto.status ? Number(dto.status) : 1,
       },
     });
   }
 
-  public async update(banner_id: string, dto: UpdateHomeBannerDto) {
+  public async update(
+    banner_id: string,
+    dto: UpdateHomeBannerDto,
+    file?: Express.Multer.File,
+  ) {
+    if (file) {
+      const { url } = await this.fileService.uploadFile(
+        file.buffer,
+        file.originalname,
+      );
+      dto.image_url = url;
+    }
     const existed = await this.prisma.home_banner.findUnique({
       where: { banner_id },
     });
@@ -78,7 +100,13 @@ export class HomeBannerService {
 
     return this.prisma.home_banner.update({
       where: { banner_id },
-      data: dto,
+      data: {
+        ...dto,
+        width: dto.width ? Number(dto.width) : undefined,
+        height: dto.height ? Number(dto.height) : undefined,
+        sort: dto.sort ? Number(dto.sort) : undefined,
+        status: dto.status ? Number(dto.status) : undefined,
+      },
     });
   }
 

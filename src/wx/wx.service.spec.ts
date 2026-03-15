@@ -9,11 +9,16 @@ import { AddressService } from '../users/address/address.service';
 import { UsersService } from '../users/users.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { CacheService } from '../common/cache-manager/cache.service';
+import { FileService } from '../file/file.service';
 
 describe('WxService', () => {
   let service: WxService;
 
   beforeEach(async () => {
+    const mockFileService = {
+      uploadFile: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WxService,
@@ -26,6 +31,7 @@ describe('WxService', () => {
         UsersService,
         ChatGateway,
         CacheService,
+        { provide: FileService, useValue: mockFileService },
       ],
     }).compile();
 

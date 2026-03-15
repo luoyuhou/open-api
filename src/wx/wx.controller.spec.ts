@@ -11,6 +11,7 @@ import { CreateAddressDto } from '../users/address/dto/create-address.dto';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
 import { UpdateUserPasswordDto } from '../users/dto/update-user-password.dto';
 import { CreateOrderGoodsDto } from '../order/dto/create-order-goods.dto';
+import { FileService } from '../file/file.service';
 
 describe('WxController', () => {
   let controller: WxController;
@@ -43,9 +44,16 @@ describe('WxController', () => {
       deleteStoreBrowseHistory: jest.fn(),
     };
 
+    const mockFileService = {
+      uploadFile: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [WxController],
-      providers: [{ provide: WxService, useValue: mockWxService }],
+      providers: [
+        { provide: WxService, useValue: mockWxService },
+        { provide: FileService, useValue: mockFileService },
+      ],
     }).compile();
 
     controller = module.get<WxController>(WxController);

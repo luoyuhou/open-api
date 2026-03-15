@@ -140,7 +140,8 @@ model store_goods_version {
   id             Int       @id @default(autoincrement()) @db.UnsignedInt
   version_id     String    @unique(map: "version_id") @db.VarChar(64)
   goods_id       String    @db.VarChar(64)
-  image_url      String?   @db.VarChar(256)
+  image_url      String?   @db.VarChar(128)
+  image_hash     String?   @db.VarChar(32)
   version_number String?   @db.VarChar(32)
   bar_code       String?   @db.VarChar(32)
   count          Int       @db.UnsignedInt
@@ -386,10 +387,10 @@ model report_store_daily_goods {
 model file {
   id          Int      @id @default(autoincrement())
   file_name   String?  @db.VarChar(128)
-  hash        String   @unique(map: "IDX_50da2892bca204d060cf562bdf") @db.VarChar(256)
-  url         String   @db.VarChar(256)
-  create_date DateTime @default(now()) @db.DateTime(6)
-  update_date DateTime @default(now()) @db.DateTime(6)
+  hash        String   @unique(map: "hash_id") @db.VarChar(32)
+  url         String   @db.VarChar(128)
+  create_date DateTime? @default(now()) @db.DateTime(6)
+  update_date DateTime? @default(now()) @db.DateTime(6)
 }
 
 model home_banner {
@@ -591,4 +592,38 @@ model store_service_contract {
 
   @@index([store_id], map: "idx_store_service_contract_store_id")
   @@index([plan_id], map: "idx_store_service_contract_plan_id")
+}
+
+model store_file {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  store_id    String    @db.VarChar(64)
+  file_id     Int       @db.UnsignedInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([store_id, file_id], map: "store_file_unique")
+  @@index([store_id])
+}
+
+model store_resource {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  store_id    String    @unique(map: "store_resource_store_id") @db.VarChar(64)
+  total_quota BigInt    @default(209715200) @db.UnsignedBigInt
+  used_quota  BigInt    @default(0) @db.UnsignedBigInt
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([store_id])
+}
+
+model store_resource_order {
+  id           Int       @id @default(autoincrement()) @db.UnsignedInt
+  order_id     String    @unique(map: "store_resource_order_id") @db.VarChar(64)
+  store_id     String    @db.VarChar(64)
+  quota_amount BigInt    @db.UnsignedBigInt
+  price        Int       @db.UnsignedInt
+  status       Int       @default(0) @db.TinyInt
+  create_date  DateTime? @default(now()) @db.DateTime(0)
+  update_date  DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([store_id])
 }
