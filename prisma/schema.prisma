@@ -385,12 +385,13 @@ model report_store_daily_goods {
 }
 
 model file {
-  id          Int      @id @default(autoincrement())
-  file_name   String?  @db.VarChar(128)
-  hash        String   @unique(map: "hash_id") @db.VarChar(32)
-  url         String   @db.VarChar(128)
-  create_date DateTime? @default(now()) @db.DateTime(6)
-  update_date DateTime? @default(now()) @db.DateTime(6)
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  file_name   String    @db.VarChar(128)
+  hash        String    @unique(map: "hash_id") @db.VarChar(32)
+  size        Int       @default(0) @db.UnsignedMediumInt
+  url         String    @db.VarChar(128)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @db.DateTime(0)
 }
 
 model home_banner {

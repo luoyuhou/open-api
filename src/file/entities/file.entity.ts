@@ -18,15 +18,18 @@ export class FileEntity {
   id: number;
 
   @ApiProperty()
-  @Column({ length: 128, nullable: true })
+  @Column({ length: 128 })
   file_name: string;
 
   @ApiProperty()
-  @Column({ unique: true, length: 256 })
+  size: number;
+
+  @ApiProperty()
+  @Column({ unique: true, length: 32 })
   hash: string;
 
   @ApiProperty()
-  @Column({ length: 256 })
+  @Column({ length: 128 })
   url: string;
 
   @ApiProperty()

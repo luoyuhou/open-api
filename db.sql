@@ -664,3 +664,5 @@ ALTER TABLE `store_service_subscription`
 ALTER TABLE `store_goods_version` ADD COLUMN `image_hash` varchar(32) DEFAULT NULL AFTER `image_url`;
 ALTER TABLE `store_goods_version`
     MODIFY COLUMN `image_url` varchar(128) NULL DEFAULT NULL AFTER `goods_id`;
+
+ALTER TABLE `file` ADD COLUMN `size` mediumint unsigned NOT NULL DEFAULT 0 AFTER `hash`;
