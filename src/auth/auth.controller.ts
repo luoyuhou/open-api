@@ -112,33 +112,9 @@ export class AuthController {
   async getSignedUser(@Req() request: Request) {
     const user_id = (request.user as UserEntity).user_id;
 
-    console.log('🔍 /auth/sign-in 请求, user_id:', user_id);
-    console.log('🔍 Session ID:', request.sessionID);
-
     const { userAuth, resources } = await this.authService.getCacheResources(
       user_id,
     );
-
-    console.log('🔍 从缓存获取的 userAuth:', userAuth ? '存在' : '不存在');
-
-    // 🔧 修复：没有 userAuth 不应该登出，只是没有特殊权限而已
-    // if (!userAuth) {
-    //   console.log('❌ 缓存中没有用户资源，执行 logout');
-    //   request.logout(() =>
-    //     customLogger.log({
-    //       message: "Can't get user profile from cache",
-    //       user_id,
-    //     }),
-    //   );
-    // } else {
-    //   console.log('✅ 成功获取用户资源');
-    // }
-
-    if (userAuth) {
-      console.log('✅ 用户有特殊权限');
-    } else {
-      console.log('ℹ️ 用户为普通用户，没有特殊权限');
-    }
 
     return {
       message: 'ok',

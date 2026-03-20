@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import Env from './common/const/Env';
 import { setup } from './app.setup';
+import customLogger from './common/logger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -20,22 +21,33 @@ async function bootstrap() {
 
   await app.listen(Env.SERVER_PORT);
 
-  console.log(`Application is running on: http://localhost:${Env.SERVER_PORT}`);
+  customLogger.log({
+    summary: 'Start service',
+    message: `Application is running on: http://localhost:${Env.SERVER_PORT}`,
+  });
 }
 
 // 捕获未处理的错误
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  customLogger.error({
+    summary: 'Unhandled Rejection',
+    promise,
+    reason,
+  });
   // 不要退出进程，只记录错误
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
+  customLogger.error({
+    summary: 'Uncaught Exception',
+    error,
+  });
   // 对于严重错误，给予清理时间后退出
   if (error.message.includes('ECONNRESET')) {
-    console.error(
-      'Connection reset error detected. Application will continue running.',
-    );
+    customLogger.error({
+      summary:
+        'Connection reset error detected. Application will continue running.',
+    });
   } else {
     setTimeout(() => process.exit(1), 1000);
   }

@@ -525,18 +525,20 @@ model store_service_plan {
 }
 
 model store_service_subscription {
-  id          Int                     @id @default(autoincrement()) @db.UnsignedInt
-  store_id    String                  @db.VarChar(64)
-  plan_id     Int                     @db.UnsignedInt
-  start_date  DateTime                @db.DateTime(0)
-  end_date    DateTime                @db.DateTime(0)
-  status      Int                     @default(1) @db.TinyInt
-  create_date DateTime                @default(now()) @db.DateTime(0)
-  update_date DateTime                @default(now()) @db.DateTime(0)
-  contract_id Int?                    @db.UnsignedInt
-  invoice     store_service_invoice[]
-  contract    store_service_contract? @relation(fields: [contract_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_store_service_subscription_contract")
-  plan        store_service_plan      @relation(fields: [plan_id], references: [id], onUpdate: Restrict, map: "fk_store_service_subscription_plan")
+  id                     Int                     @id @default(autoincrement()) @db.UnsignedInt
+  store_id               String                  @db.VarChar(64)
+  plan_id                Int                     @db.UnsignedInt
+  start_date             DateTime                @db.DateTime(0)
+  end_date               DateTime                @db.DateTime(0)
+  status                 Int                     @default(1) @db.TinyInt
+  is_infinite            Boolean                 @default(false)
+  order_count_last_cycle Int?                    @default(0) @db.UnsignedInt
+  create_date            DateTime                @default(now()) @db.DateTime(0)
+  update_date            DateTime                @default(now()) @db.DateTime(0)
+  contract_id            Int?                    @db.UnsignedInt
+  invoice                store_service_invoice[]
+  contract               store_service_contract? @relation(fields: [contract_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_store_service_subscription_contract")
+  plan                   store_service_plan      @relation(fields: [plan_id], references: [id], onUpdate: Restrict, map: "fk_store_service_subscription_plan")
 
   @@index([store_id], map: "idx_store_service_subscription_store_id")
   @@index([plan_id], map: "idx_store_service_subscription_plan_id")
@@ -608,7 +610,7 @@ model store_file {
 model store_resource {
   id          Int       @id @default(autoincrement()) @db.UnsignedInt
   store_id    String    @unique(map: "store_resource_store_id") @db.VarChar(64)
-  total_quota BigInt    @default(209715200) @db.UnsignedBigInt
+  total_quota BigInt    @default(10485760) @db.UnsignedBigInt
   used_quota  BigInt    @default(0) @db.UnsignedBigInt
   create_date DateTime? @default(now()) @db.DateTime(0)
   update_date DateTime? @default(now()) @db.DateTime(0)

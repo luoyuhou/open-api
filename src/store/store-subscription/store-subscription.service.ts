@@ -70,7 +70,13 @@ export class StoreServiceService {
       this.prisma.store_service_subscription.findMany({
         where,
         orderBy: { create_date: 'desc' },
-        include: { plan: true },
+        include: {
+          plan: true,
+          invoice: {
+            orderBy: { create_date: 'desc' },
+          },
+          contract: true,
+        },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -89,6 +95,7 @@ export class StoreServiceService {
       ...s,
       store_name: storeMap.get(s.store_id) || '',
       plan: s.plan,
+      invoices: s.invoice,
     }));
 
     return { items, total, page, pageSize };
@@ -149,13 +156,44 @@ export class StoreServiceService {
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + 1);
 
+    // 计算费用逻辑
+    let amount = plan.monthly_fee; // 基础费用 50
+    let orderCountLastCycle = 0;
+
+    // 检查是否是首次订阅
+    const previousSub = await this.prisma.store_service_subscription.findFirst({
+      where: { store_id: payload.store_id },
+      orderBy: { end_date: 'desc' },
+    });
+
+    if (previousSub) {
+      // 不是首次订阅，需要累加上个周期的有效订单数
+      // 假设上个周期是上个月
+      const lastMonthStart = new Date(startDate);
+      lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
+
+      orderCountLastCycle = await this.prisma.user_order.count({
+        where: {
+          store_id: payload.store_id,
+          stage: { in: [4, 5] }, // received=4, finished=5
+          create_date: {
+            gte: previousSub.start_date,
+            lte: previousSub.end_date,
+          },
+        },
+      });
+      amount += orderCountLastCycle;
+    }
+
     const subscription = await this.prisma.store_service_subscription.create({
       data: {
         store_id: payload.store_id,
         plan_id: payload.plan_id,
         start_date: startDate,
         end_date: endDate,
-        status: 1,
+        status: 0, // 初始为 0 (待确认/待支付)，管理员确认后变为 1
+        is_infinite: true,
+        order_count_last_cycle: orderCountLastCycle,
       },
     });
 
@@ -181,13 +219,43 @@ export class StoreServiceService {
         month,
         start_date: periodStart,
         end_date: periodEnd,
-        amount: plan.monthly_fee,
+        amount: amount, // 使用计算后的金额
         status: 0,
         due_date: dueDate,
       },
     });
 
     return subscription;
+  }
+
+  /**
+   * 管理员确认订阅（激活无限额度）
+   */
+  async approveSubscription(id: number) {
+    const sub = await this.prisma.store_service_subscription.findUnique({
+      where: { id },
+    });
+    if (!sub) {
+      throw new NotFoundException('订阅记录不存在');
+    }
+
+    return this.prisma.store_service_subscription.update({
+      where: { id },
+      data: { status: 1 },
+    });
+  }
+
+  /**
+   * 获取待审批的订阅
+   */
+  async listPendingSubscriptions() {
+    return this.prisma.store_service_subscription.findMany({
+      where: { status: 0 },
+      include: {
+        plan: true,
+      },
+      orderBy: { create_date: 'desc' },
+    });
   }
 
   async terminateSubscription(id: number) {

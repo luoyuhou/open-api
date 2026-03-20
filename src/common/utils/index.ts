@@ -46,6 +46,24 @@ class Utils {
 
     return roots.map((item) => map[item[key]] || item);
   }
+
+  static formatWhereByPagination(
+    filtered: { id: string; value: boolean | number | string | string[] }[],
+  ) {
+    const where = {};
+    filtered.forEach(({ id, value }) => {
+      if (value === undefined || (Array.isArray(value) && !value.length)) {
+        return;
+      }
+      if (Array.isArray(value) && value.length) {
+        where[id] = { in: value };
+        return;
+      }
+      where[id] = value;
+    });
+
+    return where;
+  }
 }
 
 export default Utils;

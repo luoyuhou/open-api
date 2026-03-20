@@ -23,8 +23,8 @@ import {
 } from '../dto/store-subscription.dto';
 
 @UseGuards(SessionAuthGuard)
-@Controller('store-service')
-@ApiTags('store-service')
+@Controller('store/service')
+@ApiTags('store/service')
 export class StoreServiceController {
   constructor(private readonly storeService: StoreServiceService) {}
 
@@ -54,7 +54,7 @@ export class StoreServiceController {
     const { items, total, page, pageSize } =
       await this.storeService.listSubscriptions({
         store_id: query.store_id,
-        status: query.status,
+        status: query.status !== undefined ? Number(query.status) : undefined,
         page: query.page,
         pageSize: query.pageSize,
       });
@@ -128,6 +128,18 @@ export class StoreServiceController {
   @Post('contracts')
   async createContract(@Body() body: CreateStoreServiceContractDto) {
     const data = await this.storeService.createContract(body);
+    return { data };
+  }
+
+  @Post('subscriptions/:id/approve')
+  async approveSubscription(@Param('id', ParseIntPipe) id: number) {
+    const data = await this.storeService.approveSubscription(id);
+    return { data };
+  }
+
+  @Get('pending-subscriptions')
+  async listPendingSubscriptions() {
+    const data = await this.storeService.listPendingSubscriptions();
     return { data };
   }
 }

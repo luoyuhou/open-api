@@ -666,3 +666,37 @@ ALTER TABLE `store_goods_version`
     MODIFY COLUMN `image_url` varchar(128) NULL DEFAULT NULL AFTER `goods_id`;
 
 ALTER TABLE `file` ADD COLUMN `size` mediumint unsigned NOT NULL DEFAULT 0 AFTER `hash`;
+
+-- 商店资源额度表
+CREATE TABLE IF NOT EXISTS `store_resource` (
+    `id` int unsigned NOT NULL AUTO_INCREMENT,
+    `store_id` varchar(64) NOT NULL,
+    `total_quota` bigint unsigned NOT NULL DEFAULT 10485760, -- 默认 10MB (10 * 1024 * 1024)
+    `used_quota` bigint unsigned NOT NULL DEFAULT 0,
+    `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+    `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `store_resource_store_id` (`store_id`),
+    INDEX `store_id` (`store_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 商店资源订单表（购买额度申请）
+CREATE TABLE IF NOT EXISTS `store_resource_order` (
+    `id` int unsigned NOT NULL AUTO_INCREMENT,
+    `order_id` varchar(64) NOT NULL,
+    `store_id` varchar(64) NOT NULL,
+    `quota_amount` bigint unsigned NOT NULL, -- 增加的额度，例如 50MB
+    `price` int unsigned NOT NULL,
+    `status` tinyint NOT NULL DEFAULT 0, -- 0: 待确认, 1: 已确认
+    `create_date` datetime DEFAULT CURRENT_TIMESTAMP,
+    `update_date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `store_resource_order_id` (`order_id`),
+    INDEX `store_id` (`store_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 商店订阅记录表（无限额度）
+-- 注意：如果 schema.prisma 中已有相关表，这里需保持一致或进行迁移
+-- 这里我们复用或细化之前的订阅表结构
+ALTER TABLE `store_service_subscription` ADD COLUMN `is_infinite` tinyint(1) NOT NULL DEFAULT 0;
+ALTER TABLE `store_service_subscription` ADD COLUMN `order_count_last_cycle` int unsigned DEFAULT 0;
