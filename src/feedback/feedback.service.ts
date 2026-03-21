@@ -89,7 +89,7 @@ export class FeedbackService {
         attachmentsFromDto.map((att) =>
           this.prisma.user_feedback_attachment.create({
             data: {
-              feedback_id: feedback.id,
+              feedback_id: feedback.feedback_id,
               url: att.url,
               type: this.mapAttachmentType(att.type),
               description: att.description ?? null,
@@ -109,7 +109,7 @@ export class FeedbackService {
           );
           return this.prisma.user_feedback_attachment.create({
             data: {
-              feedback_id: feedback.id,
+              feedback_id: feedback.feedback_id,
               url: url,
               type: 1, // 默认为图片
               description: file.originalname,
@@ -154,10 +154,10 @@ export class FeedbackService {
       orderBy: { create_date: 'desc' },
     });
 
-    const ids = data.map((item) => item.id);
-    const attachments = ids.length
+    const feedbackIds = data.map((item) => item.feedback_id);
+    const attachments = feedbackIds.length
       ? await this.prisma.user_feedback_attachment.findMany({
-          where: { feedback_id: { in: ids } },
+          where: { feedback_id: { in: feedbackIds } },
           orderBy: { id: 'asc' },
         })
       : [];
@@ -179,7 +179,9 @@ export class FeedbackService {
 
     const list = data.map((item) => ({
       ...item,
-      attachments: attachments.filter((att) => att.feedback_id === item.id),
+      attachments: attachments.filter(
+        (att) => att.feedback_id === item.feedback_id,
+      ),
       user: userMap.get(item.user_id) || null,
     }));
 
@@ -190,21 +192,21 @@ export class FeedbackService {
     };
   }
 
-  async updateStatus(id: number, dto: UpdateFeedbackStatusDto) {
+  async updateStatus(feedbackId: string, dto: UpdateFeedbackStatusDto) {
     const existed = await this.prisma.user_feedback.findUnique({
-      where: { id },
+      where: { feedback_id: feedbackId },
     });
     if (!existed) {
       throw new NotFoundException('反馈不存在');
     }
 
     return this.prisma.user_feedback.update({
-      where: { id },
+      where: { feedback_id: feedbackId },
       data: { status: dto.status },
     });
   }
 
-  async listComments(feedbackId: number) {
+  async listComments(feedbackId: string) {
     const comments = await this.prisma.user_feedback_comment.findMany({
       where: { feedback_id: feedbackId },
       orderBy: { create_date: 'asc' },
@@ -233,11 +235,11 @@ export class FeedbackService {
 
   async createComment(
     user: UserEntity,
-    feedbackId: number,
+    feedbackId: string,
     dto: CreateFeedbackCommentDto,
   ) {
     const existed = await this.prisma.user_feedback.findUnique({
-      where: { id: feedbackId },
+      where: { feedback_id: feedbackId },
     });
     if (!existed) {
       throw new NotFoundException('反馈不存在');

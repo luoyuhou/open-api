@@ -136,6 +136,8 @@ model store_goods_version {
   id             Int       @id @default(autoincrement())
   version_id     String    @unique
   goods_id       String
+  image_url      String?
+  image_hash     String?
   version_number String?
   bar_code       String?
   count          Int
@@ -314,8 +316,9 @@ model home_banner {
 
 model file {
   id          Int      @id @default(autoincrement())
-  file_name   String?
+  file_name   String
   hash        String   @unique
+  size        Int      @default(0)
   url         String
   create_date DateTime @default(now())
   update_date DateTime @default(now())
@@ -374,33 +377,34 @@ model user_store_browse_history {
 }
 
 model user_feedback {
-  id          Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
+  feedback_id String   @unique @default(uuid())
   user_id     String
   title       String
   content     String
   category    String?
-  status      Int       @default(0)
-  create_date DateTime? @default(now())
-  update_date DateTime? @default(now())
+  status      Int      @default(0)
+  create_date DateTime @default(now())
+  update_date DateTime @default(now())
 }
 
 model user_feedback_attachment {
-  id          Int       @id @default(autoincrement())
-  feedback_id Int
+  id          Int      @id @default(autoincrement())
+  feedback_id String
   url         String
-  type        Int       @default(1)
+  type        Int      @default(1)
   description String?
-  create_date DateTime? @default(now())
+  create_date DateTime @default(now())
 }
 
 model user_feedback_comment {
-  id          Int       @id @default(autoincrement())
-  feedback_id Int
+  id          Int      @id @default(autoincrement())
+  feedback_id String
   user_id     String
   content     String
   parent_id   Int?
-  create_date DateTime? @default(now())
-  update_date DateTime? @default(now())
+  create_date DateTime @default(now())
+  update_date DateTime @default(now())
 }
 
 model report_store_daily_order {
@@ -445,84 +449,111 @@ model report_store_daily_goods {
 }
 
 model store_service_plan {
-  id                         Int                          @id @default(autoincrement())
-  name                       String
-  description                String?
-  monthly_fee                Int
-  is_active                  Boolean                      @default(true)
-  create_date                DateTime                     @default(now())
-  update_date                DateTime                     @default(now())
-  store_service_contract     store_service_contract[]
-  store_service_subscription store_service_subscription[]
+  id          Int      @id @default(autoincrement())
+  plan_id     String   @unique @default(uuid())
+  name        String
+  description String?
+  monthly_fee Int
+  is_active   Boolean  @default(true)
+  create_date DateTime @default(now())
+  update_date DateTime @default(now())
 }
 
 model store_service_subscription {
-  id          Int                     @id @default(autoincrement())
-  store_id    String
-  plan_id     Int
-  start_date  DateTime
-  end_date    DateTime
-  status      Int                     @default(1)
-  create_date DateTime                @default(now())
-  update_date DateTime                @default(now())
-  contract_id Int?
-  invoice     store_service_invoice[]
-  contract    store_service_contract? @relation(fields: [contract_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  plan        store_service_plan      @relation(fields: [plan_id], references: [id], onUpdate: Restrict)
-  
+  id                     Int      @id @default(autoincrement())
+  store_id               String
+  plan_id                String
+  start_date             DateTime
+  end_date               DateTime
+  status                 Int      @default(1)
+  is_infinite            Boolean  @default(false)
+  order_count_last_cycle Int?     @default(0)
+  create_date            DateTime @default(now())
+  update_date            DateTime @default(now())
+  contract_id            Int?
+
   @@index([store_id])
   @@index([plan_id])
   @@index([contract_id])
 }
 
 model store_service_invoice {
-  id              Int                        @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   subscription_id Int
   month           String
   start_date      DateTime
   end_date        DateTime
   amount          Int
-  status          Int                        @default(0)
+  status          Int       @default(0)
   due_date        DateTime
   paid_at         DateTime?
-  create_date     DateTime                   @default(now())
-  update_date     DateTime                   @default(now())
-  subscription    store_service_subscription @relation(fields: [subscription_id], references: [id], onUpdate: Restrict)
-  payment         store_service_payment[]
-  
+  create_date     DateTime  @default(now())
+  update_date     DateTime  @default(now())
+
   @@index([subscription_id, month])
 }
 
 model store_service_payment {
-  id          Int                   @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   invoice_id  Int
   amount      Int
   method      String
   remark      String?
-  paid_at     DateTime              @default(now())
-  create_date DateTime              @default(now())
-  invoice     store_service_invoice @relation(fields: [invoice_id], references: [id], onUpdate: Restrict)
-  
+  paid_at     DateTime @default(now())
+  create_date DateTime @default(now())
+
   @@index([invoice_id])
 }
 
 model store_service_contract {
-  id                 Int                          @id @default(autoincrement())
-  contract_no        String                       @unique
-  store_id           String
-  plan_id            Int
-  start_date         DateTime
-  end_date           DateTime
-  status             Int                          @default(1)
-  sign_type          Int
-  signed_at          DateTime?
-  total_amount       Int
-  file_url           String?
-  create_date        DateTime                     @default(now())
-  update_date        DateTime                     @default(now())
-  store_service_plan store_service_plan           @relation(fields: [plan_id], references: [id], onUpdate: Restrict)
-  subscription       store_service_subscription[]
-  
+  id           Int       @id @default(autoincrement())
+  contract_no  String    @unique
+  store_id     String
+  plan_id      String
+  start_date   DateTime
+  end_date     DateTime
+  status       Int       @default(1)
+  sign_type    Int
+  signed_at    DateTime?
+  total_amount Int
+  file_url     String?
+  create_date  DateTime  @default(now())
+  update_date  DateTime  @default(now())
+
   @@index([store_id])
   @@index([plan_id])
+}
+
+model store_file {
+  id          Int       @id @default(autoincrement())
+  store_id    String
+  file_id     Int
+  create_date DateTime? @default(now())
+
+  @@unique([store_id, file_id])
+  @@index([store_id])
+}
+
+model store_resource {
+  id          Int       @id @default(autoincrement())
+  store_id    String    @unique
+  total_quota BigInt    @default(10485760)
+  used_quota  BigInt    @default(0)
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@index([store_id])
+}
+
+model store_resource_order {
+  id           Int       @id @default(autoincrement())
+  order_id     String    @unique
+  store_id     String
+  quota_amount BigInt
+  price        Int
+  status       Int       @default(0)
+  create_date  DateTime? @default(now())
+  update_date  DateTime? @default(now())
+
+  @@index([store_id])
 }

@@ -59,10 +59,9 @@ export class CreateStoreServiceSubscriptionDto {
   @IsNotEmpty()
   store_id: string;
 
-  @Type(() => Number)
-  @IsInt()
-  @IsPositive()
-  plan_id: number;
+  @IsString()
+  @IsNotEmpty()
+  plan_id: string;
 
   @IsOptional()
   @Type(() => Date)
@@ -136,10 +135,9 @@ export class CreateStoreServiceContractDto {
   @IsNotEmpty()
   store_id: string;
 
-  @Type(() => Number)
-  @IsInt()
-  @IsPositive()
-  plan_id: number;
+  @IsString()
+  @IsNotEmpty()
+  plan_id: string;
 
   @IsOptional()
   @IsString()

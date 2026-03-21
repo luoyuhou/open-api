@@ -70,32 +70,61 @@ export class StoreServiceService {
       this.prisma.store_service_subscription.findMany({
         where,
         orderBy: { create_date: 'desc' },
-        include: {
-          plan: true,
-          invoice: {
-            orderBy: { create_date: 'desc' },
-          },
-          contract: true,
-        },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
       this.prisma.store_service_subscription.count({ where }),
     ]);
 
+    // 手动查询关联数据
     const storeIds = Array.from(new Set(subs.map((s) => s.store_id)));
-    const stores = storeIds.length
-      ? await this.prisma.store.findMany({
-          where: { store_id: { in: storeIds } },
-          select: { store_id: true, store_name: true },
-        })
-      : [];
+    const planIds = Array.from(new Set(subs.map((s) => s.plan_id)));
+    const contractIds = Array.from(
+      new Set(subs.filter((s) => s.contract_id).map((s) => s.contract_id)),
+    );
+    const subscriptionIds = Array.from(new Set(subs.map((s) => s.id)));
+
+    const [stores, plans, contracts, invoices] = await Promise.all([
+      storeIds.length
+        ? this.prisma.store.findMany({
+            where: { store_id: { in: storeIds } },
+            select: { store_id: true, store_name: true },
+          })
+        : Promise.resolve([]),
+      planIds.length
+        ? this.prisma.store_service_plan.findMany({
+            where: { plan_id: { in: planIds } },
+          })
+        : Promise.resolve([]),
+      contractIds.length
+        ? this.prisma.store_service_contract.findMany({
+            where: { id: { in: contractIds } },
+          })
+        : Promise.resolve([]),
+      subscriptionIds.length
+        ? this.prisma.store_service_invoice.findMany({
+            where: { subscription_id: { in: subscriptionIds } },
+            orderBy: { create_date: 'desc' },
+          })
+        : Promise.resolve([]),
+    ]);
+
     const storeMap = new Map(stores.map((s) => [s.store_id, s.store_name]));
+    const planMap = new Map(plans.map((p) => [p.plan_id, p]));
+    const contractMap = new Map(contracts.map((c) => [c.id, c]));
+    const invoiceMap = new Map<number, typeof invoices>();
+    invoices.forEach((inv) => {
+      const arr = invoiceMap.get(inv.subscription_id) || [];
+      arr.push(inv);
+      invoiceMap.set(inv.subscription_id, arr);
+    });
+
     const items = subs.map((s) => ({
       ...s,
       store_name: storeMap.get(s.store_id) || '',
-      plan: s.plan,
-      invoices: s.invoice,
+      plan: planMap.get(s.plan_id) || null,
+      contract: s.contract_id ? contractMap.get(s.contract_id) || null : null,
+      invoices: invoiceMap.get(s.id) || [],
     }));
 
     return { items, total, page, pageSize };
@@ -109,7 +138,7 @@ export class StoreServiceService {
       throw new NotFoundException('店铺不存在');
     }
     const plan = await this.prisma.store_service_plan.findUnique({
-      where: { id: payload.plan_id },
+      where: { plan_id: payload.plan_id },
     });
     if (!plan || !plan.is_active) {
       throw new BadRequestException('套餐不存在或已下线');
@@ -249,13 +278,23 @@ export class StoreServiceService {
    * 获取待审批的订阅
    */
   async listPendingSubscriptions() {
-    return this.prisma.store_service_subscription.findMany({
+    const subs = await this.prisma.store_service_subscription.findMany({
       where: { status: 0 },
-      include: {
-        plan: true,
-      },
       orderBy: { create_date: 'desc' },
     });
+
+    const planIds = Array.from(new Set(subs.map((s) => s.plan_id)));
+    const plans = planIds.length
+      ? await this.prisma.store_service_plan.findMany({
+          where: { plan_id: { in: planIds } },
+        })
+      : [];
+    const planMap = new Map(plans.map((p) => [p.plan_id, p]));
+
+    return subs.map((s) => ({
+      ...s,
+      plan: planMap.get(s.plan_id) || null,
+    }));
   }
 
   async terminateSubscription(id: number) {
@@ -287,47 +326,86 @@ export class StoreServiceService {
     page?: number;
     pageSize?: number;
   }) {
+    const page = params.page && params.page > 0 ? params.page : 1;
+    const pageSize =
+      params.pageSize && params.pageSize > 0 ? params.pageSize : 20;
+
+    // 如果有 store_id，先查找对应的订阅
+    let subscriptionIds: number[] = [];
+    if (params.store_id) {
+      const subs = await this.prisma.store_service_subscription.findMany({
+        where: { store_id: params.store_id },
+        select: { id: true },
+      });
+      subscriptionIds = subs.map((s) => s.id);
+    }
+
     const where: any = {};
     if (params.store_id) {
-      where.subscription = { store_id: params.store_id };
+      where.subscription_id = { in: subscriptionIds };
     }
     if (typeof params.status === 'number') {
       where.status = params.status;
     }
 
-    const page = params.page && params.page > 0 ? params.page : 1;
-    const pageSize =
-      params.pageSize && params.pageSize > 0 ? params.pageSize : 20;
-
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.store_service_invoice.findMany({
         where,
         orderBy: { create_date: 'desc' },
-        include: { subscription: { include: { plan: true } } },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
       this.prisma.store_service_invoice.count({ where }),
     ]);
 
-    const storeIds = Array.from(
-      new Set(rows.map((r) => r.subscription.store_id)),
+    // 手动查询关联数据
+    const invSubscriptionIds = Array.from(
+      new Set(rows.map((r) => r.subscription_id)),
     );
-    const stores = storeIds.length
-      ? await this.prisma.store.findMany({
-          where: { store_id: { in: storeIds } },
-          select: { store_id: true, store_name: true },
-        })
-      : [];
-    const storeMap = new Map(stores.map((s) => [s.store_id, s.store_name]));
-    const items = rows.map((inv) => ({
-      ...inv,
-      subscription: {
-        ...inv.subscription,
-        store_name: storeMap.get(inv.subscription.store_id) || '',
-        plan: inv.subscription.plan,
-      },
-    }));
+    const [subscriptions, stores, plans] = await Promise.all([
+      invSubscriptionIds.length
+        ? this.prisma.store_service_subscription.findMany({
+            where: { id: { in: invSubscriptionIds } },
+          })
+        : Promise.resolve([]),
+      Promise.resolve([]), // storeIds 将在下面处理
+      Promise.resolve([]),
+    ]);
+
+    const storeIds = Array.from(new Set(subscriptions.map((s) => s.store_id)));
+    const planIds = Array.from(new Set(subscriptions.map((s) => s.plan_id)));
+
+    const [storeList, planList] = await Promise.all([
+      storeIds.length
+        ? this.prisma.store.findMany({
+            where: { store_id: { in: storeIds } },
+            select: { store_id: true, store_name: true },
+          })
+        : Promise.resolve([]),
+      planIds.length
+        ? this.prisma.store_service_plan.findMany({
+            where: { plan_id: { in: planIds } },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const subMap = new Map(subscriptions.map((s) => [s.id, s]));
+    const storeMap = new Map(storeList.map((s) => [s.store_id, s.store_name]));
+    const planMap = new Map(planList.map((p) => [p.plan_id, p]));
+
+    const items = rows.map((inv) => {
+      const sub = subMap.get(inv.subscription_id);
+      return {
+        ...inv,
+        subscription: sub
+          ? {
+              ...sub,
+              store_name: storeMap.get(sub.store_id) || '',
+              plan: planMap.get(sub.plan_id) || null,
+            }
+          : null,
+      };
+    });
 
     return { items, total, page, pageSize };
   }
@@ -404,14 +482,14 @@ export class StoreServiceService {
         : Promise.resolve([]),
       planIds.length
         ? this.prisma.store_service_plan.findMany({
-            where: { id: { in: planIds } },
-            select: { id: true, name: true },
+            where: { plan_id: { in: planIds } },
+            select: { plan_id: true, name: true },
           })
         : Promise.resolve([]),
     ]);
 
     const storeMap = new Map(stores.map((s) => [s.store_id, s.store_name]));
-    const planMap = new Map(plans.map((p) => [p.id, p.name]));
+    const planMap = new Map(plans.map((p) => [p.plan_id, p.name]));
 
     const items = rows.map((c) => ({
       ...c,
@@ -431,7 +509,7 @@ export class StoreServiceService {
     }
 
     const plan = await this.prisma.store_service_plan.findUnique({
-      where: { id: payload.plan_id },
+      where: { plan_id: payload.plan_id },
     });
     if (!plan) {
       throw new NotFoundException('套餐不存在');

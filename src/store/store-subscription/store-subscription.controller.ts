@@ -70,7 +70,7 @@ export class StoreServiceController {
   async createSubscription(@Body() body: CreateStoreServiceSubscriptionDto) {
     const data = await this.storeService.createSubscription({
       store_id: body.store_id,
-      plan_id: Number(body.plan_id),
+      plan_id: body.plan_id,
       start_date: body.start_date,
     });
     return { data };

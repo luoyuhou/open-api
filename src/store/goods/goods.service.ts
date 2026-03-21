@@ -10,7 +10,7 @@ import { UpdateGoodsVersionDto } from './dto/update-goods-version.dto';
 import { Pagination } from '../../common/dto/pagination';
 import { UpsertGoodsVersionDto } from './dto/upsert-goods-version.dto';
 import customLogger from '../../common/logger';
-import Utils from 'src/common/utils';
+import Utils from '../../common/utils';
 
 @Injectable()
 export class GoodsService {

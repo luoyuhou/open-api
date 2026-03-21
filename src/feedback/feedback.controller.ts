@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Req,
@@ -48,7 +47,7 @@ export class FeedbackController {
 
   @Patch(':id/status')
   async updateStatus(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() dto: UpdateFeedbackStatusDto,
   ) {
     const data = await this.feedbackService.updateStatus(id, dto);
@@ -56,12 +55,12 @@ export class FeedbackController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id') id: string) {
     const list = await this.feedbackService.pagination({
       pageNum: 0,
       pageSize: 1,
       sorted: [],
-      filtered: [{ id: 'id', value: id }],
+      filtered: [{ id: 'feedback_id', value: id }],
     } as unknown as Pagination);
     if (!list.data.length) {
       return { message: 'ok', data: null };
@@ -70,7 +69,7 @@ export class FeedbackController {
   }
 
   @Get(':id/comments')
-  async listComments(@Param('id', ParseIntPipe) id: number) {
+  async listComments(@Param('id') id: string) {
     const data = await this.feedbackService.listComments(id);
     return { message: 'ok', data };
   }
@@ -78,7 +77,7 @@ export class FeedbackController {
   @Post(':id/comments')
   async createComment(
     @Req() req: Request,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() dto: CreateFeedbackCommentDto,
   ) {
     const user = req.user as UserEntity;
