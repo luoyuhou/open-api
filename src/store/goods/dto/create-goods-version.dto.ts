@@ -8,11 +8,9 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateGoodsVersionDto {
-  @IsString()
-  @IsOptional()
   @ApiProperty()
-  @MaxLength(256)
-  image_url: string;
+  @IsOptional()
+  file: File;
 
   @IsString()
   @ApiProperty()

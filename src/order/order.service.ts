@@ -23,6 +23,18 @@ export class OrderService {
     const order_id = `order-${v4()}`;
     const { goods, user_address_id, store_id, delivery_date, payment_method } =
       createOrderDto;
+
+    // 检查商店下单限额
+    const isInfinite = await this.checkStoreIsInfinite(store_id);
+    if (!isInfinite) {
+      const todayCount = await this.getStoreTodayValidOrders(store_id);
+      if (todayCount >= 10) {
+        throw new BadRequestException(
+          '该商店今日免费订单额度已用完（10单），已自动打烊，请明天再试或联系商家订阅无限额度',
+        );
+      }
+    }
+
     const money = goods.reduce((t, { price, count }) => t + price * count, 0);
     const formatGoods = goods.map((item) => {
       return { ...item, order_info_id: `order-info-${v4()}`, order_id };
@@ -472,5 +484,43 @@ export class OrderService {
   public async orderDetailInfo(order_id: string) {
     // 复用 orderDetail 方法，保持一致性
     return this.orderDetail(order_id);
+  }
+
+  /**
+   * 检查商店是否拥有无限订单额度（通过订阅）
+   */
+  private async checkStoreIsInfinite(store_id: string): Promise<boolean> {
+    const now = new Date();
+    const subscription = await this.prisma.store_service_subscription.findFirst(
+      {
+        where: {
+          store_id,
+          status: 1, // 活跃
+          is_infinite: true,
+          start_date: { lte: now },
+          end_date: { gte: now },
+        },
+      },
+    );
+    return !!subscription;
+  }
+
+  /**
+   * 获取商店今日有效订单数（已收货或已完成）
+   */
+  private async getStoreTodayValidOrders(store_id: string): Promise<number> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const count = await this.prisma.user_order.count({
+      where: {
+        store_id,
+        stage: {
+          in: [E_USER_ORDER_STAGE.received, E_USER_ORDER_STAGE.finished],
+        },
+        update_date: { gte: today },
+      },
+    });
+    return count;
   }
 }

@@ -8,7 +8,10 @@ import {
   Query,
   Req,
   Patch,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { StoreService } from './store.service';
 import { CreateStoreInputDto } from './dto/create-store.dto';
 import { ApiOkResponse, ApiProperty, ApiTags } from '@nestjs/swagger';
@@ -83,12 +86,21 @@ export class StoreController {
   }
 
   @Patch(':id/qr')
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
   async updatePaymentQrs(
     @Param('id') id: string,
     @Body() body: { wechat_qr_url?: string; alipay_qr_url?: string },
     @Req() req: Request,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.storeService.updatePaymentQrs(id, body, req.user as UserEntity);
+    return this.storeService.updatePaymentQrs(
+      id,
+      body,
+      req.user as UserEntity,
+      file,
+    );
   }
 
   @Post('/approver')

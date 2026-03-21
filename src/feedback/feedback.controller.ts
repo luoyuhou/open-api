@@ -3,13 +3,15 @@ import {
   Controller,
   Get,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
 import { ApiProperty, ApiTags } from '@nestjs/swagger';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { FeedbackService } from './feedback.service';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
@@ -26,9 +28,14 @@ export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
   @Post()
-  async create(@Req() req: Request, @Body() dto: CreateFeedbackDto) {
+  @UseInterceptors(FilesInterceptor('files'))
+  async create(
+    @Req() req: Request,
+    @Body() dto: CreateFeedbackDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
     const user = req.user as UserEntity;
-    const data = await this.feedbackService.create(user, dto);
+    const data = await this.feedbackService.create(user, dto, files);
     return { message: 'ok', data };
   }
 
@@ -40,7 +47,7 @@ export class FeedbackController {
 
   @Patch(':id/status')
   async updateStatus(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() dto: UpdateFeedbackStatusDto,
   ) {
     const data = await this.feedbackService.updateStatus(id, dto);
@@ -48,12 +55,12 @@ export class FeedbackController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id') id: string) {
     const list = await this.feedbackService.pagination({
       pageNum: 0,
       pageSize: 1,
       sorted: [],
-      filtered: [{ id: 'id', value: id }],
+      filtered: [{ id: 'feedback_id', value: id }],
     } as unknown as Pagination);
     if (!list.data.length) {
       return { message: 'ok', data: null };
@@ -62,7 +69,7 @@ export class FeedbackController {
   }
 
   @Get(':id/comments')
-  async listComments(@Param('id', ParseIntPipe) id: number) {
+  async listComments(@Param('id') id: string) {
     const data = await this.feedbackService.listComments(id);
     return { message: 'ok', data };
   }
@@ -70,7 +77,7 @@ export class FeedbackController {
   @Post(':id/comments')
   async createComment(
     @Req() req: Request,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() dto: CreateFeedbackCommentDto,
   ) {
     const user = req.user as UserEntity;

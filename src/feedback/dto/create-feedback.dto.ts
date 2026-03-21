@@ -54,9 +54,8 @@ export class CreateFeedbackDto {
     isArray: true,
     required: false,
   })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => FeedbackAttachmentDto)
   @IsOptional()
+  @Type(() => FeedbackAttachmentDto)
+  @ValidateNested({ each: true })
   attachments?: FeedbackAttachmentDto[];
 }

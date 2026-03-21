@@ -56,6 +56,7 @@ export class FileService {
             const url = `${Env.Q_DOMAIN}/${body.key}`;
             const newFile = this.fileRepository.create({
               hash,
+              size: fileBuffer.length,
               url,
               file_name: fileName,
             });

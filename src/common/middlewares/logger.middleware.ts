@@ -8,6 +8,7 @@ export class LoggerMiddleware implements NestMiddleware {
   private readonly excludedPaths: RegExp[] = [
     /^\/auth\/qr-code\/status\/.+$/, // 排除二维码状态查询（轮询接口）
     /^\/auth\/qr-code\/generate$/,
+    /^\/socket.io/,
     // 可以添加更多需要排除的路径
     // /^\/api\/health$/,
     // /^\/api\/metrics$/,

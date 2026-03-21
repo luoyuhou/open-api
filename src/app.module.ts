@@ -28,6 +28,7 @@ import { ChatController } from './chat/chat.controller';
 import { ChatModule } from './chat/chat.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { StoreSubscriptionModule } from './store/store-subscription/store-subscription.module';
+import { StoreResourceModule } from './store/store-resource/store-resource.module';
 import { StoreServiceBillingCronService } from './schedules/store-service-billing.cron';
 import { StoreOrderDailyReportCronService } from './schedules/store-order-daily-report.cron';
 
@@ -65,6 +66,7 @@ import { StoreOrderDailyReportCronService } from './schedules/store-order-daily-
     ChatModule,
     FeedbackModule,
     StoreSubscriptionModule,
+    StoreResourceModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       url: Env.DATABASE_URL,

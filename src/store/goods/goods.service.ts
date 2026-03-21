@@ -2,16 +2,22 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateGoodDto } from './dto/create-good.dto';
 import { UpdateGoodDto } from './dto/update-good.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { FileService } from '../../file/file.service';
 import { E_GOODS_STATUS, E_GOODS_VERSION_STATUS } from './const';
 import { v4 } from 'uuid';
 import { CreateGoodsVersionDto } from './dto/create-goods-version.dto';
 import { UpdateGoodsVersionDto } from './dto/update-goods-version.dto';
 import { Pagination } from '../../common/dto/pagination';
 import { UpsertGoodsVersionDto } from './dto/upsert-goods-version.dto';
+import customLogger from '../../common/logger';
+import Utils from '../../common/utils';
 
 @Injectable()
 export class GoodsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private fileService: FileService,
+  ) {}
 
   public async pagination(pagination: Pagination) {
     const { filtered, pageNum, pageSize, sorted } = pagination;
@@ -30,17 +36,7 @@ export class GoodsService {
       return { data: [], rows: 0, pages: 0 };
     }
 
-    const where = {};
-    filtered.forEach(({ id, value }) => {
-      if (value === undefined || (Array.isArray(value) && !value.length)) {
-        return;
-      }
-      if (Array.isArray(value) && value.length) {
-        where[id] = { in: value };
-        return;
-      }
-      where[id] = value;
-    });
+    const where = Utils.formatWhereByPagination(pagination.filtered);
     const count = await this.prisma.store_goods.count({ where });
     const searchPayload = {
       where: where,
@@ -98,35 +94,94 @@ export class GoodsService {
     return this.prisma.store_goods_version.findMany({ where: { goods_id } });
   }
 
-  async create({
-    store_id,
-    name,
-    category_id,
-    description,
-    ...createGoodDto
-  }: CreateGoodDto & CreateGoodsVersionDto) {
+  async create(
+    {
+      store_id,
+      name,
+      category_id,
+      description,
+      ...createGoodDto
+    }: CreateGoodDto &
+      CreateGoodsVersionDto & { image_url?: string; image_hash?: string },
+    file?: Express.Multer.File,
+  ) {
+    if (file) {
+      // 检查图片资源额度
+      await this.checkResourceQuota(store_id, file.size);
+
+      const { url, hash } = await this.fileService.uploadFile(
+        file.buffer,
+        file.originalname,
+      );
+      createGoodDto.image_url = url;
+      createGoodDto.image_hash = hash;
+    }
+
     const goods = await this.prisma.store_goods.findFirst({
       where: { store_id, category_id, name },
     });
 
-    let goodsId: string;
-    if (!goods) {
-      goodsId = `goods-${v4()}`;
-      await this.prisma.store_goods.create({
-        data: {
-          store_id,
-          category_id,
-          name,
-          description,
-          goods_id: goodsId,
-          status: E_GOODS_STATUS.active,
-        },
-      });
-    } else {
-      goodsId = goods.goods_id;
-    }
+    try {
+      return this.prisma.$transaction(async (prisma) => {
+        let goodsId: string;
+        if (!goods) {
+          goodsId = `goods-${v4()}`;
+          await prisma.store_goods.create({
+            data: {
+              store_id,
+              category_id,
+              name,
+              description,
+              goods_id: goodsId,
+              status: E_GOODS_STATUS.active,
+            },
+          });
+        } else {
+          goodsId = goods.goods_id;
+        }
 
-    return this.createGoodsVersion(goodsId, createGoodDto);
+        if (createGoodDto.version_number) {
+          const goodsVersion = await prisma.store_goods_version.findFirst({
+            where: {
+              goods_id: goodsId,
+              unit_name: createGoodDto.unit_name,
+              version_number: createGoodDto.version_number,
+            },
+          });
+
+          if (goodsVersion) {
+            throw new BadRequestException(
+              `该批次 ${createGoodDto.version_number}/${createGoodDto.unit_name} 已经创建`,
+            );
+          }
+        }
+
+        const version_id = `version-${v4()}`;
+
+        return prisma.store_goods_version.create({
+          data: {
+            goods_id: goodsId,
+            supplier: createGoodDto.supplier,
+            unit_name: createGoodDto.unit_name,
+            image_url: createGoodDto.image_url,
+            image_hash: createGoodDto.image_hash,
+            price: Number(createGoodDto.price),
+            count: Number(createGoodDto.count),
+            version_id,
+            status: E_GOODS_VERSION_STATUS.active,
+          } as any,
+        });
+      });
+    } catch (e) {
+      customLogger.error({
+        summary: '创建商品失败',
+        store_id,
+        goods_name: name,
+        unit_name: createGoodDto.unit_name,
+        error: e.message,
+      });
+      throw e;
+    }
   }
 
   async findAll(id: string) {
@@ -191,8 +246,33 @@ export class GoodsService {
 
   async upsertGoodsVersion(
     goods_id: string,
-    { version_id, ...upsertGoodsVersionDto }: UpsertGoodsVersionDto,
+    {
+      version_id,
+      ...upsertGoodsVersionDto
+    }: UpsertGoodsVersionDto & { image_url?: string; image_hash?: string },
+    file?: Express.Multer.File,
   ) {
+    if (file) {
+      // 1. 获取 store_id
+      const goods = await this.prisma.store_goods.findUnique({
+        where: { goods_id },
+        select: { store_id: true },
+      });
+      if (!goods) {
+        throw new BadRequestException('商品不存在');
+      }
+
+      // 2. 检查图片资源额度
+      await this.checkResourceQuota(goods.store_id, file.size);
+
+      const { url, hash } = await this.fileService.uploadFile(
+        file.buffer,
+        file.originalname,
+      );
+      upsertGoodsVersionDto.image_url = url;
+      upsertGoodsVersionDto.image_hash = hash;
+    }
+
     if (version_id) {
       return this.prisma.store_goods_version.update({
         where: { version_id },
@@ -224,16 +304,13 @@ export class GoodsService {
     }
 
     const version_id = `version-${v4()}`;
-    const version_number = `${new Date().getTime()}.${Math.random()}`;
-
-    const data = createGoodsVersionDto.version_number
-      ? createGoodsVersionDto
-      : { ...createGoodsVersionDto, version_number };
 
     return this.prisma.store_goods_version.create({
       data: {
         goods_id,
-        ...data,
+        ...createGoodsVersionDto,
+        price: Number(createGoodsVersionDto.price),
+        count: Number(createGoodsVersionDto.count),
         version_id,
         status: E_GOODS_VERSION_STATUS.active,
       },
@@ -255,6 +332,69 @@ export class GoodsService {
     return this.prisma.store_goods_version.update({
       where: { version_id: id },
       data: updateGoodsVersion,
+    });
+  }
+
+  /**
+   * 检查商店图片资源额度
+   */
+  private async checkResourceQuota(storeId: string, incomingSize: number) {
+    // 1. 获取当前限额配置
+    let resource = await this.prisma.store_resource.findUnique({
+      where: { store_id: storeId },
+    });
+
+    if (!resource) {
+      // 如果不存在，初始化一个（10MB）
+      resource = await this.prisma.store_resource.create({
+        data: {
+          store_id: storeId,
+          total_quota: BigInt(10 * 1024 * 1024),
+          used_quota: BigInt(0),
+        },
+      });
+    }
+
+    // 2. 计算当前已用额度（实时计算以保证准确性）
+    // 查询该商店所有商品的 image_hash
+    const goods = await this.prisma.store_goods.findMany({
+      where: { store_id: storeId },
+      select: { goods_id: true },
+    });
+    const goodsIds = goods.map((g) => g.goods_id);
+
+    const versions = await this.prisma.store_goods_version.findMany({
+      where: { goods_id: { in: goodsIds } },
+      select: { image_hash: true },
+    });
+
+    const hashes = Array.from(
+      new Set(versions.map((v) => v.image_hash).filter(Boolean)),
+    );
+
+    const files = await this.prisma.file.findMany({
+      where: { hash: { in: hashes as string[] } },
+      select: { size: true },
+    });
+
+    const usedSize = files.reduce(
+      (acc, f) => acc + BigInt(f.size || 0),
+      BigInt(0),
+    );
+
+    // 3. 校验
+    if (usedSize + BigInt(incomingSize) > resource.total_quota) {
+      const totalMB = Number(resource.total_quota) / (1024 * 1024);
+      const usedMB = (Number(usedSize) / (1024 * 1024)).toFixed(2);
+      throw new BadRequestException(
+        `图片资源额度不足。当前配额：${totalMB}MB，已使用：${usedMB}MB。请购买额外额度。`,
+      );
+    }
+
+    // 4. 更新 used_quota (可选，作为缓存)
+    await this.prisma.store_resource.update({
+      where: { store_id: storeId },
+      data: { used_quota: usedSize + BigInt(incomingSize) },
     });
   }
 }

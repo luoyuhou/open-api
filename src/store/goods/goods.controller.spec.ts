@@ -7,6 +7,7 @@ import { CreateGoodsVersionDto } from './dto/create-goods-version.dto';
 import { UpdateGoodsVersionDto } from './dto/update-goods-version.dto';
 import { Pagination } from '../../common/dto/pagination';
 import { UpsertGoodsVersionDto } from './dto/upsert-goods-version.dto';
+import { FileService } from '../../file/file.service';
 
 describe('GoodsController', () => {
   let controller: GoodsController;
@@ -26,9 +27,16 @@ describe('GoodsController', () => {
       updateGoodsVersion: jest.fn(),
     };
 
+    const mockFileService = {
+      uploadFile: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [GoodsController],
-      providers: [{ provide: GoodsService, useValue: mockGoodsService }],
+      providers: [
+        { provide: GoodsService, useValue: mockGoodsService },
+        { provide: FileService, useValue: mockFileService },
+      ],
     }).compile();
 
     controller = module.get<GoodsController>(GoodsController);
@@ -49,7 +57,7 @@ describe('GoodsController', () => {
         bar_code: '10010',
         count: 1,
         description: 'description',
-        image_url: '',
+        file: new File([], 'simple.png'),
         supplier: '',
         unit_name: '个',
         version_number: '',
@@ -57,9 +65,9 @@ describe('GoodsController', () => {
       const mockGoods = { goods_id: 'goods123', ...dto };
       goodsService.create.mockResolvedValue(mockGoods as any);
 
-      const result = await controller.create(dto);
+      const result = await controller.create(dto, undefined);
 
-      expect(goodsService.create).toHaveBeenCalledWith(dto);
+      expect(goodsService.create).toHaveBeenCalledWith(dto, undefined);
       expect(result).toEqual(mockGoods);
     });
   });
@@ -105,18 +113,23 @@ describe('GoodsController', () => {
         count: 100,
         bar_code: '100011',
         supplier: '',
-        image_url: '',
+        file: new File([], 'test.png'),
         version_number: '10000',
         price: 1000,
       };
       const mockVersion = { version_id: 2, ...dto };
       goodsService.upsertGoodsVersion.mockResolvedValue(mockVersion as any);
 
-      const result = await controller.upsertGoodsVersion(goodsId, dto);
+      const result = await controller.upsertGoodsVersion(
+        goodsId,
+        dto,
+        undefined,
+      );
 
       expect(goodsService.upsertGoodsVersion).toHaveBeenCalledWith(
         goodsId,
         dto,
+        undefined,
       );
       expect(result).toEqual(mockVersion);
     });

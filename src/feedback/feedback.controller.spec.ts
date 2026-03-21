@@ -47,9 +47,13 @@ describe('FeedbackController', () => {
       const mockFeedback = { id: 1, title: 'Test' };
       feedbackService.create.mockResolvedValue(mockFeedback as any);
 
-      const result = await controller.create(mockRequest, createDto);
+      const result = await controller.create(mockRequest, createDto, undefined);
 
-      expect(feedbackService.create).toHaveBeenCalledWith(mockUser, createDto);
+      expect(feedbackService.create).toHaveBeenCalledWith(
+        mockUser,
+        createDto,
+        undefined,
+      );
       expect(result).toEqual({ message: 'ok', data: mockFeedback });
     });
   });
@@ -74,9 +78,9 @@ describe('FeedbackController', () => {
 
   describe('updateStatus', () => {
     it('should update feedback status', async () => {
-      const id = 1;
+      const id = 'feedback-uuid-1';
       const dto: UpdateFeedbackStatusDto = { status: 1 };
-      const mockFeedback = { id: 1, status: 'resolved' };
+      const mockFeedback = { id: 1, feedback_id: id, status: 'resolved' };
       feedbackService.updateStatus.mockResolvedValue(mockFeedback as any);
 
       const result = await controller.updateStatus(id, dto);
@@ -88,8 +92,8 @@ describe('FeedbackController', () => {
 
   describe('findOne', () => {
     it('should return feedback by id', async () => {
-      const id = 1;
-      const mockFeedback = { id: 1, title: 'Test' };
+      const id = 'feedback-uuid-1';
+      const mockFeedback = { id: 1, feedback_id: id, title: 'Test' };
       const mockResult = { data: [mockFeedback], total: 1 };
       feedbackService.pagination.mockResolvedValue(mockResult as any);
 
@@ -99,13 +103,13 @@ describe('FeedbackController', () => {
         pageNum: 0,
         pageSize: 1,
         sorted: [],
-        filtered: [{ id: 'id', value: id }],
+        filtered: [{ id: 'feedback_id', value: id }],
       } as unknown as Pagination);
       expect(result).toEqual({ message: 'ok', data: mockFeedback });
     });
 
     it('should return null if feedback not found', async () => {
-      const id = 999;
+      const id = 'feedback-uuid-999';
       const mockResult = { data: [], total: 0 };
       feedbackService.pagination.mockResolvedValue(mockResult as any);
 
@@ -117,7 +121,7 @@ describe('FeedbackController', () => {
 
   describe('listComments', () => {
     it('should list feedback comments', async () => {
-      const id = 1;
+      const id = 'feedback-uuid-1';
       const mockComments = [{ id: 1, content: 'Comment' }];
       feedbackService.listComments.mockResolvedValue(mockComments as any);
 
@@ -130,7 +134,7 @@ describe('FeedbackController', () => {
 
   describe('createComment', () => {
     it('should create feedback comment', async () => {
-      const id = 1;
+      const id = 'feedback-uuid-1';
       const mockUser = { user_id: 'user123' } as UserEntity;
       const mockRequest = { user: mockUser } as unknown as Request;
       const dto: CreateFeedbackCommentDto = { content: 'New comment' };

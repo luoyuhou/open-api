@@ -12,13 +12,17 @@ import {
 import { UpdateFeedbackStatusDto } from './dto/update-feedback-status.dto';
 import { UserEntity } from '../users/entities/user.entity';
 import { CreateFeedbackCommentDto } from './dto/create-feedback-comment.dto';
+import { FileService } from '../file/file.service';
 
 @Injectable()
 export class FeedbackService {
   private static readonly DAILY_FEEDBACK_LIMIT = 3;
   private static readonly MAX_ATTACHMENTS_PER_FEEDBACK = 5;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fileService: FileService,
+  ) {}
 
   private mapAttachmentType(type: FeedbackAttachmentDto['type']): number {
     if (type === 'image') return 1;
@@ -26,7 +30,11 @@ export class FeedbackService {
     return 0;
   }
 
-  async create(user: UserEntity, dto: CreateFeedbackDto) {
+  async create(
+    user: UserEntity,
+    dto: CreateFeedbackDto,
+    files?: Express.Multer.File[],
+  ) {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const endOfToday = new Date();
@@ -46,10 +54,20 @@ export class FeedbackService {
       throw new BadRequestException('今日反馈次数已达上限，请明天再试');
     }
 
-    if (
-      dto.attachments &&
-      dto.attachments.length > FeedbackService.MAX_ATTACHMENTS_PER_FEEDBACK
-    ) {
+    // 处理 FormData 中可能作为字符串传递的 attachments
+    if (typeof dto.attachments === 'string') {
+      try {
+        dto.attachments = JSON.parse(dto.attachments);
+      } catch (e) {
+        dto.attachments = [];
+      }
+    }
+
+    const attachmentsFromDto = dto.attachments || [];
+    const totalAttachments =
+      attachmentsFromDto.length + (files ? files.length : 0);
+
+    if (totalAttachments > FeedbackService.MAX_ATTACHMENTS_PER_FEEDBACK) {
       throw new BadRequestException(
         `单条反馈最多允许 ${FeedbackService.MAX_ATTACHMENTS_PER_FEEDBACK} 个附件`,
       );
@@ -65,15 +83,38 @@ export class FeedbackService {
       },
     });
 
-    if (dto.attachments?.length) {
-      dto.attachments.map((att) =>
-        this.prisma.user_feedback_attachment.create({
-          data: {
-            feedback_id: feedback.id,
-            url: att.url,
-            type: this.mapAttachmentType(att.type),
-            description: att.description ?? null,
-          },
+    // 处理已上传的附件（URL）
+    if (attachmentsFromDto.length) {
+      await Promise.all(
+        attachmentsFromDto.map((att) =>
+          this.prisma.user_feedback_attachment.create({
+            data: {
+              feedback_id: feedback.feedback_id,
+              url: att.url,
+              type: this.mapAttachmentType(att.type),
+              description: att.description ?? null,
+            },
+          }),
+        ),
+      );
+    }
+
+    // 处理新上传的文件
+    if (files?.length) {
+      await Promise.all(
+        files.map(async (file) => {
+          const { url } = await this.fileService.uploadFile(
+            file.buffer,
+            file.originalname,
+          );
+          return this.prisma.user_feedback_attachment.create({
+            data: {
+              feedback_id: feedback.feedback_id,
+              url: url,
+              type: 1, // 默认为图片
+              description: file.originalname,
+            },
+          });
         }),
       );
     }
@@ -113,10 +154,10 @@ export class FeedbackService {
       orderBy: { create_date: 'desc' },
     });
 
-    const ids = data.map((item) => item.id);
-    const attachments = ids.length
+    const feedbackIds = data.map((item) => item.feedback_id);
+    const attachments = feedbackIds.length
       ? await this.prisma.user_feedback_attachment.findMany({
-          where: { feedback_id: { in: ids } },
+          where: { feedback_id: { in: feedbackIds } },
           orderBy: { id: 'asc' },
         })
       : [];
@@ -138,7 +179,9 @@ export class FeedbackService {
 
     const list = data.map((item) => ({
       ...item,
-      attachments: attachments.filter((att) => att.feedback_id === item.id),
+      attachments: attachments.filter(
+        (att) => att.feedback_id === item.feedback_id,
+      ),
       user: userMap.get(item.user_id) || null,
     }));
 
@@ -149,21 +192,21 @@ export class FeedbackService {
     };
   }
 
-  async updateStatus(id: number, dto: UpdateFeedbackStatusDto) {
+  async updateStatus(feedbackId: string, dto: UpdateFeedbackStatusDto) {
     const existed = await this.prisma.user_feedback.findUnique({
-      where: { id },
+      where: { feedback_id: feedbackId },
     });
     if (!existed) {
       throw new NotFoundException('反馈不存在');
     }
 
     return this.prisma.user_feedback.update({
-      where: { id },
+      where: { feedback_id: feedbackId },
       data: { status: dto.status },
     });
   }
 
-  async listComments(feedbackId: number) {
+  async listComments(feedbackId: string) {
     const comments = await this.prisma.user_feedback_comment.findMany({
       where: { feedback_id: feedbackId },
       orderBy: { create_date: 'asc' },
@@ -192,11 +235,11 @@ export class FeedbackService {
 
   async createComment(
     user: UserEntity,
-    feedbackId: number,
+    feedbackId: string,
     dto: CreateFeedbackCommentDto,
   ) {
     const existed = await this.prisma.user_feedback.findUnique({
-      where: { id: feedbackId },
+      where: { feedback_id: feedbackId },
     });
     if (!existed) {
       throw new NotFoundException('反馈不存在');

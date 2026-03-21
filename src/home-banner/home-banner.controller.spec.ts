@@ -61,9 +61,9 @@ describe('HomeBannerController', () => {
       const mockBanner = { banner_id: 'new-id', ...dto };
       homeBannerService.create.mockResolvedValue(mockBanner as any);
 
-      const result = await controller.create(dto);
+      const result = await controller.create(dto, undefined);
 
-      expect(homeBannerService.create).toHaveBeenCalledWith(dto);
+      expect(homeBannerService.create).toHaveBeenCalledWith(dto, undefined);
       expect(result).toEqual(mockBanner);
     });
   });
@@ -75,9 +75,13 @@ describe('HomeBannerController', () => {
       const mockBanner = { banner_id: bannerId, title: 'Updated' };
       homeBannerService.update.mockResolvedValue(mockBanner as any);
 
-      const result = await controller.update(bannerId, dto);
+      const result = await controller.update(bannerId, dto, undefined);
 
-      expect(homeBannerService.update).toHaveBeenCalledWith(bannerId, dto);
+      expect(homeBannerService.update).toHaveBeenCalledWith(
+        bannerId,
+        dto,
+        undefined,
+      );
       expect(result).toEqual(mockBanner);
     });
   });

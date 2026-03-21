@@ -6,6 +6,7 @@ import { v4 } from 'uuid';
 import { ApplicantStoreHistoryInputDto } from './dto/apply-store-history.dto';
 import { STORE_ACTION_TYPES, STORE_STATUS_TYPES } from './const';
 import { UserEntity } from '../users/entities/user.entity';
+import { FileService } from '../file/file.service';
 import { StoreEntity } from './entities/store.entity';
 import { Pagination } from '../common/dto/pagination';
 import { SearchStoreDto } from './dto/search-store.dto';
@@ -14,7 +15,10 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class StoreService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private fileService: FileService,
+  ) {}
   public async create(user: UserEntity, createStoreDto: CreateStoreInputDto) {
     const pendingStore = await this.prisma.store.findFirst({
       where: { user_id: user.user_id, status: STORE_STATUS_TYPES.PENDING },
@@ -350,7 +354,21 @@ export class StoreService {
     id: string,
     data: { wechat_qr_url?: string; alipay_qr_url?: string },
     user: UserEntity,
+    file?: Express.Multer.File,
   ) {
+    if (file) {
+      const { url } = await this.fileService.uploadFile(
+        file.buffer,
+        file.originalname,
+      );
+      // 根据前端传递的 data 确定是哪种收款码
+      if (data.wechat_qr_url !== undefined) {
+        data.wechat_qr_url = url;
+      } else if (data.alipay_qr_url !== undefined) {
+        data.alipay_qr_url = url;
+      }
+    }
+
     await this.prisma.$transaction([
       this.prisma.store.update({
         where: { store_id: id },

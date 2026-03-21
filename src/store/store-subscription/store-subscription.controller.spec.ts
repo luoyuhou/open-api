@@ -47,7 +47,7 @@ describe('StoreServiceController', () => {
 
   describe('listPlans', () => {
     it('should list all plans', async () => {
-      const mockPlans = [{ plan_id: 1, name: 'Basic' }];
+      const mockPlans = [{ plan_id: 'plan-uuid-1', name: 'Basic' }];
       storeService.listPlans.mockResolvedValue(mockPlans as any);
 
       const result = await controller.listPlans();
@@ -64,7 +64,7 @@ describe('StoreServiceController', () => {
         monthly_fee: 0,
         description: 'description',
       };
-      const mockPlan = { plan_id: 2, ...dto };
+      const mockPlan = { plan_id: 'plan-uuid-2', ...dto };
       storeService.createPlan.mockResolvedValue(mockPlan as any);
 
       const result = await controller.createPlan(dto);
@@ -78,7 +78,7 @@ describe('StoreServiceController', () => {
     it('should update plan status', async () => {
       const id = 1;
       const dto: UpdateStoreServicePlanStatusDto = { is_active: false };
-      const mockPlan = { plan_id: id, is_active: false };
+      const mockPlan = { id, plan_id: 'plan-uuid-1', is_active: false };
       storeService.updatePlanStatus.mockResolvedValue(mockPlan as any);
 
       const result = await controller.updatePlanStatus(id, dto);
@@ -125,7 +125,7 @@ describe('StoreServiceController', () => {
     it('should create subscription', async () => {
       const dto: CreateStoreServiceSubscriptionDto = {
         store_id: 'store123',
-        plan_id: 1,
+        plan_id: 'plan-uuid-1',
         start_date: new Date(),
       };
       const mockSubscription = { subscription_id: 1, store_id: 'store123' };
@@ -137,7 +137,7 @@ describe('StoreServiceController', () => {
 
       expect(storeService.createSubscription).toHaveBeenCalledWith({
         store_id: 'store123',
-        plan_id: 1,
+        plan_id: 'plan-uuid-1',
         start_date: dto.start_date,
       });
       expect(result).toEqual({ data: mockSubscription });
@@ -246,7 +246,7 @@ describe('StoreServiceController', () => {
     it('should create contract', async () => {
       const dto: CreateStoreServiceContractDto = {
         store_id: 'store123',
-        plan_id: 1,
+        plan_id: 'plan-uuid-1',
         start_date: new Date(),
         end_date: new Date(),
         total_amount: 100,

@@ -24,8 +24,18 @@ export class StoreServiceBillingCronService {
           start_date: { lte: now },
           end_date: { gte: now },
         },
-        include: { plan: true },
       });
+
+    // 获取套餐信息
+    const planIds = Array.from(
+      new Set(activeSubscriptions.map((s) => s.plan_id)),
+    );
+    const plans = planIds.length
+      ? await this.prisma.store_service_plan.findMany({
+          where: { plan_id: { in: planIds } },
+        })
+      : [];
+    const planMap = new Map(plans.map((p) => [p.plan_id, p]));
 
     const periodStart = new Date(year, monthIndex, 1);
     const periodEnd = new Date(year, monthIndex + 1, 0);
@@ -41,13 +51,14 @@ export class StoreServiceBillingCronService {
       });
       if (existed) continue;
 
+      const plan = planMap.get(sub.plan_id);
       await this.prisma.store_service_invoice.create({
         data: {
           subscription_id: sub.id,
           month: monthStr,
           start_date: periodStart,
           end_date: periodEnd,
-          amount: sub.plan.monthly_fee,
+          amount: plan?.monthly_fee || 0,
           status: 0,
           due_date: dueDate,
         },

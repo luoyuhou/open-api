@@ -10,9 +10,7 @@ jest.setTimeout(30000);
 
 // Mock Redis - 使用 ioredis-mock 提供完整的 Redis 功能
 jest.mock('ioredis', () => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const RedisMock = require('ioredis-mock');
-  return RedisMock;
+  return require('ioredis-mock');
 });
 
 // 全局测试钩子
@@ -24,12 +22,4 @@ beforeAll(async () => {
 
 afterAll(async () => {
   console.log('✅ Test environment cleaned up');
-
-  // 清理测试数据库文件（可选）
-  // const fs = require('fs');
-  // const testDbPath = path.resolve(__dirname, 'prisma/test.db');
-  // if (fs.existsSync(testDbPath)) {
-  //   fs.unlinkSync(testDbPath);
-  //   console.log('   🗑️  Removed test database');
-  // }
 });
