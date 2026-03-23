@@ -40,7 +40,6 @@ export class StoreResourceController {
       data: {
         ...data,
         total_quota: Number(data.total_quota),
-        used_quota: Number(data.used_quota),
       },
     };
   }
@@ -48,11 +47,12 @@ export class StoreResourceController {
   @Get('info')
   async getInfo(@Query('store_id') store_id: string) {
     const data = await this.storeResourceService.getStoreResource(store_id);
+    const usedQuota = await this.storeResourceService.getUsedQuota(store_id);
     return {
       data: {
         ...data,
         total_quota: Number(data.total_quota),
-        used_quota: Number(data.used_quota),
+        used_quota: usedQuota,
       },
     };
   }
@@ -65,5 +65,17 @@ export class StoreResourceController {
       quota_amount: Number(r.quota_amount),
     }));
     return { data: rows };
+  }
+
+  @Get('used-quota')
+  async getUsedQuota(@Query('store_id') store_id: string) {
+    const usedQuota = await this.storeResourceService.getUsedQuota(store_id);
+    return { data: { store_id, used_quota: usedQuota } };
+  }
+
+  @Post('invalidate-quota')
+  async invalidateQuota(@Body() body: { store_id: string }) {
+    await this.storeResourceService.invalidateUsedQuota(body.store_id);
+    return { data: { store_id: body.store_id, message: '缓存已失效' } };
   }
 }

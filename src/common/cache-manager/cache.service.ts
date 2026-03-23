@@ -217,4 +217,52 @@ export class CacheService implements OnModuleDestroy {
       return false;
     }
   }
+
+  // ==================== Used Quota Cache ====================
+  private readonly USED_QUOTA_PREFIX = 'used_quota:';
+  private readonly USED_QUOTA_TTL = 3600; // 1 hour
+
+  /**
+   * 生成 used_quota 的 Redis key
+   */
+  private getUsedQuotaKey(store_id: string): string {
+    return `${this.USED_QUOTA_PREFIX}${store_id}`;
+  }
+
+  /**
+   * 获取商店的已使用配额（从 Redis 缓存）
+   * @returns 已使用配额（字节），如果缓存不存在返回 null
+   */
+  public async getUsedQuota(store_id: string): Promise<number | null> {
+    const key = this.getUsedQuotaKey(store_id);
+    const data = await this.client.get(key);
+
+    if (!data) {
+      return null;
+    }
+
+    return parseInt(data, 10);
+  }
+
+  /**
+   * 设置商店的已使用配额（存入 Redis 缓存）
+   * @param store_id 商店 ID
+   * @param usedQuota 已使用配额（字节）
+   */
+  public async setUsedQuota(
+    store_id: string,
+    usedQuota: number,
+  ): Promise<void> {
+    const key = this.getUsedQuotaKey(store_id);
+    await this.client.set(key, usedQuota.toString(), 'EX', this.USED_QUOTA_TTL);
+  }
+
+  /**
+   * 使商店的已使用配额缓存失效
+   * @param store_id 商店 ID
+   */
+  public async invalidateUsedQuota(store_id: string): Promise<void> {
+    const key = this.getUsedQuotaKey(store_id);
+    await this.client.del(key);
+  }
 }

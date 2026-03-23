@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { FileEntity } from './entities/file.entity';
+import { PrismaService } from '../prisma/prisma.service';
 import * as qiniu from 'qiniu';
 import * as crypto from 'crypto';
 import Env from '../common/const/Env';
@@ -13,17 +11,14 @@ export class FileService {
   private readonly secretKey = Env.Q_SECRET_KEY;
   private readonly bucket = Env.Q_BUCKET;
 
-  constructor(
-    @InjectRepository(FileEntity)
-    private readonly fileRepository: Repository<FileEntity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async uploadFile(
     fileBuffer: Buffer,
     fileName?: string,
   ): Promise<{ hash: string; url: string }> {
     const hash = crypto.createHash('md5').update(fileBuffer).digest('hex');
-    const fileRecord = await this.fileRepository.findOne({ where: { hash } });
+    const fileRecord = await this.prisma.file.findUnique({ where: { hash } });
 
     if (fileRecord) {
       return { hash, url: fileRecord.url };
@@ -54,13 +49,14 @@ export class FileService {
             reject(err || new Error('上传失败'));
           } else {
             const url = `${Env.Q_DOMAIN}/${body.key}`;
-            const newFile = this.fileRepository.create({
-              hash,
-              size: fileBuffer.length,
-              url,
-              file_name: fileName,
+            this.prisma.file.create({
+              data: {
+                hash,
+                size: fileBuffer.length,
+                url,
+                file_name: fileName || '',
+              },
             });
-            this.fileRepository.save(newFile);
             resolve({ hash, url });
           }
         },

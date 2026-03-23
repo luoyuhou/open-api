@@ -700,3 +700,5 @@ CREATE TABLE IF NOT EXISTS `store_resource_order` (
 -- 这里我们复用或细化之前的订阅表结构
 ALTER TABLE `store_service_subscription` ADD COLUMN `is_infinite` tinyint(1) NOT NULL DEFAULT 0;
 ALTER TABLE `store_service_subscription` ADD COLUMN `order_count_last_cycle` int unsigned DEFAULT 0;
+
+ALTER TABLE `store_resource_order` ADD COLUMN `type` tinyint UNSIGNED NOT NULL AFTER `store_id`;
