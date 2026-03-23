@@ -15,10 +15,35 @@ import {
 export class StoreServiceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listPlans() {
-    return this.prisma.store_service_plan.findMany({
+  async listPlans(storeId?: string) {
+    const plans = await this.prisma.store_service_plan.findMany({
       orderBy: { id: 'asc' },
     });
+
+    // 如果有 storeId，获取该店铺对每个套餐的已订阅次数
+    const storeSubscriptionCounts: { plan_id: string; count: number }[] = [];
+    if (storeId) {
+      const counts = await this.prisma.$queryRaw<
+        { plan_id: string; count: bigint }[]
+      >`
+        SELECT plan_id, COUNT(*) as count
+        FROM store_service_subscription
+        WHERE store_id = ${storeId}
+        GROUP BY plan_id
+      `;
+      storeSubscriptionCounts.push(
+        ...counts.map((c) => ({ plan_id: c.plan_id, count: Number(c.count) })),
+      );
+    }
+
+    const countMap = new Map(
+      storeSubscriptionCounts.map((c) => [c.plan_id, Number(c.count)]),
+    );
+
+    return plans.map((p) => ({
+      ...p,
+      current_subscriptions: countMap.get(p.plan_id) || 0,
+    }));
   }
 
   async createPlan(payload: CreateStoreServicePlanDto) {
@@ -27,6 +52,7 @@ export class StoreServiceService {
         name: payload.name.trim(),
         description: payload.description,
         monthly_fee: payload.monthly_fee,
+        max_subscriptions: payload.max_subscriptions ?? null,
         is_active: true,
       },
     });
@@ -144,6 +170,19 @@ export class StoreServiceService {
       throw new BadRequestException('套餐不存在或已下线');
     }
 
+    // 检查该店铺对该套餐的订阅次数限制
+    if (plan.max_subscriptions !== null && plan.max_subscriptions > 0) {
+      const currentCount = await this.prisma.store_service_subscription.count({
+        where: {
+          plan_id: payload.plan_id,
+          store_id: payload.store_id,
+        },
+      });
+      if (currentCount >= plan.max_subscriptions) {
+        throw new BadRequestException('您已达到该套餐的最大订阅次数');
+      }
+    }
+
     const startDate = payload.start_date
       ? new Date(payload.start_date)
       : new Date();
@@ -214,6 +253,23 @@ export class StoreServiceService {
       amount += orderCountLastCycle;
     }
 
+    // 生成合同号
+    const contractNo = `HT${Date.now()}`;
+
+    // 创建合同记录
+    const contract = await this.prisma.store_service_contract.create({
+      data: {
+        contract_no: contractNo,
+        store_id: payload.store_id,
+        plan_id: payload.plan_id,
+        start_date: startDate,
+        end_date: endDate,
+        status: 0, // 待签署
+        sign_type: 2, // 电子签署
+        total_amount: amount,
+      },
+    });
+
     const subscription = await this.prisma.store_service_subscription.create({
       data: {
         store_id: payload.store_id,
@@ -223,6 +279,7 @@ export class StoreServiceService {
         status: 0, // 初始为 0 (待确认/待支付)，管理员确认后变为 1
         is_infinite: true,
         order_count_last_cycle: orderCountLastCycle,
+        contract_id: contract.id,
       },
     });
 
@@ -268,9 +325,21 @@ export class StoreServiceService {
       throw new NotFoundException('订阅记录不存在');
     }
 
-    return this.prisma.store_service_subscription.update({
+    // 更新订阅状态和合同状态
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.store_service_subscription.update({
+        where: { id },
+        data: { status: 1 },
+      }),
+      this.prisma.store_service_contract.update({
+        where: { id: sub.contract_id },
+        data: { status: 1, signed_at: now },
+      }),
+    ]);
+
+    return this.prisma.store_service_subscription.findUnique({
       where: { id },
-      data: { status: 1 },
     });
   }
 

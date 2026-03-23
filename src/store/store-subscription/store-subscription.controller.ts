@@ -29,8 +29,8 @@ export class StoreServiceController {
   constructor(private readonly storeService: StoreServiceService) {}
 
   @Get('plans')
-  async listPlans() {
-    const data = await this.storeService.listPlans();
+  async listPlans(@Query('store_id') storeId?: string) {
+    const data = await this.storeService.listPlans(storeId);
     return { data };
   }
 

@@ -448,14 +448,15 @@ model user_feedback_comment {
 }
 
 model store_service_plan {
-  id          Int      @id @default(autoincrement())
-  plan_id     String   @unique @default(uuid())
-  name        String
-  description String?
-  monthly_fee Int
-  is_active   Boolean  @default(true)
-  create_date DateTime @default(now())
-  update_date DateTime @default(now())
+  id                Int      @id @default(autoincrement())
+  plan_id           String   @unique @default(uuid())
+  name              String
+  description       String?
+  monthly_fee       Int
+  max_subscriptions Int?
+  is_active         Boolean  @default(true)
+  create_date       DateTime @default(now())
+  update_date       DateTime @default(now())
 }
 
 model store_service_subscription {

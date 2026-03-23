@@ -64,6 +64,10 @@ class Utils {
 
     return where;
   }
+
+  static verifyPhoneNumber(phone: string) {
+    return /^[1][3-9]\d{9}$/.test(phone);
+  }
 }
 
 export default Utils;

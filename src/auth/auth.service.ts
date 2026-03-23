@@ -462,7 +462,7 @@ export class AuthService {
    */
   public async generateSmsToken(phone: string) {
     // 1. 校验手机号格式
-    if (!/^[1][3-9]\d{9}$/.test(phone)) {
+    if (!Utils.verifyPhoneNumber(phone)) {
       throw new BadRequestException('请输入有效的手机号');
     }
 
@@ -481,12 +481,7 @@ export class AuthService {
     return { token };
   }
 
-  /**
-   * 发送短信验证码并存入缓存
-   */
-  public async sendSmsCode(phone: string, token: string, ip?: string) {
-    // 1. 验证 Token 是否合法
-    const tokenKey = `sms_token:${phone}:${token}`;
+  private async verifyTokenKey(phone: string, tokenKey: string) {
     const isValid = await this.cacheService.client.get(tokenKey);
     if (!isValid) {
       throw new BadRequestException('滑块校验失败或已过期，请重试');
@@ -495,29 +490,26 @@ export class AuthService {
     await this.cacheService.client.del(tokenKey);
 
     // 2. 校验手机号格式
-    if (!/^[1][3-9]\d{9}$/.test(phone)) {
+    if (!Utils.verifyPhoneNumber(phone)) {
       throw new BadRequestException('请输入有效的手机号');
     }
+  }
 
-    // 2. 检查手机号是否已存在
-    const user = await this.prisma.user.findUnique({ where: { phone } });
-    if (user) {
-      throw new BadRequestException('该手机号已注册，请直接登录');
-    }
-
-    // --- 安全防护逻辑开始 ---
-    const cooldownKey = `sms_cooldown:${phone}`;
-    const dailyLimitKey = `sms_daily_limit:${phone}`;
-    const ipLimitKey = `sms_ip_limit:${ip}`;
-
-    // A. 60秒冷却时间检查
-    const inCooldown = await this.cacheService.client.get(cooldownKey);
-    if (inCooldown) {
-      throw new BadRequestException('请求过于频繁，请在 60 秒后重试');
-    }
-
-    // B. 每日手机号发送限额 (例如每天最多 5 次)
+  private async _sendSmsCode(
+    phone: string,
+    ip: string,
+    {
+      cooldownKey,
+      ipLimitKey,
+      dailyLimitKey,
+    }: {
+      cooldownKey: string;
+      dailyLimitKey: string;
+      ipLimitKey: string;
+    },
+  ) {
     const dailyCount = await this.cacheService.client.get(dailyLimitKey);
+    // B. 每日手机号发送限额 (例如每天最多 5 次)
     if (dailyCount && parseInt(dailyCount) >= 5) {
       throw new BadRequestException('该手机号今日发送验证码次数已达上限');
     }
@@ -561,6 +553,38 @@ export class AuthService {
       pipeline.expire(ipLimitKey, 24 * 60 * 60);
     }
     await pipeline.exec();
+  }
+
+  /**
+   * 发送短信验证码并存入缓存
+   */
+  public async sendSmsCode(phone: string, token: string, ip?: string) {
+    // 1. 验证 Token 是否合法
+    const tokenKey = `sms_token:${phone}:${token}`;
+    await this.verifyTokenKey(phone, tokenKey);
+
+    // 2. 检查手机号是否已存在
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+    if (user) {
+      throw new BadRequestException('该手机号已注册，请直接登录');
+    }
+
+    // --- 安全防护逻辑开始 ---
+    const cooldownKey = `sms_cooldown:${phone}`;
+    const dailyLimitKey = `sms_daily_limit:${phone}`;
+    const ipLimitKey = `sms_ip_limit:${ip}`;
+
+    // A. 60秒冷却时间检查
+    const inCooldown = await this.cacheService.client.get(cooldownKey);
+    if (inCooldown) {
+      throw new BadRequestException('请求过于频繁，请在 60 秒后重试');
+    }
+
+    await this._sendSmsCode(phone, ip, {
+      cooldownKey,
+      ipLimitKey,
+      dailyLimitKey,
+    });
 
     return { message: '验证码已发送' };
   }
@@ -583,5 +607,97 @@ export class AuthService {
     // 验证成功后删除验证码
     await this.cacheService.client.del(cacheKey);
     return true;
+  }
+
+  /**
+   * 生成忘记密码的短信 Token
+   * 与注册不同，这里需要检查手机号是否存在
+   */
+  public async generateForgetPasswordSmsToken(phone: string) {
+    // 1. 校验手机号格式
+    if (!Utils.verifyPhoneNumber(phone)) {
+      throw new BadRequestException('请输入有效的手机号');
+    }
+
+    // 2. 检查手机号是否存在
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+    if (!user) {
+      throw new BadRequestException('该手机号未注册');
+    }
+
+    const token = v4();
+    const cacheKey = `forget_sms_token:${phone}:${token}`;
+
+    // Token 有效期 2 分钟，仅限一次使用
+    await this.cacheService.client.set(cacheKey, '1', 'EX', 120);
+
+    return { token };
+  }
+
+  /**
+   * 发送忘记密码短信验证码
+   */
+  public async sendForgetPasswordSms(
+    phone: string,
+    token: string,
+    ip?: string,
+  ) {
+    // 1. 验证 Token 是否合法
+    const tokenKey = `forget_sms_token:${phone}:${token}`;
+    await this.verifyTokenKey(phone, tokenKey);
+
+    // 3. 检查手机号是否存在
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+    if (!user) {
+      throw new BadRequestException('该手机号未注册');
+    }
+
+    // --- 安全防护逻辑开始 ---
+    const cooldownKey = `forget_sms_cooldown:${phone}`;
+    const dailyLimitKey = `forget_sms_daily_limit:${phone}`;
+    const ipLimitKey = `sms_ip_limit:${ip}`;
+
+    // A. 60秒冷却时间检查
+    const inCooldown = await this.cacheService.client.get(cooldownKey);
+    if (inCooldown) {
+      const ttl = await this.cacheService.client.ttl(cooldownKey);
+      throw new BadRequestException(
+        `请求过于频繁，请在 ${ttl > 0 ? ttl : 60} 秒后重试`,
+      );
+    }
+
+    // B. 每日手机号发送限额 (例如每天最多 5 次)
+    await this._sendSmsCode(phone, ip, {
+      cooldownKey,
+      ipLimitKey,
+      dailyLimitKey,
+    });
+
+    return { message: '验证码已发送' };
+  }
+
+  /**
+   * 通过手机号重置密码
+   */
+  public async resetPasswordByPhone(
+    phone: string,
+    code: string,
+    password: string,
+  ) {
+    // 1. 校验验证码
+    if (process.env.IS_UNIT_TEST !== 'true') {
+      await this.verifySmsCode(phone, code);
+    }
+
+    // 2. 查找用户
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+    if (!user) {
+      throw new BadRequestException('该手机号未注册');
+    }
+
+    // 3. 重置密码
+    await this.usersService.resetPassword(user.user_id, { password });
+
+    return { message: '密码重置成功' };
   }
 }

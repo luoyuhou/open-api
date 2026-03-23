@@ -44,7 +44,7 @@ import {
   QrCodeStatusResponse,
   ScanQrCodeDto,
 } from './dto/qr-login.dto';
-import { SendSmsDto } from './dto/sms.dto';
+import { SendSmsDto, ResetPasswordDto } from './dto/sms.dto';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -79,7 +79,7 @@ export class AuthController {
   @Post('wx/verify-code')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: AuthEntity })
-  async verifyCode(@Req() request: Request, @Body() { code }: VerifyCodeDot) {
+  async verifyCode(@Req() _request: Request, @Body() { code }: VerifyCodeDot) {
     const responses = await this.authService.verifyCode(code);
     return { message: 'ok', data: responses };
   }
@@ -201,10 +201,7 @@ export class AuthController {
   @UseGuards(LocalScanAuthGuard)
   @UseInterceptors(TokenInterceptor)
   @ApiOkResponse({ type: QrCodeStatusResponse })
-  async checkQrCodeStatus(
-    @Req() request: Request,
-    @Param('qrCodeId') qrCodeId: string,
-  ) {
+  async checkQrCodeStatus(@Req() request: Request) {
     // 从 request 中获取结果（由 Guard 设置）
     const result = (request as any).qrCodeResult;
 
@@ -258,7 +255,7 @@ export class AuthController {
   @Post('qr-code/confirm')
   @HttpCode(HttpStatus.OK)
   async confirmQrLogin(
-    @Req() request: Request,
+    @Req() _request: Request,
     @Body() dto: ConfirmQrLoginDto,
   ) {
     const result = await this.authService.confirmQrLogin(
@@ -271,7 +268,7 @@ export class AuthController {
 
   @Get('sms-token')
   @HttpCode(HttpStatus.OK)
-  async getSmsToken(@Req() req: Request, @Query('phone') phone: string) {
+  async getSmsToken(@Req() _req: Request, @Query('phone') phone: string) {
     return this.authService.generateSmsToken(phone);
   }
 
@@ -280,5 +277,40 @@ export class AuthController {
   async sendSms(@Req() req: Request, @Body() sendSmsDto: SendSmsDto) {
     const ip = (req.headers['x-forwarded-for'] as string) || req.ip;
     return this.authService.sendSmsCode(sendSmsDto.phone, sendSmsDto.token, ip);
+  }
+
+  @Get('forget-password/sms-token')
+  @HttpCode(HttpStatus.OK)
+  async getForgetPasswordSmsToken(
+    @Req() _req: Request,
+    @Query('phone') phone: string,
+  ) {
+    return this.authService.generateForgetPasswordSmsToken(phone);
+  }
+
+  @Post('forget-password/send-sms')
+  @HttpCode(HttpStatus.OK)
+  async sendForgetPasswordSms(
+    @Req() req: Request,
+    @Body() sendSmsDto: SendSmsDto,
+  ) {
+    const ip = (req.headers['x-forwarded-for'] as string) || req.ip;
+    return this.authService.sendForgetPasswordSms(
+      sendSmsDto.phone,
+      sendSmsDto.token,
+      ip,
+    );
+  }
+
+  @Post('forget-password/reset')
+  @HttpCode(HttpStatus.OK)
+  async resetPasswordByForgetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ) {
+    return this.authService.resetPasswordByPhone(
+      resetPasswordDto.phone,
+      resetPasswordDto.code,
+      resetPasswordDto.password,
+    );
   }
 }
