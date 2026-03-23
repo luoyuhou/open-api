@@ -120,7 +120,7 @@ describe('GoodsController', () => {
       const mockVersion = { version_id: 2, ...dto };
       goodsService.upsertGoodsVersion.mockResolvedValue(mockVersion as any);
 
-      const result = await controller.upsertGoodsVersion(
+      const result = await controller.createGoodsVersion(
         goodsId,
         dto,
         undefined,

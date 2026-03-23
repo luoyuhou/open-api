@@ -58,7 +58,7 @@ export class GoodsController {
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
   )
-  async upsertGoodsVersion(
+  async createGoodsVersion(
     @Param('goodsId') goodsId: string,
     @Body() upsertGoodsVersionDto: UpsertGoodsVersionDto,
     @UploadedFile() file?: Express.Multer.File,

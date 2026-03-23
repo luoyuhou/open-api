@@ -7,6 +7,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CacheService } from '../../common/cache-manager/cache.service';
 import { Pagination } from '../../common/dto/pagination';
 import Utils from '../../common/utils';
+import { v4 } from 'uuid';
+import { STORE_RESOURCE_TYPES } from '../const';
 
 @Injectable()
 export class StoreResourceService {
@@ -61,11 +63,12 @@ export class StoreResourceService {
   }) {
     return this.prisma.store_resource_order.create({
       data: {
-        order_id: `RO${Date.now()}${Math.floor(Math.random() * 1000)}`,
+        order_id: `RO-${v4()}`,
         store_id: payload.store_id,
         quota_amount: BigInt(payload.quota_amount),
         price: payload.price,
         status: 0,
+        type: STORE_RESOURCE_TYPES.pay,
       },
     });
   }

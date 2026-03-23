@@ -1,5 +1,3 @@
-// Prisma Schema - 使用 SQLite（开发/实验环境）
-// MySQL 特定的类型声明已移除，与 SQLite 兼容
 generator client {
   provider = "prisma-client-js"
 }
@@ -72,7 +70,6 @@ model store {
   create_date   DateTime? @default(now())
   update_date   DateTime? @default(now())
 }
-
 
 model store_history {
   id             Int       @id @default(autoincrement())
@@ -153,28 +150,28 @@ model store_goods_version {
 }
 
 model user_order {
-  id             Int       @id @default(autoincrement())
-  order_id       String    @unique
-  user_id        String
-  store_id       String
-  status         Int
-  stage          Int
-  payment_method String
+  id              Int       @id @default(autoincrement())
+  order_id        String    @unique
+  user_id         String
+  store_id        String
+  status          Int
+  stage           Int
+  payment_method  String
   payment_channel String?
-  pay_status     Int       @default(0)
-  paid_at        DateTime?
-  pay_proof_url  String?
-  recipient      String
-  money          Int
-  phone          String
-  province       String
-  city           String
-  area           String
-  town           String
-  address        String
-  delivery_date  DateTime
-  create_date    DateTime? @default(now())
-  update_date    DateTime? @default(now())
+  pay_status      Int       @default(0)
+  paid_at         DateTime?
+  pay_proof_url   String?
+  recipient       String
+  money           Int
+  phone           String
+  province        String
+  city            String
+  area            String
+  town            String
+  address         String
+  delivery_date   DateTime
+  create_date     DateTime? @default(now())
+  update_date     DateTime? @default(now())
 }
 
 model user_order_info {
@@ -550,6 +547,7 @@ model store_resource_order {
   id           Int       @id @default(autoincrement())
   order_id     String    @unique
   store_id     String
+  type         Int
   quota_amount BigInt
   price        Int
   status       Int       @default(0)

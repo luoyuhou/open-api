@@ -4,7 +4,11 @@ import { UpdateStoreDto } from './dto/update-store.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { v4 } from 'uuid';
 import { ApplicantStoreHistoryInputDto } from './dto/apply-store-history.dto';
-import { STORE_ACTION_TYPES, STORE_STATUS_TYPES } from './const';
+import {
+  STORE_ACTION_TYPES,
+  STORE_RESOURCE_TYPES,
+  STORE_STATUS_TYPES,
+} from './const';
 import { UserEntity } from '../users/entities/user.entity';
 import { FileService } from '../file/file.service';
 import { StoreEntity } from './entities/store.entity';
@@ -133,6 +137,8 @@ export class StoreService {
       throw new BadRequestException('请确定你是否预览完成');
     }
 
+    const freeQuota = 10 * 1024 * 1024;
+
     await this.prisma.$transaction([
       this.prisma.store.update({
         where: { store_id: id },
@@ -146,6 +152,22 @@ export class StoreService {
           action_type: STORE_ACTION_TYPES.APPROVED,
           action_content: `${user.first_name} ${user.last_name} approved this store.`,
           payload: data.replient_content,
+        },
+      }),
+      this.prisma.store_resource.create({
+        data: {
+          store_id: id,
+          total_quota: freeQuota,
+        },
+      }),
+      this.prisma.store_resource_order.create({
+        data: {
+          store_id: id,
+          order_id: `RO-${v4()}`,
+          type: STORE_RESOURCE_TYPES.free,
+          price: 0,
+          status: 1,
+          quota_amount: freeQuota,
         },
       }),
     ]);

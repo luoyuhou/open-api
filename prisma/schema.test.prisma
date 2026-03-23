@@ -548,6 +548,7 @@ model store_resource_order {
   id           Int       @id @default(autoincrement())
   order_id     String    @unique
   store_id     String
+  type         Int
   quota_amount BigInt
   price        Int
   status       Int       @default(0)

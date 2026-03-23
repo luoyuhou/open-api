@@ -25,3 +25,8 @@ export enum STORE_STATUS_TYPES {
   OPENED = 5, // hung up
   CLOSED = 6,
 }
+
+export enum STORE_RESOURCE_TYPES {
+  free = 1,
+  pay = 2,
+}

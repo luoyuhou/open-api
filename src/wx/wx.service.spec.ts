@@ -10,6 +10,7 @@ import { UsersService } from '../users/users.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { CacheService } from '../common/cache-manager/cache.service';
 import { FileService } from '../file/file.service';
+import { StoreResourceService } from '../store/store-resource/store-resource.service';
 
 describe('WxService', () => {
   let service: WxService;
@@ -31,6 +32,7 @@ describe('WxService', () => {
         UsersService,
         ChatGateway,
         CacheService,
+        StoreResourceService,
         { provide: FileService, useValue: mockFileService },
       ],
     }).compile();

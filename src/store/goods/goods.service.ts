@@ -255,9 +255,10 @@ export class GoodsService {
     file?: Express.Multer.File,
   ) {
     let store_id: string | null = null;
+    let oldImageSize = 0;
 
     if (file) {
-      // 1. 获取 store_id
+      // 1. 获取 store_id 和旧图片信息
       const goods = await this.prisma.store_goods.findUnique({
         where: { goods_id },
         select: { store_id: true },
@@ -267,8 +268,23 @@ export class GoodsService {
       }
       store_id = goods.store_id;
 
-      // 2. 检查图片资源额度
-      await this.checkResourceQuota(store_id, file.size);
+      // 2. 如果是更新操作，获取旧图片大小
+      if (version_id) {
+        const oldVersion = await this.prisma.store_goods_version.findUnique({
+          where: { version_id },
+          select: { image_hash: true },
+        });
+        if (oldVersion?.image_hash) {
+          const oldFile = await this.prisma.file.findUnique({
+            where: { hash: oldVersion.image_hash },
+            select: { size: true },
+          });
+          oldImageSize = oldFile?.size || 0;
+        }
+      }
+
+      // 3. 检查图片资源额度（传入旧图片大小用于扣除）
+      await this.checkResourceQuota(store_id, file.size, oldImageSize);
 
       const { url, hash } = await this.fileService.uploadFile(
         file.buffer,
@@ -295,7 +311,7 @@ export class GoodsService {
     return this.createGoodsVersion(goods_id, upsertGoodsVersionDto);
   }
 
-  async createGoodsVersion(
+  private async createGoodsVersion(
     goods_id: string,
     createGoodsVersionDto: CreateGoodsVersionDto,
   ) {
@@ -338,7 +354,7 @@ export class GoodsService {
     });
 
     if (!goodsVersion) {
-      throw new BadRequestException('');
+      throw new BadRequestException('当前商品版本丢失，请刷新页面后再试。');
     }
 
     return this.prisma.store_goods_version.update({
@@ -349,37 +365,37 @@ export class GoodsService {
 
   /**
    * 检查商店图片资源额度
+   * @param storeId 商店 ID
+   * @param incomingSize 新图片大小
+   * @param oldSize 被替换的旧图片大小（更新图片时使用）
    */
-  private async checkResourceQuota(storeId: string, incomingSize: number) {
+  private async checkResourceQuota(
+    storeId: string,
+    incomingSize: number,
+    oldSize?: number,
+  ) {
     // 1. 获取当前限额配置
-    let resource = await this.prisma.store_resource.findUnique({
+    const resource = await this.prisma.store_resource.findUnique({
       where: { store_id: storeId },
     });
-
-    if (!resource) {
-      // 如果不存在，初始化一个（10MB）
-      resource = await this.prisma.store_resource.create({
-        data: {
-          store_id: storeId,
-          total_quota: BigInt(10 * 1024 * 1024),
-        },
-      });
-    }
 
     // 2. 获取当前已用额度（从 Redis 缓存或数据库计算）
     const usedSize = await this.storeResourceService.getUsedQuota(storeId);
 
-    // 3. 校验
-    if (usedSize + incomingSize > Number(resource.total_quota)) {
+    // 3. 计算实际需要的额度：used_quota - oldSize + newSize
+    const actualUsedSize = usedSize - (oldSize || 0) + incomingSize;
+
+    // 4. 校验
+    if (actualUsedSize > Number(resource.total_quota)) {
       const totalMB = Number(resource.total_quota) / (1024 * 1024);
       const usedMB = (usedSize / (1024 * 1024)).toFixed(2);
+      const newUsedMB = (actualUsedSize / (1024 * 1024)).toFixed(2);
       throw new BadRequestException(
-        `图片资源额度不足。当前配额：${totalMB}MB，已使用：${usedMB}MB。请购买额外额度。`,
+        `图片资源额度不足。当前配额：${totalMB}MB，已使用：${usedMB}MB，更新后使用：${newUsedMB}MB。请购买额外额度。`,
       );
     }
 
-    // 4. 预占额度（更新缓存，实际值会在下次查询时重新计算）
-    // 使缓存失效，下次查询时会重新计算准确的值
+    // 5. 使缓存失效，下次查询时会重新计算准确的值
     await this.storeResourceService.invalidateUsedQuota(storeId);
   }
 }
