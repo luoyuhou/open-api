@@ -538,7 +538,6 @@ model store_resource {
   id          Int       @id @default(autoincrement())
   store_id    String    @unique
   total_quota BigInt    @default(10485760)
-  used_quota  BigInt    @default(0)
   create_date DateTime? @default(now())
   update_date DateTime? @default(now())
 
