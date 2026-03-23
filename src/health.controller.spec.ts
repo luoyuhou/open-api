@@ -1,25 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HealthController } from './health.controller';
-import {
-  HealthCheckService,
-  TypeOrmHealthIndicator,
-  MemoryHealthIndicator,
-} from '@nestjs/terminus';
+import { HealthCheckService, MemoryHealthIndicator } from '@nestjs/terminus';
 import { CacheService } from './common/cache-manager/cache.service';
+import { PrismaService } from './prisma/prisma.service';
 
 describe('HealthController', () => {
   let controller: HealthController;
   let healthCheckService: jest.Mocked<HealthCheckService>;
-  let typeOrmHealthIndicator: jest.Mocked<TypeOrmHealthIndicator>;
   let memoryHealthIndicator: jest.Mocked<MemoryHealthIndicator>;
   let cacheService: jest.Mocked<CacheService>;
+  let prismaService: jest.Mocked<PrismaService>;
 
   beforeEach(async () => {
     const mockHealthCheckService = {
       check: jest.fn(),
-    };
-    const mockTypeOrmHealthIndicator = {
-      pingCheck: jest.fn(),
     };
     const mockMemoryHealthIndicator = {
       checkRSS: jest.fn(),
@@ -27,17 +21,17 @@ describe('HealthController', () => {
     const mockCacheService = {
       client: { status: 'ready' },
     };
+    const mockPrismaService = {
+      $queryRaw: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [HealthController],
       providers: [
         { provide: HealthCheckService, useValue: mockHealthCheckService },
-        {
-          provide: TypeOrmHealthIndicator,
-          useValue: mockTypeOrmHealthIndicator,
-        },
         { provide: MemoryHealthIndicator, useValue: mockMemoryHealthIndicator },
         { provide: CacheService, useValue: mockCacheService },
+        { provide: PrismaService, useValue: mockPrismaService },
       ],
     }).compile();
 
@@ -45,13 +39,11 @@ describe('HealthController', () => {
     healthCheckService = module.get(
       HealthCheckService,
     ) as jest.Mocked<HealthCheckService>;
-    typeOrmHealthIndicator = module.get(
-      TypeOrmHealthIndicator,
-    ) as jest.Mocked<TypeOrmHealthIndicator>;
     memoryHealthIndicator = module.get(
       MemoryHealthIndicator,
     ) as jest.Mocked<MemoryHealthIndicator>;
     cacheService = module.get(CacheService) as jest.Mocked<CacheService>;
+    prismaService = module.get(PrismaService) as jest.Mocked<PrismaService>;
   });
 
   it('should be defined', () => {

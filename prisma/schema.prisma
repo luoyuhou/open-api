@@ -1,620 +1,561 @@
+// Prisma Schema - 使用 SQLite（开发/实验环境）
+// MySQL 特定的类型声明已移除，与 SQLite 兼容
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 model user {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  user_id     String    @unique(map: "user_id") @db.VarChar(64)
-  status      Int       @db.TinyInt
-  first_name  String    @db.VarChar(32)
-  last_name   String    @db.VarChar(32)
-  email       String?   @db.VarChar(64)
-  phone       String    @unique(map: "phone") @db.VarChar(16)
-  gender      Int       @default(0) @db.UnsignedTinyInt
-  avatar      String?   @db.VarChar(256)
-  bio         String?   @db.VarChar(512)
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
+  id          Int       @id @default(autoincrement())
+  user_id     String    @unique
+  status      Int
+  first_name  String
+  last_name   String
+  email       String?
+  phone       String    @unique
+  gender      Int       @default(0)
+  avatar      String?
+  bio         String?
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
 }
 
 model user_signin_history {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  user_id     String    @db.VarChar(64)
-  ip          String?   @db.VarChar(64)
-  useragent   String?   @db.VarChar(256)
-  source      Int       @db.TinyInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([create_date], map: "user_signIn_history_createDate_idx")
-  @@index([user_id], map: "user_signIn_history_userId_idx")
+  id          Int       @id @default(autoincrement())
+  user_id     String
+  ip          String?
+  useragent   String?
+  source      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
 }
 
 model user_signin_password {
-  id                 Int       @id @default(autoincrement()) @db.UnsignedInt
-  user_id            String    @unique(map: "user_id") @db.VarChar(64)
-  salt               String    @db.VarChar(32)
-  password           String    @db.VarChar(64)
-  failed_login_times Int       @default(0) @db.UnsignedTinyInt
-  locked_date        DateTime? @db.DateTime(0)
-  create_date        DateTime? @default(now()) @db.DateTime(0)
-  update_date        DateTime? @default(now()) @db.DateTime(0)
-}
-
-model store {
-  id            Int       @id @default(autoincrement()) @db.UnsignedInt
-  store_id      String    @unique(map: "store_id") @db.VarChar(64)
-  id_code       String    @db.VarChar(32)
-  id_name       String    @db.VarChar(32)
-  user_id       String    @db.VarChar(64)
-  store_name    String    @db.VarChar(64)
-  phone         String    @db.VarChar(11)
-  province      String    @db.VarChar(8)
-  city          String    @db.VarChar(8)
-  area          String    @db.VarChar(8)
-  town          String    @db.VarChar(8)
-  address       String    @db.VarChar(128)
-  wechat_qr_url String?   @db.VarChar(256)
-  alipay_qr_url String?   @db.VarChar(256)
-  status        Int       @default(0) @db.TinyInt
-  create_date   DateTime? @default(now()) @db.DateTime(0)
-  update_date   DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([store_name], map: "store_name_idx")
-  @@index([user_id], map: "store_user_idx")
-}
-
-model store_history {
-  id             Int       @id @default(autoincrement()) @db.UnsignedInt
-  store_id       String    @db.VarChar(64)
-  action_type    Int       @db.UnsignedTinyInt
-  action_content String    @db.VarChar(256)
-  payload        String?   @db.VarChar(1024)
-  action_user_id String    @db.VarChar(64)
-  action_date    DateTime  @db.DateTime(0)
-  create_date    DateTime? @default(now()) @db.DateTime(0)
-  update_date    DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([action_type], map: "store_action_type_idx")
-  @@index([store_id], map: "store_history_idx")
-}
-
-model user_address {
-  id              Int       @id @default(autoincrement()) @db.UnsignedInt
-  user_address_id String    @unique(map: "user_address_id") @db.VarChar(64)
-  user_id         String    @db.VarChar(64)
-  recipient       String    @db.VarChar(64)
-  phone           String    @db.VarChar(16)
-  province        String    @db.VarChar(8)
-  city            String    @db.VarChar(8)
-  area            String    @db.VarChar(8)
-  town            String    @db.VarChar(8)
-  address         String    @db.VarChar(128)
-  is_default      Boolean   @default(false)
-  tag             String?   @db.VarChar(8)
-  status          Boolean   @default(true)
-  create_date     DateTime? @default(now()) @db.DateTime(0)
-  update_date     DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([user_id], map: "user_address_user_idx")
-}
-
-model category_goods {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  category_id String    @unique(map: "category_id") @db.VarChar(64)
-  store_id    String    @db.VarChar(64)
-  pid         String?   @db.VarChar(64)
-  rank        Int       @default(0) @db.TinyInt
-  name        String    @db.VarChar(16)
-  status      Int       @db.TinyInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
-
-  @@unique([store_id, name], map: "store_id")
-  @@index([store_id, pid], map: "category_goods_idx")
-  @@index([name], map: "category_goods_name")
-}
-
-model store_goods {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  goods_id    String    @unique(map: "goods_id") @db.VarChar(64)
-  store_id    String    @db.VarChar(64)
-  category_id String    @db.VarChar(64)
-  name        String    @db.VarChar(16)
-  description String?   @db.VarChar(256)
-  status      Int       @db.TinyInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
-
-  @@unique([store_id, category_id, name], map: "store_id")
-  @@index([name], map: "goods_name_idx")
-  @@index([store_id], map: "store_idx")
-}
-
-model store_goods_version {
-  id             Int       @id @default(autoincrement()) @db.UnsignedInt
-  version_id     String    @unique(map: "version_id") @db.VarChar(64)
-  goods_id       String    @db.VarChar(64)
-  image_url      String?   @db.VarChar(128)
-  image_hash     String?   @db.VarChar(32)
-  version_number String?   @db.VarChar(32)
-  bar_code       String?   @db.VarChar(32)
-  count          Int       @db.UnsignedInt
-  price          Int       @db.UnsignedInt
-  unit_name      String    @db.VarChar(8)
-  supplier       String?   @db.VarChar(64)
-  status         Int       @db.TinyInt
-  create_date    DateTime? @default(now()) @db.DateTime(0)
-  update_date    DateTime? @default(now()) @db.DateTime(0)
-
-  @@unique([goods_id, unit_name, version_number], map: "goods_id")
-  @@unique([goods_id, unit_name, bar_code], map: "goods_id_2")
-  @@index([bar_code], map: "goods_bar_code_idx")
-  @@index([goods_id], map: "goods_idx")
-  @@index([supplier], map: "goods_suppler_idx")
-  @@index([version_number], map: "goods_version_number_idx")
-}
-
-model user_order {
-  id              Int       @id @default(autoincrement()) @db.UnsignedInt
-  order_id        String    @unique(map: "order_id") @db.VarChar(64)
-  user_id         String    @db.VarChar(64)
-  store_id        String    @db.VarChar(64)
-  status          Int       @db.TinyInt
-  stage           Int       @db.TinyInt
-  payment_method  String    @db.VarChar(32)
-  payment_channel String?   @db.VarChar(32)
-  pay_status      Int       @default(0) @db.TinyInt
-  paid_at         DateTime? @db.DateTime(0)
-  pay_proof_url   String?   @db.VarChar(256)
-  recipient       String    @db.VarChar(16)
-  money           Int       @db.UnsignedInt
-  phone           String    @db.VarChar(16)
-  province        String    @db.VarChar(8)
-  city            String    @db.VarChar(8)
-  area            String    @db.VarChar(8)
-  town            String    @db.VarChar(8)
-  address         String    @db.VarChar(128)
-  delivery_date   DateTime  @db.DateTime(0)
-  create_date     DateTime? @default(now()) @db.DateTime(0)
-  update_date     DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([user_id, store_id], map: "user_order_idx")
-  @@index([store_id], map: "user_order_store_idx")
-  @@index([user_id], map: "user_order_user_idx")
-}
-
-model user_order_info {
-  id               Int       @id @default(autoincrement()) @db.UnsignedInt
-  order_info_id    String    @unique(map: "order_info_id") @db.VarChar(64)
-  order_id         String    @db.VarChar(64)
-  goods_id         String    @db.VarChar(64)
-  goods_name       String    @db.VarChar(16)
-  goods_version_id String    @db.VarChar(64)
-  count            Int       @db.UnsignedInt
-  price            Int       @db.UnsignedInt
-  create_date      DateTime? @default(now()) @db.DateTime(0)
-  update_date      DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([order_id], map: "order_Info_order_idx")
-  @@index([goods_id], map: "order_info_goods_idx")
-}
-
-model user_order_action {
-  id              Int       @id @default(autoincrement()) @db.UnsignedInt
-  order_action_id String    @unique(map: "order_action_id") @db.VarChar(64)
-  user_id         String    @db.VarChar(64)
-  order_id        String    @db.VarChar(64)
-  status          Int       @db.TinyInt
-  create_date     DateTime? @default(now()) @db.DateTime(0)
-  update_date     DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([order_id], map: "order_idx")
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model province {
-  id       Int    @id @default(autoincrement()) @db.UnsignedInt
-  code     String @db.VarChar(8)
-  name     String @db.VarChar(32)
-  province String @db.VarChar(8)
-  city     String @db.VarChar(8)
-  area     String @db.VarChar(8)
-  town     String @db.VarChar(8)
-
-  @@index([city], map: "city_idx")
-  @@index([code], map: "code_idx")
-  @@index([province, city, area], map: "province_idx")
-}
-
-model store_apply {
-  id                Int       @id @default(autoincrement()) @db.UnsignedInt
-  store_id          String    @db.VarChar(64)
-  type              Int       @db.UnsignedTinyInt
-  applicant_user_id String    @db.VarChar(64)
-  applicant_date    DateTime  @db.DateTime(0)
-  applicant_summary String    @db.VarChar(128)
-  applicant_content String    @db.VarChar(1024)
-  status            Int       @default(0) @db.TinyInt
-  replient_user_id  String?   @db.VarChar(64)
-  replient_date     DateTime? @db.DateTime(0)
-  replient_content  String?   @db.VarChar(256)
-  create_date       DateTime? @default(now()) @db.DateTime(0)
-  update_date       DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([store_id], map: "store_apply_idx")
-  @@index([type])
-}
-
-model auth {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  pid         String    @default("0") @db.VarChar(64)
-  auth_id     String    @unique(map: "auth_id") @db.VarChar(64)
-  side        Int       @db.UnsignedTinyInt
-  path        String    @db.VarChar(64)
-  method      String?   @db.VarChar(8)
-  status      Int       @db.TinyInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
-
-  @@unique([side, path], map: "auth_idx")
-  @@index([pid])
-  @@index([side])
-}
-
-model role {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  role_id     String    @unique(map: "role_id") @db.VarChar(64)
-  role_name   String    @unique(map: "role_name") @db.VarChar(16)
-  description String?   @db.VarChar(1024)
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
-}
-
-model user_auth {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  user_id     String    @unique(map: "user_id") @db.VarChar(64)
-  is_admin    Boolean
-  status      Int       @db.TinyInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
-}
-
-model user_role {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  role_id     String    @db.VarChar(64)
-  user_id     String    @db.VarChar(64)
-  status      Int       @db.TinyInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
-
-  @@unique([user_id, role_id], map: "user_id")
-  @@index([role_id], map: "role_idx")
+  id                 Int       @id @default(autoincrement())
+  user_id            String    @unique
+  salt               String
+  password           String
+  failed_login_times Int       @default(0)
+  locked_date        DateTime?
+  create_date        DateTime? @default(now())
+  update_date        DateTime? @default(now())
 }
 
 model user_signin_wechat {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  openid      String    @unique(map: "openid") @db.VarChar(64)
-  user_id     String    @unique(map: "user_id") @db.VarChar(64)
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
+  id          Int       @id @default(autoincrement())
+  openid      String    @unique
+  user_id     String    @unique
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+
+model store {
+  id            Int       @id @default(autoincrement())
+  store_id      String    @unique
+  id_code       String
+  id_name       String
+  user_id       String
+  store_name    String
+  phone         String
+  province      String
+  city          String
+  area          String
+  town          String
+  address       String
+  wechat_qr_url String?
+  alipay_qr_url String?
+  status        Int       @default(0)
+  create_date   DateTime? @default(now())
+  update_date   DateTime? @default(now())
+}
+
+
+model store_history {
+  id             Int       @id @default(autoincrement())
+  store_id       String
+  action_type    Int
+  action_content String
+  payload        String?
+  action_user_id String
+  action_date    DateTime
+  create_date    DateTime? @default(now())
+  update_date    DateTime? @default(now())
+}
+
+model user_address {
+  id              Int       @id @default(autoincrement())
+  user_address_id String    @unique
+  user_id         String
+  recipient       String
+  phone           String
+  province        String
+  city            String
+  area            String
+  town            String
+  address         String
+  is_default      Boolean   @default(false)
+  tag             String?
+  status          Boolean   @default(true)
+  create_date     DateTime? @default(now())
+  update_date     DateTime? @default(now())
+}
+
+model category_goods {
+  id          Int       @id @default(autoincrement())
+  category_id String    @unique
+  store_id    String
+  pid         String?
+  rank        Int       @default(0)
+  name        String
+  status      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([store_id, name])
+}
+
+model store_goods {
+  id          Int       @id @default(autoincrement())
+  goods_id    String    @unique
+  store_id    String
+  category_id String
+  name        String
+  description String?
+  status      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([store_id, category_id, name])
+}
+
+model store_goods_version {
+  id             Int       @id @default(autoincrement())
+  version_id     String    @unique
+  goods_id       String
+  image_url      String?
+  image_hash     String?
+  version_number String?
+  bar_code       String?
+  count          Int
+  price          Int
+  unit_name      String
+  supplier       String?
+  status         Int
+  create_date    DateTime? @default(now())
+  update_date    DateTime? @default(now())
+
+  @@unique([goods_id, unit_name, version_number])
+  @@unique([goods_id, unit_name, bar_code])
+}
+
+model user_order {
+  id             Int       @id @default(autoincrement())
+  order_id       String    @unique
+  user_id        String
+  store_id       String
+  status         Int
+  stage          Int
+  payment_method String
+  payment_channel String?
+  pay_status     Int       @default(0)
+  paid_at        DateTime?
+  pay_proof_url  String?
+  recipient      String
+  money          Int
+  phone          String
+  province       String
+  city           String
+  area           String
+  town           String
+  address        String
+  delivery_date  DateTime
+  create_date    DateTime? @default(now())
+  update_date    DateTime? @default(now())
+}
+
+model user_order_info {
+  id               Int       @id @default(autoincrement())
+  order_info_id    String    @unique
+  order_id         String
+  goods_id         String
+  goods_name       String
+  goods_version_id String
+  count            Int
+  price            Int
+  create_date      DateTime? @default(now())
+  update_date      DateTime? @default(now())
+}
+
+model user_order_action {
+  id              Int       @id @default(autoincrement())
+  order_action_id String    @unique
+  user_id         String
+  order_id        String
+  status          Int
+  create_date     DateTime? @default(now())
+  update_date     DateTime? @default(now())
+}
+
+model province {
+  id       Int    @id @default(autoincrement())
+  code     String
+  name     String
+  province String
+  city     String
+  area     String
+  town     String
+}
+
+model store_apply {
+  id                Int       @id @default(autoincrement())
+  store_id          String
+  type              Int
+  applicant_user_id String
+  applicant_date    DateTime
+  applicant_summary String
+  applicant_content String
+  status            Int       @default(0)
+  replient_user_id  String?
+  replient_date     DateTime?
+  replient_content  String?
+  create_date       DateTime? @default(now())
+  update_date       DateTime? @default(now())
+}
+
+model auth {
+  id          Int       @id @default(autoincrement())
+  pid         String    @default("0")
+  auth_id     String    @unique
+  side        Int
+  path        String
+  method      String?
+  status      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([side, path])
+}
+
+model role {
+  id          Int       @id @default(autoincrement())
+  role_id     String    @unique
+  role_name   String    @unique
+  description String?
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+
+model user_auth {
+  id          Int       @id @default(autoincrement())
+  user_id     String    @unique
+  is_admin    Boolean
+  status      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+}
+
+model user_role {
+  id          Int       @id @default(autoincrement())
+  role_id     String
+  user_id     String
+  status      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([user_id, role_id])
 }
 
 model auth_role {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  auth_id     String    @db.VarChar(64)
-  role_id     String    @db.VarChar(64)
-  status      Int       @db.TinyInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
+  id          Int       @id @default(autoincrement())
+  auth_id     String
+  role_id     String
+  status      Int
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
 
-  @@unique([role_id, auth_id], map: "role_id")
-  @@index([auth_id], map: "auth_idx")
+  @@unique([role_id, auth_id])
 }
 
 model user_fetch {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  user_id     String    @db.VarChar(64)
-  source      Int       @db.UnsignedTinyInt
-  url         String    @db.VarChar(256)
-  method      String    @db.VarChar(8)
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([url, method], map: "fetch_url_idx")
-  @@index([user_id], map: "fetch_user_idx")
+  id          Int       @id @default(autoincrement())
+  user_id     String
+  source      Int
+  url         String
+  method      String
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
 }
 
 model report_daily_user_fetch {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  user_id     String    @db.VarChar(64)
-  times       Int       @db.UnsignedSmallInt
-  use_time    Int       @db.UnsignedMediumInt
-  record_date DateTime  @db.DateTime(0)
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([record_date], map: "fetch_daily_record_date_idx")
-  @@index([user_id], map: "fetch_daily_user_idx")
+  id          Int       @id @default(autoincrement())
+  user_id     String
+  times       Int
+  use_time    Int
+  record_date DateTime
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
 }
 
 model report_store_daily_order {
-  id           Int       @id @default(autoincrement()) @db.UnsignedInt
-  store_id     String    @db.VarChar(64)
-  total_orders Int       @db.UnsignedInt
-  total_amount Int       @db.UnsignedInt
-  record_date  DateTime  @db.DateTime(0)
-  create_date  DateTime? @default(now()) @db.DateTime(0)
-  update_date  DateTime? @default(now()) @db.DateTime(0)
+  id           Int       @id @default(autoincrement())
+  store_id     String
+  total_orders Int
+  total_amount Int
+  record_date  DateTime
+  create_date  DateTime? @default(now())
+  update_date  DateTime? @default(now())
 
-  @@index([record_date], map: "report_store_daily_order_date_idx")
-  @@index([store_id], map: "report_store_daily_order_store_idx")
+  @@index([record_date])
+  @@index([store_id])
 }
 
 model report_platform_daily_order {
-  id           Int       @id @default(autoincrement()) @db.UnsignedInt
-  total_orders Int       @db.UnsignedInt
-  total_amount Int       @db.UnsignedInt
-  record_date  DateTime  @db.DateTime(0)
-  create_date  DateTime? @default(now()) @db.DateTime(0)
-  update_date  DateTime? @default(now()) @db.DateTime(0)
+  id           Int       @id @default(autoincrement())
+  total_orders Int
+  total_amount Int
+  record_date  DateTime
+  create_date  DateTime? @default(now())
+  update_date  DateTime? @default(now())
 
-  @@index([record_date], map: "report_platform_daily_order_date_idx")
+  @@index([record_date])
 }
 
 model report_store_daily_goods {
-  id               Int       @id @default(autoincrement()) @db.UnsignedInt
-  store_id         String    @db.VarChar(64)
-  goods_id         String    @db.VarChar(64)
-  goods_version_id String    @db.VarChar(64)
-  goods_name       String    @db.VarChar(64)
-  total_count      Int       @db.UnsignedInt
-  total_amount     Int       @db.UnsignedInt
-  record_date      DateTime  @db.DateTime(0)
-  create_date      DateTime? @default(now()) @db.DateTime(0)
-  update_date      DateTime? @default(now()) @db.DateTime(0)
+  id               Int       @id @default(autoincrement())
+  store_id         String
+  goods_id         String
+  goods_version_id String
+  goods_name       String
+  total_count      Int
+  total_amount     Int
+  record_date      DateTime
+  create_date      DateTime? @default(now())
+  update_date      DateTime? @default(now())
 
-  @@index([record_date], map: "report_store_daily_goods_date_idx")
-  @@index([store_id, goods_id], map: "report_store_daily_goods_store_goods_idx")
-  @@index([store_id, goods_id, goods_version_id], map: "report_store_daily_goods_store_goods_version_idx")
-}
-
-model file {
-  id          Int      @id @default(autoincrement())
-  file_name   String   @db.VarChar(128)
-  hash        String   @unique(map: "hash_id") @db.VarChar(32)
-  size        Int       @default(0) @db.UnsignedMediumInt
-  url         String   @db.VarChar(128)
-  create_date DateTime @default(now()) @db.DateTime(6)
-  update_date DateTime @default(now()) @db.DateTime(6)
+  @@index([record_date])
+  @@index([store_id, goods_id])
+  @@index([store_id, goods_id, goods_version_id])
 }
 
 model home_banner {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  banner_id   String    @unique(map: "banner_id") @db.VarChar(64)
-  title       String    @db.VarChar(64)
-  description String?   @db.VarChar(256)
-  image_url   String    @db.VarChar(256)
-  width       Int?      @db.UnsignedInt
-  height      Int?      @db.UnsignedInt
-  sort        Int       @default(0) @db.UnsignedTinyInt
-  status      Int       @default(1) @db.TinyInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
+  id          Int       @id @default(autoincrement())
+  banner_id   String    @unique
+  title       String
+  description String?
+  image_url   String
+  width       Int?
+  height      Int?
+  sort        Int       @default(0)
+  status      Int       @default(1)
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
 
   @@index([status, sort])
 }
 
-model chat_group {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  group_id    String    @unique(map: "group_id") @db.VarChar(64)
-  name        String    @db.VarChar(64)
-  owner_id    String    @db.VarChar(64)
-  type        Int       @db.UnsignedTinyInt
-  status      Int       @default(1) @db.TinyInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
+model file {
+  id          Int      @id @default(autoincrement())
+  file_name   String
+  hash        String   @unique
+  size        Int      @default(0)
+  url         String
+  create_date DateTime @default(now())
+  update_date DateTime @default(now())
+}
 
-  @@index([owner_id], map: "chat_group_owner_idx")
+model chat_group {
+  id          Int       @id @default(autoincrement())
+  group_id    String    @unique
+  name        String
+  owner_id    String
+  type        Int
+  status      Int       @default(1)
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
 }
 
 model chat_group_user {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  group_id    String    @db.VarChar(64)
-  user_id     String    @db.VarChar(64)
-  role        Int       @default(0) @db.UnsignedTinyInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
+  id          Int       @id @default(autoincrement())
+  group_id    String
+  user_id     String
+  role        Int       @default(0)
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
 
-  @@unique([group_id, user_id], map: "chat_group_user_unique")
-  @@index([user_id], map: "chat_group_user_user_idx")
+  @@unique([group_id, user_id])
 }
 
 model store_rating {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  store_id    String    @unique(map: "store_rating_store_id") @db.VarChar(64)
-  rating      Float     @default(0) @db.Float
-  order_count Int       @default(0) @db.UnsignedInt
-  avg_star    Float     @default(0) @db.Float
-  updated_at  DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([rating])
+  id          Int       @id @default(autoincrement())
+  store_id    String    @unique
+  rating      Float     @default(0)
+  order_count Int       @default(0)
+  avg_star    Float     @default(0)
+  updated_at  DateTime? @default(now())
 }
 
 model user_favorite_store {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  user_id     String    @db.VarChar(64)
-  store_id    String    @db.VarChar(64)
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
+  id          Int       @id @default(autoincrement())
+  user_id     String
+  store_id    String
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
 
-  @@unique([user_id, store_id], map: "user_favorite_store_unique")
-  @@index([user_id], map: "user_favorite_store_user_idx")
+  @@unique([user_id, store_id])
 }
 
 model user_store_browse_history {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  user_id     String    @db.VarChar(64)
-  store_id    String    @db.VarChar(64)
-  visit_date  DateTime  @db.DateTime(0)
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
+  id          Int       @id @default(autoincrement())
+  user_id     String
+  store_id    String
+  visit_date  DateTime
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
 
-  @@unique([user_id, store_id], map: "user_store_browse_unique")
-  @@index([user_id], map: "user_store_browse_user_idx")
-  @@index([visit_date], map: "user_store_browse_visit_idx")
+  @@unique([user_id, store_id])
 }
 
 model user_feedback {
-  id          Int      @id @default(autoincrement()) @db.UnsignedInt
-  feedback_id String   @unique @default(uuid()) @db.VarChar(64)
-  user_id     String   @db.VarChar(64)
-  title       String   @db.VarChar(128)
-  content     String   @db.Text
-  category    String?  @db.VarChar(64)
-  status      Int      @default(0) @db.TinyInt
-  create_date DateTime @default(now()) @db.DateTime(0)
-  update_date DateTime @default(now()) @db.DateTime(0)
-
-  @@index([status, create_date], map: "idx_user_feedback_status_created_at")
-  @@index([user_id, create_date], map: "idx_user_feedback_user_created_at")
+  id          Int      @id @default(autoincrement())
+  feedback_id String   @unique @default(uuid())
+  user_id     String
+  title       String
+  content     String
+  category    String?
+  status      Int      @default(0)
+  create_date DateTime @default(now())
+  update_date DateTime @default(now())
 }
 
 model user_feedback_attachment {
-  id          Int      @id @default(autoincrement()) @db.UnsignedInt
-  feedback_id String   @db.VarChar(64)
-  url         String   @db.VarChar(512)
-  type        Int      @default(1) @db.UnsignedTinyInt
-  description String?  @db.VarChar(256)
-  create_date DateTime @default(now()) @db.DateTime(0)
-
-  @@index([feedback_id], map: "idx_user_feedback_attachment_feedback_id")
+  id          Int      @id @default(autoincrement())
+  feedback_id String
+  url         String
+  type        Int      @default(1)
+  description String?
+  create_date DateTime @default(now())
 }
 
 model user_feedback_comment {
-  id          Int      @id @default(autoincrement()) @db.UnsignedInt
-  feedback_id String   @db.VarChar(64)
-  user_id     String   @db.VarChar(64)
-  content     String   @db.VarChar(1024)
-  parent_id   Int?     @db.UnsignedInt
-  create_date DateTime @default(now()) @db.DateTime(0)
-  update_date DateTime @default(now()) @db.DateTime(0)
-
-  @@index([feedback_id], map: "idx_user_feedback_comment_feedback_id")
-  @@index([user_id, create_date], map: "idx_user_feedback_comment_user_created_at")
+  id          Int      @id @default(autoincrement())
+  feedback_id String
+  user_id     String
+  content     String
+  parent_id   Int?
+  create_date DateTime @default(now())
+  update_date DateTime @default(now())
 }
 
 model store_service_plan {
-  id          Int      @id @default(autoincrement()) @db.UnsignedInt
-  plan_id     String   @unique @default(uuid()) @db.VarChar(64)
-  name        String   @db.VarChar(128)
-  description String?  @db.Text
-  monthly_fee Int      @db.UnsignedSmallInt
+  id          Int      @id @default(autoincrement())
+  plan_id     String   @unique @default(uuid())
+  name        String
+  description String?
+  monthly_fee Int
   is_active   Boolean  @default(true)
-  create_date DateTime @default(now()) @db.DateTime(0)
-  update_date DateTime @default(now()) @db.DateTime(0)
+  create_date DateTime @default(now())
+  update_date DateTime @default(now())
 }
 
 model store_service_subscription {
-  id                     Int      @id @default(autoincrement()) @db.UnsignedInt
-  store_id               String   @db.VarChar(64)
-  plan_id                String   @db.VarChar(64)
-  start_date             DateTime @db.DateTime(0)
-  end_date               DateTime @db.DateTime(0)
-  status                 Int      @default(1) @db.TinyInt
+  id                     Int      @id @default(autoincrement())
+  store_id               String
+  plan_id                String
+  start_date             DateTime
+  end_date               DateTime
+  status                 Int      @default(1)
   is_infinite            Boolean  @default(false)
-  order_count_last_cycle Int?     @default(0) @db.UnsignedInt
-  create_date            DateTime @default(now()) @db.DateTime(0)
-  update_date            DateTime @default(now()) @db.DateTime(0)
-  contract_id            Int?     @db.UnsignedInt
+  order_count_last_cycle Int?     @default(0)
+  create_date            DateTime @default(now())
+  update_date            DateTime @default(now())
+  contract_id            Int?
 
-  @@index([store_id], map: "idx_store_service_subscription_store_id")
-  @@index([plan_id], map: "idx_store_service_subscription_plan_id")
-  @@index([contract_id], map: "idx_store_service_subscription_contract_id")
+  @@index([store_id])
+  @@index([plan_id])
+  @@index([contract_id])
 }
 
 model store_service_invoice {
-  id              Int       @id @default(autoincrement()) @db.UnsignedInt
-  subscription_id Int       @db.UnsignedInt
-  month           String    @db.VarChar(7)
-  start_date      DateTime  @db.DateTime(0)
-  end_date        DateTime  @db.DateTime(0)
-  amount          Int       @db.UnsignedSmallInt
-  status          Int       @default(0) @db.TinyInt
-  due_date        DateTime  @db.DateTime(0)
-  paid_at         DateTime? @db.DateTime(0)
-  create_date     DateTime  @default(now()) @db.DateTime(0)
-  update_date     DateTime  @default(now()) @db.DateTime(0)
+  id              Int       @id @default(autoincrement())
+  subscription_id Int
+  month           String
+  start_date      DateTime
+  end_date        DateTime
+  amount          Int
+  status          Int       @default(0)
+  due_date        DateTime
+  paid_at         DateTime?
+  create_date     DateTime  @default(now())
+  update_date     DateTime  @default(now())
 
-  @@index([subscription_id, month], map: "idx_store_service_invoice_subscription_month")
+  @@index([subscription_id, month])
 }
 
 model store_service_payment {
-  id          Int      @id @default(autoincrement()) @db.UnsignedInt
-  invoice_id  Int      @db.UnsignedInt
-  amount      Int      @db.UnsignedSmallInt
-  method      String   @db.VarChar(64)
-  remark      String?  @db.VarChar(256)
-  paid_at     DateTime @default(now()) @db.DateTime(0)
-  create_date DateTime @default(now()) @db.DateTime(0)
+  id          Int      @id @default(autoincrement())
+  invoice_id  Int
+  amount      Int
+  method      String
+  remark      String?
+  paid_at     DateTime @default(now())
+  create_date DateTime @default(now())
 
-  @@index([invoice_id], map: "idx_store_service_payment_invoice_id")
+  @@index([invoice_id])
 }
 
 model store_service_contract {
-  id           Int       @id @default(autoincrement()) @db.UnsignedInt
-  contract_no  String    @unique(map: "uk_store_service_contract_no") @db.VarChar(64)
-  store_id     String    @db.VarChar(64)
-  plan_id      String    @db.VarChar(64)
-  start_date   DateTime  @db.DateTime(0)
-  end_date     DateTime  @db.DateTime(0)
-  status       Int       @default(1) @db.TinyInt
-  sign_type    Int       @db.UnsignedTinyInt
-  signed_at    DateTime? @db.DateTime(0)
-  total_amount Int       @db.UnsignedInt
-  file_url     String?   @db.VarChar(256)
-  create_date  DateTime  @default(now()) @db.DateTime(0)
-  update_date  DateTime  @default(now()) @db.DateTime(0)
+  id           Int       @id @default(autoincrement())
+  contract_no  String    @unique
+  store_id     String
+  plan_id      String
+  start_date   DateTime
+  end_date     DateTime
+  status       Int       @default(1)
+  sign_type    Int
+  signed_at    DateTime?
+  total_amount Int
+  file_url     String?
+  create_date  DateTime  @default(now())
+  update_date  DateTime  @default(now())
 
-  @@index([store_id], map: "idx_store_service_contract_store_id")
-  @@index([plan_id], map: "idx_store_service_contract_plan_id")
+  @@index([store_id])
+  @@index([plan_id])
 }
 
 model store_file {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  store_id    String    @db.VarChar(64)
-  file_id     Int       @db.UnsignedInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
+  id          Int       @id @default(autoincrement())
+  store_id    String
+  file_id     Int
+  create_date DateTime? @default(now())
 
-  @@unique([store_id, file_id], map: "store_file_unique")
+  @@unique([store_id, file_id])
   @@index([store_id])
 }
 
 model store_resource {
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  store_id    String    @unique(map: "store_resource_store_id") @db.VarChar(64)
-  total_quota BigInt    @default(10485760) @db.UnsignedBigInt
-  used_quota  BigInt    @default(0) @db.UnsignedBigInt
-  create_date DateTime? @default(now()) @db.DateTime(0)
-  update_date DateTime? @default(now()) @db.DateTime(0)
+  id          Int       @id @default(autoincrement())
+  store_id    String    @unique
+  total_quota BigInt    @default(10485760)
+  used_quota  BigInt    @default(0)
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
 
   @@index([store_id])
 }
 
 model store_resource_order {
-  id           Int       @id @default(autoincrement()) @db.UnsignedInt
-  order_id     String    @unique(map: "store_resource_order_id") @db.VarChar(64)
-  store_id     String    @db.VarChar(64)
-  quota_amount BigInt    @db.UnsignedBigInt
-  price        Int       @db.UnsignedInt
-  status       Int       @default(0) @db.TinyInt
-  create_date  DateTime? @default(now()) @db.DateTime(0)
-  update_date  DateTime? @default(now()) @db.DateTime(0)
+  id           Int       @id @default(autoincrement())
+  order_id     String    @unique
+  store_id     String
+  quota_amount BigInt
+  price        Int
+  status       Int       @default(0)
+  create_date  DateTime? @default(now())
+  update_date  DateTime? @default(now())
 
   @@index([store_id])
 }

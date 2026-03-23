@@ -67,6 +67,12 @@ jobs:
               echo "✅ Backed up .env file"
             fi
             
+            # 📦 备份数据库文件
+            if [ -f /home/apps/open-api/prisma/prod.db ]; then
+              cp /home/apps/open-api/prisma/prod.db /tmp/open-api-prod.db.backup
+              echo "✅ Backed up prod.db file"
+            fi
+            
             # 备份旧版本
             if [ -d /home/apps/open-api ]; then
               mv /home/apps/open-api /home/apps/open-api.backup.$(date +%Y%m%d_%H%M%S)
@@ -83,6 +89,16 @@ jobs:
               echo "✅ Restored .env file"
             else
               echo "⚠️ No .env backup found, please create it manually"
+            fi
+            
+            # 📦 恢复数据库文件
+            if [ -f /tmp/open-api-prod.db.backup ]; then
+              mkdir -p /home/apps/open-api/prisma
+              cp /tmp/open-api-prod.db.backup /home/apps/open-api/prisma/prod.db
+              rm /tmp/open-api-prod.db.backup
+              echo "✅ Restored prod.db file"
+            else
+              echo "⚠️ No prod.db backup found (this is normal for first deployment)"
             fi
             
             # 生成 Prisma Client

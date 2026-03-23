@@ -11,8 +11,6 @@ import { LoggerMiddleware } from './common/middlewares/logger.middleware';
 import { OrderModule } from './order/order.module';
 import { GeneralModule } from './general/general.module';
 import { WxModule } from './wx/wx.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import Env from './common/const/Env';
 import { RecordFetchMiddleware } from './common/middlewares/record-fetch.middleware';
 import { TraceMiddleware } from './common/middlewares/trace.middleware';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -67,21 +65,6 @@ import { StoreOrderDailyReportCronService } from './schedules/store-order-daily-
     FeedbackModule,
     StoreSubscriptionModule,
     StoreResourceModule,
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      url: Env.DATABASE_URL,
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: Env.IS_DEV,
-      extra: {
-        connectionLimit: 10,
-        connectTimeout: 60000,
-        acquireTimeout: 60000,
-        timeout: 60000,
-      },
-      retryAttempts: 3,
-      retryDelay: 3000,
-      keepConnectionAlive: true,
-    }),
     TerminusModule,
     UsersFetchModule,
     ScheduleModule.forRoot(),
