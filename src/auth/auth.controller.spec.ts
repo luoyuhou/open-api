@@ -12,6 +12,7 @@ import {
   QrCodeResponse,
   ScanQrCodeDto,
 } from './dto/qr-login.dto';
+import { SendSmsDto, ResetPasswordDto } from './dto/sms.dto';
 import { Login_SOURCE_TYPES } from './const';
 
 describe('AuthController', () => {
@@ -34,6 +35,11 @@ describe('AuthController', () => {
       scanQrCode: jest.fn(),
       confirmQrLogin: jest.fn(),
       loginUserForWebByScan: jest.fn(),
+      generateForgetPasswordSmsToken: jest.fn(),
+      sendForgetPasswordSms: jest.fn(),
+      resetPasswordByPhone: jest.fn(),
+      generateSmsToken: jest.fn(),
+      sendSmsCode: jest.fn(),
     };
 
     const mockCacheService = {
@@ -267,7 +273,7 @@ describe('AuthController', () => {
       const mockRequest = {
         qrCodeResult: { status: 'pending', remainingTime: 300 },
       } as any;
-      const result = await controller.checkQrCodeStatus(mockRequest, 'qr123');
+      const result = await controller.checkQrCodeStatus(mockRequest);
 
       expect(result).toEqual({
         message: 'ok',
@@ -287,7 +293,7 @@ describe('AuthController', () => {
         resources: mockResources,
       } as any);
 
-      const result = await controller.checkQrCodeStatus(mockRequest, 'qr123');
+      const result = await controller.checkQrCodeStatus(mockRequest);
 
       expect(authService.loginUserForWebByScan).toHaveBeenCalledWith(
         mockRequest,
@@ -306,7 +312,7 @@ describe('AuthController', () => {
         qrCodeResult: { status: 'confirmed' },
         user: null,
       } as any;
-      const result = await controller.checkQrCodeStatus(mockRequest, 'qr123');
+      const result = await controller.checkQrCodeStatus(mockRequest);
 
       expect(result).toEqual({
         message: 'error',
@@ -350,6 +356,112 @@ describe('AuthController', () => {
         'openid123',
       );
       expect(result).toEqual({ message: 'ok', data: mockResult });
+    });
+  });
+
+  describe('getSmsToken', () => {
+    it('should get SMS token for registration', async () => {
+      const mockRequest = {} as Request;
+      const mockToken = { token: 'token123' };
+      authService.generateSmsToken.mockResolvedValue(mockToken);
+
+      const result = await controller.getSmsToken(mockRequest, '13800138000');
+
+      expect(authService.generateSmsToken).toHaveBeenCalledWith('13800138000');
+      expect(result).toEqual(mockToken);
+    });
+  });
+
+  describe('sendSms', () => {
+    it('should send SMS for registration', async () => {
+      const mockRequest = {
+        headers: { 'x-forwarded-for': '127.0.0.1' },
+        ip: '127.0.0.1',
+      } as unknown as Request;
+      const sendSmsDto: SendSmsDto = {
+        phone: '13800138000',
+        token: 'token123',
+      };
+      authService.sendSmsCode.mockResolvedValue({ message: '验证码已发送' });
+
+      const result = await controller.sendSms(mockRequest, sendSmsDto);
+
+      expect(authService.sendSmsCode).toHaveBeenCalledWith(
+        '13800138000',
+        'token123',
+        '127.0.0.1',
+      );
+      expect(result).toEqual({ message: '验证码已发送' });
+    });
+  });
+
+  describe('getForgetPasswordSmsToken', () => {
+    it('should get SMS token for forget password', async () => {
+      const mockRequest = {} as Request;
+      const mockToken = { token: 'forget-token123' };
+      authService.generateForgetPasswordSmsToken.mockResolvedValue(mockToken);
+
+      const result = await controller.getForgetPasswordSmsToken(
+        mockRequest,
+        '13800138000',
+      );
+
+      expect(authService.generateForgetPasswordSmsToken).toHaveBeenCalledWith(
+        '13800138000',
+      );
+      expect(result).toEqual(mockToken);
+    });
+  });
+
+  describe('sendForgetPasswordSms', () => {
+    it('should send SMS for forget password', async () => {
+      const mockRequest = {
+        headers: { 'x-forwarded-for': '127.0.0.1' },
+        ip: '127.0.0.1',
+      } as unknown as Request;
+      const sendSmsDto: SendSmsDto = {
+        phone: '13800138000',
+        token: 'forget-token123',
+      };
+      authService.sendForgetPasswordSms.mockResolvedValue({
+        message: '验证码已发送',
+      });
+
+      const result = await controller.sendForgetPasswordSms(
+        mockRequest,
+        sendSmsDto,
+      );
+
+      expect(authService.sendForgetPasswordSms).toHaveBeenCalledWith(
+        '13800138000',
+        'forget-token123',
+        '127.0.0.1',
+      );
+      expect(result).toEqual({ message: '验证码已发送' });
+    });
+  });
+
+  describe('resetPassword (forget password)', () => {
+    it('should reset password via phone', async () => {
+      const resetPasswordDto: ResetPasswordDto = {
+        phone: '13800138000',
+        code: '123456',
+        password: 'newPassword123',
+      };
+      authService.resetPasswordByPhone.mockResolvedValue({
+        message: '密码重置成功',
+      });
+
+      const result = await controller.resetPasswordByForgetPassword(
+        resetPasswordDto,
+      );
+
+      expect(authService.resetPasswordByPhone).toHaveBeenCalledWith(
+        '13800138000',
+        '123456',
+        'newPassword123',
+      );
+      expect(result).toEqual({ message: '密码重置成功' });
     });
   });
 });

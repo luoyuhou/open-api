@@ -39,7 +39,7 @@ export class FileService {
         key,
         fileBuffer,
         putExtra,
-        (err, body, info) => {
+        async (err, body, info) => {
           if (err || info.statusCode !== 200) {
             customLogger.error({
               message: 'file 上传失败',
@@ -48,16 +48,26 @@ export class FileService {
             });
             reject(err || new Error('上传失败'));
           } else {
-            const url = `${Env.Q_DOMAIN}/${body.key}`;
-            this.prisma.file.create({
-              data: {
+            try {
+              const url = `${Env.Q_DOMAIN}/${body.key}`;
+              await this.prisma.file.create({
+                data: {
+                  hash,
+                  size: fileBuffer.length,
+                  url,
+                  file_name: fileName || '',
+                },
+              });
+              resolve({ hash, url });
+            } catch (dbErr) {
+              customLogger.error({
+                summary: '图片记录写入数据库失败',
                 hash,
-                size: fileBuffer.length,
-                url,
-                file_name: fileName || '',
-              },
-            });
-            resolve({ hash, url });
+                fileName,
+                errMsg: dbErr.message,
+              });
+              reject(dbErr);
+            }
           }
         },
       );

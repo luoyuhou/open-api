@@ -105,6 +105,10 @@ jobs:
             cd /home/apps/open-api
             npx prisma generate
             echo 'Prisma Client generated'
+
+            # 🗄️ 运行数据库迁移
+            npx prisma migrate deploy
+            echo 'Database migration completed'
             
             # 重启服务 (使用 PM2)
             pm2 restart open-api || pm2 start dist/src/main.js --name open-api

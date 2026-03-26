@@ -448,14 +448,15 @@ model user_feedback_comment {
 }
 
 model store_service_plan {
-  id          Int      @id @default(autoincrement())
-  plan_id     String   @unique @default(uuid())
-  name        String
-  description String?
-  monthly_fee Int
-  is_active   Boolean  @default(true)
-  create_date DateTime @default(now())
-  update_date DateTime @default(now())
+  id                Int      @id @default(autoincrement())
+  plan_id           String   @unique @default(uuid())
+  name              String
+  description       String?
+  monthly_fee       Int
+  max_subscriptions Int?
+  is_active         Boolean  @default(true)
+  create_date       DateTime @default(now())
+  update_date       DateTime @default(now())
 }
 
 model store_service_subscription {
@@ -470,6 +471,8 @@ model store_service_subscription {
   create_date            DateTime @default(now())
   update_date            DateTime @default(now())
   contract_id            Int?
+
+  invoices store_service_invoice[]
 
   @@index([store_id])
   @@index([plan_id])
@@ -489,6 +492,9 @@ model store_service_invoice {
   create_date     DateTime  @default(now())
   update_date     DateTime  @default(now())
 
+  subscription store_service_subscription @relation(fields: [subscription_id], references: [id])
+  payments     store_service_payment[]
+
   @@index([subscription_id, month])
 }
 
@@ -500,6 +506,8 @@ model store_service_payment {
   remark      String?
   paid_at     DateTime @default(now())
   create_date DateTime @default(now())
+
+  invoice store_service_invoice @relation(fields: [invoice_id], references: [id])
 
   @@index([invoice_id])
 }
@@ -555,4 +563,101 @@ model store_resource_order {
   update_date  DateTime? @default(now())
 
   @@index([store_id])
+}
+
+// ========== 商家结算 ==========
+
+// 商家月度结算
+model store_settlement {
+  id            Int       @id @default(autoincrement())
+  settlement_id String    @unique @default(uuid())
+  store_id      String
+  month         String    // YYYY-MM
+  total_orders  Int       @default(0)  // 总订单数
+  total_amount  Int       @default(0)  // 总金额（分）
+  total_income  Int       @default(0)  // 总收入（分）- 用户支付给商家的
+  status        Int       @default(0)  // 0待确认, 1已确认, 2已结算
+  start_date    DateTime
+  end_date      DateTime
+  settled_at    DateTime?
+  create_date   DateTime  @default(now())
+  update_date   DateTime  @default(now())
+
+  details store_settlement_detail[]
+
+  @@unique([store_id, month])
+  @@index([store_id])
+  @@index([month])
+}
+
+// 商家结算明细
+model store_settlement_detail {
+  id            Int      @id @default(autoincrement())
+  settlement_id String
+  order_id      String
+  amount        Int      // 订单金额（分）
+  order_stage   Int      // 订单状态
+  pay_status    Int      // 支付状态
+  create_date   DateTime @default(now())
+
+  settlement store_settlement @relation(fields: [settlement_id], references: [settlement_id])
+
+  @@index([settlement_id])
+}
+
+// ========== 平台结算 ==========
+
+// 平台月度结算
+model platform_settlement {
+  id                      Int       @id @default(autoincrement())
+  settlement_id           String    @unique @default(uuid())
+  month                   String    // YYYY-MM
+  total_subscription_fee  Int       @default(0)  // 订阅费用总额（分）
+  total_resource_fee      Int       @default(0)  // 资源购买费用总额（分）
+  total_order_service_fee Int       @default(0)  // 订单服务费总额（分）
+  total_amount            Int       @default(0)  // 总收入（分）
+  status                  Int       @default(0)  // 0待确认, 1已确认, 2已结算
+  start_date              DateTime
+  end_date                DateTime
+  settled_at              DateTime?
+  create_date             DateTime  @default(now())
+  update_date             DateTime  @default(now())
+
+  details platform_settlement_detail[]
+
+  @@unique([month])
+  @@index([month])
+}
+
+// 平台结算明细
+model platform_settlement_detail {
+  id            Int      @id @default(autoincrement())
+  settlement_id String
+  type          Int      // 1订阅费用, 2资源购买, 3订单服务费
+  ref_id        String   // 关联的订单/订阅/资源订单ID
+  store_id      String
+  amount        Int      // 金额（分）
+  remark        String?
+  create_date   DateTime @default(now())
+
+  settlement platform_settlement @relation(fields: [settlement_id], references: [settlement_id])
+
+  @@index([settlement_id])
+  @@index([type, ref_id])
+}
+
+// 店铺订单服务费记录（用于计算超出免费额度的订单）
+model store_order_service_fee {
+  id          Int      @id @default(autoincrement())
+  store_id    String
+  order_id    String
+  fee_date    DateTime // 费用归属日期
+  fee_amount  Int      // 服务费（分）
+  month       String   // YYYY-MM
+  is_charged  Boolean  @default(false) // 是否已计入结算
+  create_date DateTime @default(now())
+
+  @@unique([store_id, order_id])
+  @@index([store_id, month])
+  @@index([fee_date])
 }

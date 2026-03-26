@@ -250,6 +250,7 @@ export class GoodsService {
     goods_id: string,
     {
       version_id,
+      remove_image,
       ...upsertGoodsVersionDto
     }: UpsertGoodsVersionDto & { image_url?: string; image_hash?: string },
     file?: Express.Multer.File,
@@ -257,18 +258,18 @@ export class GoodsService {
     let store_id: string | null = null;
     let oldImageSize = 0;
 
-    if (file) {
-      // 1. 获取 store_id 和旧图片信息
-      const goods = await this.prisma.store_goods.findUnique({
-        where: { goods_id },
-        select: { store_id: true },
-      });
-      if (!goods) {
-        throw new BadRequestException('商品不存在');
-      }
-      store_id = goods.store_id;
+    // 获取 store_id（用于检查资源额度）
+    const goods = await this.prisma.store_goods.findUnique({
+      where: { goods_id },
+      select: { store_id: true },
+    });
+    if (!goods) {
+      throw new BadRequestException('商品不存在');
+    }
+    store_id = goods.store_id;
 
-      // 2. 如果是更新操作，获取旧图片大小
+    if (file) {
+      // 如果是更新操作，获取旧图片大小
       if (version_id) {
         const oldVersion = await this.prisma.store_goods_version.findUnique({
           where: { version_id },
@@ -283,7 +284,7 @@ export class GoodsService {
         }
       }
 
-      // 3. 检查图片资源额度（传入旧图片大小用于扣除）
+      // 检查图片资源额度（传入旧图片大小用于扣除）
       await this.checkResourceQuota(store_id, file.size, oldImageSize);
 
       const { url, hash } = await this.fileService.uploadFile(
@@ -292,6 +293,10 @@ export class GoodsService {
       );
       upsertGoodsVersionDto.image_url = url;
       upsertGoodsVersionDto.image_hash = hash;
+    } else if (remove_image && version_id) {
+      // 删除图片：设置为 null
+      upsertGoodsVersionDto.image_url = null;
+      upsertGoodsVersionDto.image_hash = null;
     }
 
     if (version_id) {
@@ -300,8 +305,8 @@ export class GoodsService {
         data: upsertGoodsVersionDto,
       });
 
-      // 如果更新了图片，使缓存失效
-      if (file && store_id) {
+      // 如果更新了图片或删除了图片，使缓存失效
+      if ((file || remove_image) && store_id) {
         await this.storeResourceService.invalidateUsedQuota(store_id);
       }
 

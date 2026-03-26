@@ -24,6 +24,12 @@ export class CreateStoreServicePlanDto {
   @IsInt()
   @Min(0)
   monthly_fee: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  max_subscriptions?: number | null; // null 表示无限次，正整数表示最大订阅次数
 }
 
 export class UpdateStoreServicePlanStatusDto {
