@@ -473,6 +473,8 @@ model store_service_subscription {
   update_date            DateTime @default(now())
   contract_id            Int?
 
+  invoices store_service_invoice[]
+
   @@index([store_id])
   @@index([plan_id])
   @@index([contract_id])
@@ -491,6 +493,9 @@ model store_service_invoice {
   create_date     DateTime  @default(now())
   update_date     DateTime  @default(now())
 
+  subscription store_service_subscription @relation(fields: [subscription_id], references: [id])
+  payments     store_service_payment[]
+
   @@index([subscription_id, month])
 }
 
@@ -502,6 +507,8 @@ model store_service_payment {
   remark      String?
   paid_at     DateTime @default(now())
   create_date DateTime @default(now())
+
+  invoice store_service_invoice @relation(fields: [invoice_id], references: [id])
 
   @@index([invoice_id])
 }

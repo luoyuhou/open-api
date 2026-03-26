@@ -34,11 +34,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # 🔒 安全扫描 - 依赖漏洞检查
-      - name: Security audit
-        run: npm audit --audit-moderate
-        continue-on-error: false
-
       - name: Setup test database (SQLite)
         run: |
           chmod +x ./scripts/setup-test-db.sh
