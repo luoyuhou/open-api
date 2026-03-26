@@ -6,6 +6,7 @@ import { GoodsModule } from './goods/goods.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { StoreOrderModule } from './order/store.order.module';
 import { FileModule } from '../file/file.module';
+import { SettlementModule } from './settlement/settlement.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { FileModule } from '../file/file.module';
     GoodsModule,
     StoreOrderModule,
     FileModule,
+    SettlementModule,
   ],
   controllers: [StoreController],
   providers: [StoreService],
