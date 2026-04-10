@@ -14,8 +14,7 @@ import { WxModule } from './wx/wx.module';
 import { RecordFetchMiddleware } from './common/middlewares/record-fetch.middleware';
 import { TraceMiddleware } from './common/middlewares/trace.middleware';
 import { ScheduleModule } from '@nestjs/schedule';
-import { SchedulesService } from './schedules/schedules.service';
-import { UsersFetchModule } from './users/users-fetch/users-fetch.module';
+import { SchedulesModule } from './schedules/schedules.module';
 import { CacheModule } from './common/cache-manager/cache.module';
 import { SmsModule } from './common/sms/sms.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -25,10 +24,6 @@ import { HomeBannerModule } from './home-banner/home-banner.module';
 import { ChatController } from './chat/chat.controller';
 import { ChatModule } from './chat/chat.module';
 import { FeedbackModule } from './feedback/feedback.module';
-import { StoreSubscriptionModule } from './store/store-subscription/store-subscription.module';
-import { StoreResourceModule } from './store/store-resource/store-resource.module';
-import { StoreServiceBillingCronService } from './schedules/store-service-billing.cron';
-import { StoreOrderDailyReportCronService } from './schedules/store-order-daily-report.cron';
 
 @Module({
   imports: [
@@ -63,18 +58,13 @@ import { StoreOrderDailyReportCronService } from './schedules/store-order-daily-
     HomeBannerModule,
     ChatModule,
     FeedbackModule,
-    StoreSubscriptionModule,
-    StoreResourceModule,
     TerminusModule,
-    UsersFetchModule,
     ScheduleModule.forRoot(),
+    SchedulesModule,
   ],
   controllers: [AppController, HealthController, ChatController],
   providers: [
     AppService,
-    SchedulesService,
-    StoreServiceBillingCronService,
-    StoreOrderDailyReportCronService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

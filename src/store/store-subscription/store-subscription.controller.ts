@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
-import { StoreServiceService } from './store-subscription.service';
+import { StoreSubscriptionService } from './store-subscription.service';
 import {
   CreateStoreServicePlanDto,
   CreateStoreServiceSubscriptionDto,
@@ -26,17 +26,19 @@ import {
 @Controller('store/service')
 @ApiTags('store/service')
 export class StoreServiceController {
-  constructor(private readonly storeService: StoreServiceService) {}
+  constructor(
+    private readonly storeSubscriptionService: StoreSubscriptionService,
+  ) {}
 
   @Get('plans')
   async listPlans(@Query('store_id') storeId?: string) {
-    const data = await this.storeService.listPlans(storeId);
+    const data = await this.storeSubscriptionService.listPlans(storeId);
     return { data };
   }
 
   @Post('plans')
   async createPlan(@Body() body: CreateStoreServicePlanDto) {
-    const data = await this.storeService.createPlan(body);
+    const data = await this.storeSubscriptionService.createPlan(body);
     return { data };
   }
 
@@ -45,14 +47,17 @@ export class StoreServiceController {
     @Param('id', ParseIntPipe) id: number,
     @Body() body: UpdateStoreServicePlanStatusDto,
   ) {
-    const data = await this.storeService.updatePlanStatus(id, body.is_active);
+    const data = await this.storeSubscriptionService.updatePlanStatus(
+      id,
+      body.is_active,
+    );
     return { data };
   }
 
   @Get('subscriptions')
   async listSubscriptions(@Query() query: ListStoreServiceSubscriptionsDto) {
     const { items, total, page, pageSize } =
-      await this.storeService.listSubscriptions({
+      await this.storeSubscriptionService.listSubscriptions({
         store_id: query.store_id,
         status: query.status !== undefined ? Number(query.status) : undefined,
         page: query.page,
@@ -68,7 +73,7 @@ export class StoreServiceController {
 
   @Post('subscriptions')
   async createSubscription(@Body() body: CreateStoreServiceSubscriptionDto) {
-    const data = await this.storeService.createSubscription({
+    const data = await this.storeSubscriptionService.createSubscription({
       store_id: body.store_id,
       plan_id: body.plan_id,
       start_date: body.start_date,
@@ -78,14 +83,14 @@ export class StoreServiceController {
 
   @Post('subscriptions/:id/terminate')
   async terminateSubscription(@Param('id', ParseIntPipe) id: number) {
-    const data = await this.storeService.terminateSubscription(id);
+    const data = await this.storeSubscriptionService.terminateSubscription(id);
     return { data };
   }
 
   @Get('invoices')
   async listInvoices(@Query() query: ListStoreServiceInvoicesDto) {
     const { items, total, page, pageSize } =
-      await this.storeService.listInvoices({
+      await this.storeSubscriptionService.listInvoices({
         store_id: query.store_id,
         status: query.status,
         page: query.page,
@@ -104,14 +109,14 @@ export class StoreServiceController {
     @Param('id', ParseIntPipe) id: number,
     @Body() body: PayStoreServiceInvoiceDto,
   ) {
-    const data = await this.storeService.payInvoice(id, body);
+    const data = await this.storeSubscriptionService.payInvoice(id, body);
     return { data };
   }
 
   @Get('contracts')
   async listContracts(@Query() query: ListStoreServiceContractsDto) {
     const { items, total, page, pageSize } =
-      await this.storeService.listContracts({
+      await this.storeSubscriptionService.listContracts({
         store_id: query.store_id,
         status: query.status,
         page: query.page,
@@ -127,19 +132,19 @@ export class StoreServiceController {
 
   @Post('contracts')
   async createContract(@Body() body: CreateStoreServiceContractDto) {
-    const data = await this.storeService.createContract(body);
+    const data = await this.storeSubscriptionService.createContract(body);
     return { data };
   }
 
   @Post('subscriptions/:id/approve')
   async approveSubscription(@Param('id', ParseIntPipe) id: number) {
-    const data = await this.storeService.approveSubscription(id);
+    const data = await this.storeSubscriptionService.approveSubscription(id);
     return { data };
   }
 
   @Get('pending-subscriptions')
   async listPendingSubscriptions() {
-    const data = await this.storeService.listPendingSubscriptions();
+    const data = await this.storeSubscriptionService.listPendingSubscriptions();
     return { data };
   }
 }

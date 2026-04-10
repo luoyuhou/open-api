@@ -141,6 +141,7 @@ model store_goods_version {
   version_number String?
   bar_code       String?
   count          Int
+  stock_warning  Int       @default(10)
   price          Int
   unit_name      String
   supplier       String?
@@ -150,6 +151,7 @@ model store_goods_version {
 
   @@unique([goods_id, unit_name, version_number])
   @@unique([goods_id, unit_name, bar_code])
+  @@index([goods_id])
 }
 
 model user_order {
@@ -353,6 +355,27 @@ model store_rating {
   order_count Int       @default(0)
   avg_star    Float     @default(0)
   updated_at  DateTime? @default(now())
+}
+
+// 商品评价
+model goods_rating {
+  id           Int       @id @default(autoincrement())
+  rating_id    String    @unique @default(uuid())
+  order_id     String
+  goods_id     String
+  goods_name   String
+  user_id      String
+  store_id     String
+  star         Int
+  content      String?
+  images       String?
+  status       Int       @default(1)
+  create_date  DateTime  @default(now())
+  update_date  DateTime  @default(now())
+
+  @@index([goods_id])
+  @@index([order_id])
+  @@index([store_id])
 }
 
 model user_favorite_store {
@@ -658,4 +681,29 @@ model store_order_service_fee {
   @@unique([store_id, order_id])
   @@index([store_id, month])
   @@index([fee_date])
+}
+
+// ========== 退款订单 ==========
+
+model refund_order {
+  id             Int       @id @default(autoincrement())
+  refund_id      String    @unique @default(uuid())
+  order_id       String
+  user_id        String
+  store_id       String
+  money          Int
+  reason         String
+  remark         String?
+  images         String?
+  status         Int       @default(0)
+  reject_reason  String?
+  handled_at     DateTime?
+  handled_by     String?
+  create_date    DateTime  @default(now())
+  update_date    DateTime  @default(now())
+
+  @@index([order_id])
+  @@index([user_id])
+  @@index([store_id])
+  @@index([status])
 }

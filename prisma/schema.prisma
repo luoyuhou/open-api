@@ -138,6 +138,7 @@ model store_goods_version {
   version_number String?
   bar_code       String?
   count          Int
+  stock_warning  Int       @default(10) // 库存预警阈值，默认10
   price          Int
   unit_name      String
   supplier       String?
@@ -147,6 +148,7 @@ model store_goods_version {
 
   @@unique([goods_id, unit_name, version_number])
   @@unique([goods_id, unit_name, bar_code])
+  @@index([goods_id])
 }
 
 model user_order {
@@ -393,6 +395,27 @@ model store_rating {
   order_count Int       @default(0)
   avg_star    Float     @default(0)
   updated_at  DateTime? @default(now())
+}
+
+// 商品评价
+model goods_rating {
+  id           Int       @id @default(autoincrement())
+  rating_id    String    @unique @default(uuid())
+  order_id     String
+  goods_id     String
+  goods_name   String
+  user_id      String
+  store_id     String
+  star         Int       // 1-5星
+  content      String?   // 评价内容
+  images       String?   // 评价图片，JSON数组
+  status       Int       @default(1) // 1正常 2隐藏
+  create_date  DateTime  @default(now())
+  update_date  DateTime  @default(now())
+
+  @@index([goods_id])
+  @@index([order_id])
+  @@index([store_id])
 }
 
 model user_favorite_store {
@@ -660,4 +683,29 @@ model store_order_service_fee {
   @@unique([store_id, order_id])
   @@index([store_id, month])
   @@index([fee_date])
+}
+
+// ========== 退款订单 ==========
+
+model refund_order {
+  id             Int       @id @default(autoincrement())
+  refund_id      String    @unique @default(uuid())
+  order_id       String
+  user_id        String
+  store_id       String
+  money          Int       // 退款金额（分）
+  reason         String    // 退款原因
+  remark         String?   // 用户备注
+  images         String?   // 凭证图片，JSON数组
+  status         Int       @default(0) // 0待处理 1已退款 2已拒绝 -1已取消
+  reject_reason  String?   // 拒绝原因
+  handled_at     DateTime? // 处理时间
+  handled_by     String?   // 处理人
+  create_date    DateTime  @default(now())
+  update_date    DateTime  @default(now())
+
+  @@index([order_id])
+  @@index([user_id])
+  @@index([store_id])
+  @@index([status])
 }
