@@ -43,7 +43,7 @@ describe('FileController', () => {
 
       const result = await controller.listFiles();
 
-      expect(fileService.listFiles).toHaveBeenCalledWith(1, 20);
+      expect(fileService.listFiles).toHaveBeenCalledWith(1, 10);
       expect(result).toEqual(mockResult);
     });
 
