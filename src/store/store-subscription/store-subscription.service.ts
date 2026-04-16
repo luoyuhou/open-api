@@ -12,7 +12,7 @@ import {
 } from '../dto/store-subscription.dto';
 
 @Injectable()
-export class StoreServiceService {
+export class StoreSubscriptionService {
   constructor(private readonly prisma: PrismaService) {}
 
   async listPlans(storeId?: string) {

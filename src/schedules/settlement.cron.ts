@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { StoreSettlementService } from './store-settlement.service';
-import { PlatformSettlementService } from './platform-settlement.service';
-import customLogger from '../../common/logger';
+import { StoreSettlementService } from '../store/settlement/store-settlement.service';
+import { PlatformSettlementService } from '../store/settlement/platform-settlement.service';
+import customLogger from '../common/logger';
 
 @Injectable()
 export class SettlementCronService {

@@ -20,7 +20,7 @@ export class SchedulesService {
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   reportUserDailyFetch() {
-    this.usersFetchService.dailyUsersFetch();
+    this.usersFetchService.dailyUsersFetch().then();
   }
 
   // 每天凌晨 0 点预计算各门店的评分和订单数，写入 store_rating 表
