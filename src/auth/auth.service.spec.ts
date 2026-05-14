@@ -7,7 +7,7 @@ import { RoleManagementService } from './role-management/role-management.service
 import { UsersService } from '../users/users.service';
 import { CacheService } from '../common/cache-manager/cache.service';
 import { SmsService } from '../common/sms/sms.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -64,7 +64,7 @@ describe('AuthService', () => {
         password,
       );
       expect(loginUserByPassword?.phone).toBe(password);
-    }, 10000);
+    });
   });
 
   describe('generateForgetPasswordSmsToken', () => {
@@ -157,7 +157,7 @@ describe('AuthService', () => {
       } as any);
 
       await expect(service.sendForgetPasswordSms(phone, token)).rejects.toThrow(
-        '请求过于频繁',
+        /请求过于频繁/,
       );
     });
   });

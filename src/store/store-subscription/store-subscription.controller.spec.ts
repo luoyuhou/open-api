@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { StoreServiceController } from './store-subscription.controller';
-import { StoreServiceService } from './store-subscription.service';
+import { StoreSubscriptionService } from './store-subscription.service';
 import {
   CreateStoreServicePlanDto,
   CreateStoreServiceSubscriptionDto,
@@ -14,7 +14,7 @@ import {
 
 describe('StoreServiceController', () => {
   let controller: StoreServiceController;
-  let storeService: jest.Mocked<StoreServiceService>;
+  let storeSubscriptionService: jest.Mocked<StoreSubscriptionService>;
 
   beforeEach(async () => {
     const mockStoreService = {
@@ -32,13 +32,15 @@ describe('StoreServiceController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [StoreServiceController],
-      providers: [{ provide: StoreServiceService, useValue: mockStoreService }],
+      providers: [
+        { provide: StoreSubscriptionService, useValue: mockStoreService },
+      ],
     }).compile();
 
     controller = module.get<StoreServiceController>(StoreServiceController);
-    storeService = module.get(
-      StoreServiceService,
-    ) as jest.Mocked<StoreServiceService>;
+    storeSubscriptionService = module.get(
+      StoreSubscriptionService,
+    ) as jest.Mocked<StoreSubscriptionService>;
   });
 
   it('should be defined', () => {
@@ -48,11 +50,11 @@ describe('StoreServiceController', () => {
   describe('listPlans', () => {
     it('should list all plans', async () => {
       const mockPlans = [{ plan_id: 'plan-uuid-1', name: 'Basic' }];
-      storeService.listPlans.mockResolvedValue(mockPlans as any);
+      storeSubscriptionService.listPlans.mockResolvedValue(mockPlans as any);
 
       const result = await controller.listPlans();
 
-      expect(storeService.listPlans).toHaveBeenCalled();
+      expect(storeSubscriptionService.listPlans).toHaveBeenCalled();
       expect(result).toEqual({ data: mockPlans });
     });
   });
@@ -65,11 +67,11 @@ describe('StoreServiceController', () => {
         description: 'description',
       };
       const mockPlan = { plan_id: 'plan-uuid-2', ...dto };
-      storeService.createPlan.mockResolvedValue(mockPlan as any);
+      storeSubscriptionService.createPlan.mockResolvedValue(mockPlan as any);
 
       const result = await controller.createPlan(dto);
 
-      expect(storeService.createPlan).toHaveBeenCalledWith(dto);
+      expect(storeSubscriptionService.createPlan).toHaveBeenCalledWith(dto);
       expect(result).toEqual({ data: mockPlan });
     });
   });
@@ -79,11 +81,16 @@ describe('StoreServiceController', () => {
       const id = 1;
       const dto: UpdateStoreServicePlanStatusDto = { is_active: false };
       const mockPlan = { id, plan_id: 'plan-uuid-1', is_active: false };
-      storeService.updatePlanStatus.mockResolvedValue(mockPlan as any);
+      storeSubscriptionService.updatePlanStatus.mockResolvedValue(
+        mockPlan as any,
+      );
 
       const result = await controller.updatePlanStatus(id, dto);
 
-      expect(storeService.updatePlanStatus).toHaveBeenCalledWith(id, false);
+      expect(storeSubscriptionService.updatePlanStatus).toHaveBeenCalledWith(
+        id,
+        false,
+      );
       expect(result).toEqual({ data: mockPlan });
     });
   });
@@ -102,11 +109,13 @@ describe('StoreServiceController', () => {
         page: 1,
         pageSize: 10,
       };
-      storeService.listSubscriptions.mockResolvedValue(mockResult as any);
+      storeSubscriptionService.listSubscriptions.mockResolvedValue(
+        mockResult as any,
+      );
 
       const result = await controller.listSubscriptions(query);
 
-      expect(storeService.listSubscriptions).toHaveBeenCalledWith({
+      expect(storeSubscriptionService.listSubscriptions).toHaveBeenCalledWith({
         store_id: 'store123',
         status: 1,
         page: 1,
@@ -129,13 +138,13 @@ describe('StoreServiceController', () => {
         start_date: new Date(),
       };
       const mockSubscription = { subscription_id: 1, store_id: 'store123' };
-      storeService.createSubscription.mockResolvedValue(
+      storeSubscriptionService.createSubscription.mockResolvedValue(
         mockSubscription as any,
       );
 
       const result = await controller.createSubscription(dto);
 
-      expect(storeService.createSubscription).toHaveBeenCalledWith({
+      expect(storeSubscriptionService.createSubscription).toHaveBeenCalledWith({
         store_id: 'store123',
         plan_id: 'plan-uuid-1',
         start_date: dto.start_date,
@@ -148,13 +157,15 @@ describe('StoreServiceController', () => {
     it('should terminate subscription', async () => {
       const id = 1;
       const mockSubscription = { subscription_id: id, status: 'terminated' };
-      storeService.terminateSubscription.mockResolvedValue(
+      storeSubscriptionService.terminateSubscription.mockResolvedValue(
         mockSubscription as any,
       );
 
       const result = await controller.terminateSubscription(id);
 
-      expect(storeService.terminateSubscription).toHaveBeenCalledWith(id);
+      expect(
+        storeSubscriptionService.terminateSubscription,
+      ).toHaveBeenCalledWith(id);
       expect(result).toEqual({ data: mockSubscription });
     });
   });
@@ -173,11 +184,13 @@ describe('StoreServiceController', () => {
         page: 1,
         pageSize: 10,
       };
-      storeService.listInvoices.mockResolvedValue(mockResult as any);
+      storeSubscriptionService.listInvoices.mockResolvedValue(
+        mockResult as any,
+      );
 
       const result = await controller.listInvoices(query);
 
-      expect(storeService.listInvoices).toHaveBeenCalledWith({
+      expect(storeSubscriptionService.listInvoices).toHaveBeenCalledWith({
         store_id: 'store123',
         status: 1,
         page: 1,
@@ -200,11 +213,11 @@ describe('StoreServiceController', () => {
         method: 'cod',
       };
       const mockInvoice = { invoice_id: id, status: 'paid' };
-      storeService.payInvoice.mockResolvedValue(mockInvoice as any);
+      storeSubscriptionService.payInvoice.mockResolvedValue(mockInvoice as any);
 
       const result = await controller.payInvoice(id, dto);
 
-      expect(storeService.payInvoice).toHaveBeenCalledWith(id, dto);
+      expect(storeSubscriptionService.payInvoice).toHaveBeenCalledWith(id, dto);
       expect(result).toEqual({ data: mockInvoice });
     });
   });
@@ -223,11 +236,13 @@ describe('StoreServiceController', () => {
         page: 1,
         pageSize: 10,
       };
-      storeService.listContracts.mockResolvedValue(mockResult as any);
+      storeSubscriptionService.listContracts.mockResolvedValue(
+        mockResult as any,
+      );
 
       const result = await controller.listContracts(query);
 
-      expect(storeService.listContracts).toHaveBeenCalledWith({
+      expect(storeSubscriptionService.listContracts).toHaveBeenCalledWith({
         store_id: 'store123',
         status: 1,
         page: 1,
@@ -253,11 +268,13 @@ describe('StoreServiceController', () => {
         sign_type: 1,
       };
       const mockContract = { contract_id: 1, store_id: 'store123' };
-      storeService.createContract.mockResolvedValue(mockContract as any);
+      storeSubscriptionService.createContract.mockResolvedValue(
+        mockContract as any,
+      );
 
       const result = await controller.createContract(dto);
 
-      expect(storeService.createContract).toHaveBeenCalledWith(dto);
+      expect(storeSubscriptionService.createContract).toHaveBeenCalledWith(dto);
       expect(result).toEqual({ data: mockContract });
     });
   });

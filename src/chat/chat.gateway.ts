@@ -17,6 +17,7 @@ import customLogger from '../common/logger';
 import { sleep } from '@nestjs/terminus/dist/utils';
 import Env from '../common/const/Env';
 import { PrismaService } from '../prisma/prisma.service';
+import { OnModuleDestroy } from '@nestjs/common';
 
 type SendMessageItemProps = {
   senderId: string;
@@ -37,7 +38,11 @@ type SendMessageItemProps = {
   transports: ['websocket', 'polling'],
 })
 export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+  implements
+    OnGatewayInit,
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    OnModuleDestroy
 {
   constructor(
     private cacheService: CacheService,
@@ -48,9 +53,56 @@ export class ChatGateway
   server: Server;
 
   private userSockets = new Map<string, Socket>();
+  private cleanupInterval: NodeJS.Timeout | null = null;
+  private readonly MAX_SOCKETS = 10000; // 防止内存无限增长
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     customLogger.log({ message: 'Websocket started' });
+    // 每 5 分钟清理一次无效连接
+    this.cleanupInterval = setInterval(
+      () => this.cleanupStaleConnections(),
+      5 * 60 * 1000,
+    );
+  }
+
+  onModuleDestroy() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    // 清理所有 socket 连接
+    this.userSockets.clear();
+    customLogger.log({
+      message: 'Websocket gateway destroyed, all connections cleared',
+    });
+  }
+
+  /**
+   * 定期清理无效的 socket 连接，防止内存泄露
+   */
+  private async cleanupStaleConnections() {
+    let cleanedCount = 0;
+
+    // 如果连接数超过阈值，强制清理已断开的连接
+    if (this.userSockets.size > this.MAX_SOCKETS) {
+      customLogger.warn({
+        message: `Socket connections exceed limit: ${this.userSockets.size}/${this.MAX_SOCKETS}`,
+      });
+    }
+
+    for (const [socketId, client] of this.userSockets.entries()) {
+      if (client.disconnected) {
+        this.userSockets.delete(socketId);
+        cleanedCount++;
+      }
+    }
+
+    if (cleanedCount > 0) {
+      customLogger.log({
+        message: `Cleaned up ${cleanedCount} stale socket connections`,
+        activeConnections: this.userSockets.size,
+      });
+    }
   }
 
   private getUserSocketMapKey(userId: string) {
@@ -108,15 +160,16 @@ export class ChatGateway
     const userId = client.handshake.auth.userId;
     const mapKey = this.getUserSocketMapKey(userId);
 
+    // 只删除当前断开的 socket，而不是删除所有
     this.userSockets.delete(client.id);
+    await this.cacheService.client.hdel(mapKey, client.id);
 
-    const users = await this.cacheService.client.hgetall(mapKey);
-    const socketIds = Object.keys(users);
-
-    for (const socketId of socketIds) {
-      this.userSockets.delete(socketId);
-      this.cacheService.client.hdel(mapKey, socketId);
-    }
+    customLogger.log({
+      message: 'Socket disconnected',
+      userId,
+      socketId: client.id,
+      activeConnections: this.userSockets.size,
+    });
   }
 
   async sendToUser(userId: string, event: string, data: any) {

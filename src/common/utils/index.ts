@@ -68,6 +68,13 @@ class Utils {
   static verifyPhoneNumber(phone: string) {
     return /^[1][3-9]\d{9}$/.test(phone);
   }
+
+  static decodeMulterFileName(fileName: string) {
+    if (!fileName) {
+      return fileName;
+    }
+    return Buffer.from(fileName, 'latin1').toString('utf8');
+  }
 }
 
 export default Utils;

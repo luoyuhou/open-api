@@ -13,6 +13,7 @@ import { UpdateFeedbackStatusDto } from './dto/update-feedback-status.dto';
 import { UserEntity } from '../users/entities/user.entity';
 import { CreateFeedbackCommentDto } from './dto/create-feedback-comment.dto';
 import { FileService } from '../file/file.service';
+import Utils from '../common/utils';
 
 @Injectable()
 export class FeedbackService {
@@ -112,7 +113,7 @@ export class FeedbackService {
               feedback_id: feedback.feedback_id,
               url: url,
               type: 1, // 默认为图片
-              description: file.originalname,
+              description: 'N/A',
             },
           });
         }),

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsInt,
   IsNotEmpty,
@@ -23,17 +24,23 @@ export class CreateHomeBannerDto {
 
   @ApiProperty({ description: '图片地址（URL）' })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(256)
   image_url: string;
 
   @ApiProperty({ description: '宽度(px)', required: false })
+  @Transform(({ value }) =>
+    value !== '' && value != null ? Number(value) : undefined,
+  )
   @IsInt()
   @Min(0)
   @IsOptional()
   width?: number;
 
   @ApiProperty({ description: '高度(px)', required: false })
+  @Transform(({ value }) =>
+    value !== '' && value != null ? Number(value) : undefined,
+  )
   @IsInt()
   @Min(0)
   @IsOptional()
@@ -44,6 +51,9 @@ export class CreateHomeBannerDto {
     required: false,
     default: 0,
   })
+  @Transform(({ value }) =>
+    value !== '' && value != null ? Number(value) : undefined,
+  )
   @IsInt()
   @Min(0)
   @IsOptional()
@@ -54,6 +64,9 @@ export class CreateHomeBannerDto {
     required: false,
     default: 1,
   })
+  @Transform(({ value }) =>
+    value !== '' && value != null ? Number(value) : undefined,
+  )
   @IsInt()
   @IsOptional()
   status?: number;
