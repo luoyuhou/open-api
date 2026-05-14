@@ -24,7 +24,7 @@ export class UsersService {
   }
 
   private bcryptPassword(password: string): { pwd: string; salt: string } {
-    const salt = bcrypt.genSaltSync(16);
+    const salt = bcrypt.genSaltSync(10);
     const pwd = bcrypt.hashSync(password, salt);
     return { pwd, salt };
   }
@@ -255,7 +255,7 @@ export class UsersService {
       Array.isArray(sorted) && sorted.length
         ? sorted[0].desc
           ? 'desc'
-          : 'acs'
+          : 'asc'
         : 'desc';
     const count = await this.prisma.user.count({
       where: where,

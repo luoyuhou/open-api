@@ -60,7 +60,7 @@ export class FileService {
             reject(err || new Error('上传失败'));
           } else {
             try {
-              const url = `${Env.Q_DOMAIN}/${body.key}`;
+              const url = `http://${Env.Q_DOMAIN}/${body.key}`;
               await this.prisma.file.create({
                 data: {
                   hash,
