@@ -4,6 +4,7 @@ import * as qiniu from 'qiniu';
 import * as crypto from 'crypto';
 import Env from '../common/const/Env';
 import customLogger from '../common/logger';
+import Utils from '../common/utils';
 
 export interface FileWithRefCount {
   id: number;
@@ -28,6 +29,9 @@ export class FileService {
     fileBuffer: Buffer,
     fileName?: string,
   ): Promise<{ hash: string; url: string }> {
+    if (fileName) {
+      fileName = Utils.decodeMulterFileName(fileName);
+    }
     const hash = crypto.createHash('md5').update(fileBuffer).digest('hex');
     const fileRecord = await this.prisma.file.findUnique({ where: { hash } });
 
@@ -104,7 +108,6 @@ export class FileService {
       }),
       this.prisma.file.count(),
     ]);
-    console.log('===files', files);
 
     // 获取所有 hash
     const hashes = files.map((f) => f.hash);
