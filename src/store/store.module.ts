@@ -7,6 +7,8 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { StoreOrderModule } from './order/store.order.module';
 import { FileModule } from '../file/file.module';
 import { SettlementModule } from './settlement/settlement.module';
+import { CashierController } from './cashier/cashier.controller';
+import { CashierService } from './cashier/cashier.service';
 
 @Module({
   imports: [
@@ -17,8 +19,8 @@ import { SettlementModule } from './settlement/settlement.module';
     FileModule,
     SettlementModule,
   ],
-  controllers: [StoreController],
-  providers: [StoreService],
-  exports: [StoreService],
+  controllers: [StoreController, CashierController],
+  providers: [StoreService, CashierService],
+  exports: [StoreService, CashierService],
 })
 export class StoreModule {}

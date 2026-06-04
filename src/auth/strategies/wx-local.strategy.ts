@@ -15,7 +15,10 @@ export class WxLocalStrategy extends PassportStrategy(Strategy, 'wx-local') {
     });
   }
 
-  validate(req: Request) {
-    return this.authService.loginByWx(req.body as unknown as WxLoginDto);
+  async validate(req: Request) {
+    const result = await this.authService.loginByWx(
+      req.body as unknown as WxLoginDto,
+    );
+    return { ...result.user, openid: result.openid };
   }
 }

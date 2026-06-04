@@ -69,6 +69,14 @@ class Env {
     return env.WX_SECRET!;
   }
 
+  static get CASHIER_WX_APP_ID(): string {
+    return env.CASHIER_WX_APP_ID || env.WX_APP_ID;
+  }
+
+  static get CASHIER_WX_SECRET(): string {
+    return env.CASHIER_WX_SECRET || env.WX_SECRET;
+  }
+
   static get DATABASE_URL(): string {
     return env.DATABASE_URL!;
   }

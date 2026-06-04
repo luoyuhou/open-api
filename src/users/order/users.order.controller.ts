@@ -34,7 +34,7 @@ export class UsersOrderController {
   ) {
     const { user } = request;
     const filtered: { id: string; value: string | number }[] = [
-      { id: 'user_id', value: (user as { user: UserEntity }).user.user_id },
+      { id: 'user_id', value: (user as UserEntity).user_id },
     ];
     if (stage) filtered.push({ id: 'stage', value: +stage });
     return this.userOrderService.pagination({
@@ -48,7 +48,7 @@ export class UsersOrderController {
   @Post()
   create(@Req() request: Request, @Body() createOrderDto: CreateOrderDto) {
     return this.userOrderService.create(
-      (request.user as { user: UserEntity }).user,
+      request.user as UserEntity,
       createOrderDto,
     );
   }
@@ -60,7 +60,7 @@ export class UsersOrderController {
     @Param('id') id: string,
     @Body() body: UpdatePayProofDto,
   ) {
-    const user = (request.user as { user: UserEntity }).user;
+    const user = request.user as UserEntity;
     await this.userOrderService.updatePayProof(user, id, body.pay_proof_url);
     return { message: 'ok' };
   }
