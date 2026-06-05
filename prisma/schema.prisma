@@ -661,3 +661,36 @@ model store_order_service_fee {
   @@index([store_id, month])
   @@index([fee_date])
 }
+
+model store_member {
+  id          Int       @id @default(autoincrement())
+  member_id   String    @unique
+  store_id    String
+  name        String
+  phone       String
+  gender      Int       @default(0) // 0: 未知, 1: 男, 2: 女
+  avatar      String?
+  birthday    String?
+  balance     Int       @default(0) // 余额（分）
+  points      Int       @default(0) // 积分
+  status      Int       @default(1) // 1: 正常, 0: 禁用
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([store_id, phone])
+}
+
+model store_recharge {
+  id              Int       @id @default(autoincrement())
+  recharge_id     String    @unique
+  member_id       String
+  store_id        String
+  amount          Int       // 实收金额（分）
+  received_amount Int       // 到账金额（分）
+  cashier_name    String?
+  remark          String?
+  create_date     DateTime? @default(now())
+
+  @@index([member_id])
+  @@index([store_id])
+}

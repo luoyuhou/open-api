@@ -4,14 +4,19 @@ import {
   ValidateNested,
   IsOptional,
   IsNumber,
+  IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
-class SyncOrderItemDetailDto {
+class StoreOrderItemDetailDto {
   @IsString()
   @ApiProperty({ description: '商品ID' })
   goods_id: string;
+
+  @IsString()
+  @ApiProperty({ description: '商品名' })
+  name: string;
 
   @IsString()
   @ApiProperty({ description: '规格版本ID' })
@@ -44,21 +49,40 @@ class SyncOrderDto {
   @ApiProperty({ description: '下单时间' })
   created_at: string;
 
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: '支付方式 (cash, balance)', required: false })
+  payment_method?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({ description: '扣除积分', required: false })
+  points_used?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({ description: '获得积分', required: false })
+  earn_points?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({ description: '实际支付金额（分）', required: false })
+  payable_amount?: number;
+
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => SyncOrderItemDetailDto)
-  @ApiProperty({ type: [SyncOrderItemDetailDto], description: '商品详情' })
-  items: SyncOrderItemDetailDto[];
+  @Type(() => StoreOrderItemDetailDto)
+  @ApiProperty({ type: [StoreOrderItemDetailDto], description: '商品详情' })
+  items: StoreOrderItemDetailDto[];
 }
 
-export class CashierSyncPushDto {
+export class CashierOrderDto {
   @IsString()
   @ApiProperty({ description: '店铺ID' })
   store_id: string;
 
-  @IsArray()
-  @ValidateNested({ each: true })
+  @IsObject()
   @Type(() => SyncOrderDto)
-  @ApiProperty({ type: [SyncOrderDto], description: '待同步订单列表' })
-  orders: SyncOrderDto[];
+  @ApiProperty({ type: SyncOrderDto, description: '待同步订单列表' })
+  order: SyncOrderDto;
 }

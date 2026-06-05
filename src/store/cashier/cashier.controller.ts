@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param } from '@nestjs/common';
 import { CashierService } from './cashier.service';
-import { CashierSyncPushDto } from './dto/cashier-sync.dto';
+import { CashierOrderDto } from './dto/cashier-order.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('商家收银')
@@ -14,10 +14,10 @@ export class CashierController {
     return await this.cashierService.getSyncData(storeId);
   }
 
-  @Post('sync/orders')
+  @Post('order')
   @ApiOperation({ summary: '批量同步离线订单' })
-  async pushOrders(@Body() dto: CashierSyncPushDto) {
-    return await this.cashierService.pushOrders(dto);
+  async pushOrders(@Body() dto: CashierOrderDto) {
+    return await this.cashierService.pushOrder(dto);
   }
 
   @Get('orders/today/:storeId')

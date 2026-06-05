@@ -9,6 +9,7 @@ import { FileModule } from '../file/file.module';
 import { SettlementModule } from './settlement/settlement.module';
 import { CashierController } from './cashier/cashier.controller';
 import { CashierService } from './cashier/cashier.service';
+import { MemberModule } from './member/member.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CashierService } from './cashier/cashier.service';
     StoreOrderModule,
     FileModule,
     SettlementModule,
+    MemberModule,
   ],
   controllers: [StoreController, CashierController],
   providers: [StoreService, CashierService],
