@@ -205,16 +205,49 @@ export class GoodsService {
   }
 
   async update(id: string, updateGoodDto: UpdateGoodDto) {
+    const { price, unit_name, status, ...goodsData } = updateGoodDto;
+
     const goods = await this.prisma.store_goods.findFirst({
       where: { goods_id: id },
     });
     if (!goods) {
-      throw new BadRequestException('');
+      throw new BadRequestException('商品不存在');
     }
 
-    return this.prisma.store_goods.update({
-      where: { goods_id: id },
-      data: updateGoodDto,
+    return this.prisma.$transaction(async (tx) => {
+      // 1. 更新商品基本信息
+      const updatedGoods = await tx.store_goods.update({
+        where: { goods_id: id },
+        data: {
+          ...goodsData,
+          status: status !== undefined ? status : undefined,
+        },
+      });
+
+      // 2. 如果提供了价格或单位，更新第一个版本的信息
+      if (
+        price !== undefined ||
+        unit_name !== undefined ||
+        status !== undefined
+      ) {
+        const firstVersion = await tx.store_goods_version.findFirst({
+          where: { goods_id: id },
+          orderBy: { create_date: 'asc' },
+        });
+
+        if (firstVersion) {
+          await tx.store_goods_version.update({
+            where: { version_id: firstVersion.version_id },
+            data: {
+              price: price !== undefined ? Number(price) : undefined,
+              unit_name: unit_name !== undefined ? unit_name : undefined,
+              status: status !== undefined ? status : undefined,
+            },
+          });
+        }
+      }
+
+      return updatedGoods;
     });
   }
 

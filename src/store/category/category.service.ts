@@ -4,7 +4,6 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { v4 } from 'uuid';
 import { E_CATEGORY_STATUS_TYPE } from './const';
-import { FindAllCategoryDto } from './dto/findAll-category.dto';
 import { UserEntity } from '../../users/entities/user.entity';
 import { SwitchRankCategoryDto } from './dto/switch-rank-category.dto';
 import Utils from '../../common/utils';
@@ -26,8 +25,12 @@ export class CategoryService {
       where: { store_id, pid: pid ?? '0', name },
     });
 
-    if (category) {
+    if (category && category.status === E_CATEGORY_STATUS_TYPE.active) {
       throw new BadRequestException(`${name} 分类已经创建`);
+    }
+
+    if (category) {
+      return this.reactive(category.category_id);
     }
 
     const categoryId = `category-${v4()}`;
@@ -100,49 +103,53 @@ export class CategoryService {
 
   async findAll({ store_id, pid }: { store_id: string; pid?: string }) {
     return this.prisma.category_goods.findMany({
-      where: { store_id, pid: pid ?? '0' },
+      where: {
+        store_id,
+        pid: pid ?? '0',
+        status: E_CATEGORY_STATUS_TYPE.active,
+      },
       orderBy: { rank: 'asc' },
     });
   }
 
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
-    const category = await this.prisma.category_goods.findUnique({
+    const category = await this.prisma.category_goods.findFirst({
       where: { category_id: id, status: E_CATEGORY_STATUS_TYPE.active },
     });
 
     if (!category) {
-      throw new BadRequestException('');
+      throw new BadRequestException('未找到该分类或分类已被禁用');
     }
     return this.prisma.category_goods.update({
-      where: { category_id: id },
+      where: { id: category.id },
       data: updateCategoryDto,
     });
   }
 
   async remove(id: string) {
-    const category = await this.prisma.category_goods.findUnique({
+    const category = await this.prisma.category_goods.findFirst({
       where: { category_id: id, status: E_CATEGORY_STATUS_TYPE.active },
     });
 
     if (!category) {
-      throw new BadRequestException('');
+      throw new BadRequestException('未找到该分类或分类已被删除');
     }
     return this.prisma.category_goods.update({
-      where: { category_id: id },
+      where: { id: category.id },
       data: { status: E_CATEGORY_STATUS_TYPE.inactive },
     });
   }
 
   async reactive(id: string) {
-    const category = await this.prisma.category_goods.findUnique({
+    const category = await this.prisma.category_goods.findFirst({
       where: { category_id: id, status: E_CATEGORY_STATUS_TYPE.inactive },
     });
 
     if (!category) {
-      throw new BadRequestException('');
+      throw new BadRequestException('未找到该分类或分类无需激活');
     }
     return this.prisma.category_goods.update({
-      where: { category_id: id },
+      where: { id: category.id },
       data: { status: E_CATEGORY_STATUS_TYPE.active },
     });
   }

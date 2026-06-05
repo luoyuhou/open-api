@@ -1,18 +1,25 @@
 import { CreateGoodDto } from './create-good.dto';
-import { PickType } from '@nestjs/mapped-types';
+import { PartialType, PickType } from '@nestjs/mapped-types';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class UpdateGoodDto extends PickType(CreateGoodDto, [
-  'category_id',
-  'name',
-  'description',
-]) {
+export class UpdateGoodDto extends PartialType(
+  PickType(CreateGoodDto, ['category_id', 'name', 'description']),
+) {
   @ApiProperty()
-  category_id: string;
+  category_id?: string;
 
   @ApiProperty()
-  name: string;
+  name?: string;
 
   @ApiProperty()
-  description: string;
+  description?: string;
+
+  @ApiProperty()
+  price?: number;
+
+  @ApiProperty()
+  unit_name?: string;
+
+  @ApiProperty()
+  status?: number;
 }

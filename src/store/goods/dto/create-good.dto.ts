@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateGoodDto {
@@ -19,6 +19,7 @@ export class CreateGoodDto {
   name: string;
 
   @IsString()
+  @IsOptional()
   @ApiProperty()
-  description: string;
+  description?: string;
 }
