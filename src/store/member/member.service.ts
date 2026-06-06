@@ -156,6 +156,7 @@ export class MemberService {
       memberId: o.user_id,
       totalAmount: (o.money / 100).toFixed(2),
       createdAt: o.create_date,
+      paymentMethod: o.payment_method,
       status: 'completed',
     }));
   }

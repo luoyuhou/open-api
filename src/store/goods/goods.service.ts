@@ -54,9 +54,18 @@ export class GoodsService {
     const stores = await this.prisma.store.findMany({
       where: { store_id: { in: data.map(({ store_id }) => store_id) } },
     });
+    const allCategoryIds = new Set<string>();
+    data.forEach((item) => {
+      if (item.category_id) {
+        item.category_id
+          .split(',')
+          .forEach((id) => id && allCategoryIds.add(id));
+      }
+    });
+
     const categories = await this.prisma.category_goods.findMany({
       where: {
-        category_id: { in: data.map(({ category_id }) => category_id) },
+        category_id: { in: Array.from(allCategoryIds) },
       },
     });
 
@@ -73,14 +82,20 @@ export class GoodsService {
 
     const formatData = data.map((item) => {
       const store = stores.find((s) => s.store_id === item.store_id);
-      const category = categories.find(
-        (c) => c.category_id === item.category_id,
+
+      const itemCategoryIds = (item.category_id || '')
+        .split(',')
+        .filter(Boolean);
+      const itemCategories = categories.filter((c) =>
+        itemCategoryIds.includes(c.category_id),
       );
+
       const versionCnt = versions.find((v) => v.goods_id === item.goods_id);
       return {
         ...item,
         store_name: store ? store.store_name : undefined,
-        category_name: category ? category.name : undefined,
+        category_name: itemCategories.map((c) => c.name).join(', '),
+        category_ids: itemCategoryIds,
         versions: versionCnt ? Number(versionCnt.count.toString()) : undefined,
       };
     });
@@ -96,15 +111,27 @@ export class GoodsService {
     return this.prisma.store_goods_version.findMany({ where: { goods_id } });
   }
 
+  private formatCategoryIds(category_ids?: string[]): string {
+    const ids = new Set<string>();
+    if (category_ids && Array.isArray(category_ids)) {
+      category_ids.forEach((id) => id && ids.add(id));
+    }
+    return Array.from(ids).sort().join(',');
+  }
+
   async create(
     {
       store_id,
       name,
-      category_id,
+      category_ids,
       description,
       ...createGoodDto
     }: CreateGoodDto &
-      CreateGoodsVersionDto & { image_url?: string; image_hash?: string },
+      CreateGoodsVersionDto & {
+        image_url?: string;
+        image_hash?: string;
+        category_ids?: string[];
+      },
     file?: Express.Multer.File,
   ) {
     if (file) {
@@ -119,8 +146,10 @@ export class GoodsService {
       createGoodDto.image_hash = hash;
     }
 
+    const finalCategoryId = this.formatCategoryIds(category_ids);
+
     const goods = await this.prisma.store_goods.findFirst({
-      where: { store_id, category_id, name },
+      where: { store_id, category_id: finalCategoryId, name },
     });
 
     try {
@@ -131,7 +160,7 @@ export class GoodsService {
           await prisma.store_goods.create({
             data: {
               store_id,
-              category_id,
+              category_id: finalCategoryId,
               name,
               description,
               goods_id: goodsId,
@@ -191,21 +220,33 @@ export class GoodsService {
   }
 
   async findOne(goods_id: string) {
-    const goods = await this.prisma.$queryRawUnsafe<{ id: number }[]>(
-      `SELECT a.*, b.store_name AS store_name, c.name AS category_name FROM store_goods a
-        JOIN store b ON a.store_id = b.store_id
-        JOIN category_goods c ON a.category_id = c.category_id
-        WHERE a.goods_id = '${goods_id}' LIMIT 1`,
-    );
+    const goods = await this.prisma.store_goods.findUnique({
+      where: { goods_id },
+    });
 
-    return goods.map((item) => ({
-      ...item,
-      id: Number(item.id.toString()),
-    }))[0];
+    if (!goods) return null;
+
+    const store = await this.prisma.store.findUnique({
+      where: { store_id: goods.store_id },
+    });
+
+    const categoryIds = (goods.category_id || '').split(',').filter(Boolean);
+    const categories = await this.prisma.category_goods.findMany({
+      where: { category_id: { in: categoryIds } },
+    });
+
+    return {
+      ...goods,
+      id: Number(goods.id.toString()),
+      store_name: store?.store_name,
+      category_name: categories.map((c) => c.name).join(', '),
+      category_ids: categoryIds,
+    };
   }
 
   async update(id: string, updateGoodDto: UpdateGoodDto) {
-    const { price, unit_name, status, ...goodsData } = updateGoodDto;
+    const { price, unit_name, status, category_ids, ...goodsData } =
+      updateGoodDto;
 
     const goods = await this.prisma.store_goods.findFirst({
       where: { goods_id: id },
@@ -220,6 +261,7 @@ export class GoodsService {
         where: { goods_id: id },
         data: {
           ...goodsData,
+          category_id: this.formatCategoryIds(category_ids),
           status: status !== undefined ? status : undefined,
         },
       });

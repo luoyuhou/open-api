@@ -61,7 +61,7 @@ export class CashierService {
       products: products.map((p) => ({
         id: p.goods_id,
         name: p.name,
-        categoryIds: [p.category_id],
+        categoryIds: (p.category_id || '').split(',').filter(Boolean),
         price: p.price / 100, // 后端分转前端元
         billingMode: p.billingMode,
         status: 'on',

@@ -71,32 +71,38 @@ export class GoodsController {
   }
 
   @Get('category/:id')
+  @ApiProperty()
   async findAll(@Param('id') id: string) {
     return this.goodsService.findAll(id);
   }
 
   @Get(':id')
+  @ApiProperty()
   async findOne(@Param('id') id: string) {
     const data = await this.goodsService.findOne(id);
     return { data };
   }
 
   @Patch(':id')
+  @ApiProperty()
   async update(@Param('id') id: string, @Body() updateGoodDto: UpdateGoodDto) {
     return this.goodsService.update(id, updateGoodDto);
   }
 
   @Delete(':id')
+  @ApiProperty()
   async remove(@Param('id') id: string) {
     return this.goodsService.remove(id);
   }
 
   @Patch('reactive/:id')
+  @ApiProperty()
   async reactive(@Param('id') id: string) {
     return this.goodsService.reactive(id);
   }
 
   @Patch('version/:id')
+  @ApiProperty()
   async updateGoodsVersion(
     @Param('id') id: string,
     @Body() updateGoodsVersion: UpdateGoodsVersionDto,

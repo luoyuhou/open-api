@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateGoodDto {
@@ -7,10 +13,11 @@ export class CreateGoodDto {
   @ApiProperty()
   store_id: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   @ApiProperty()
-  category_id: string;
+  category_ids?: string[];
 
   @IsString()
   @IsNotEmpty()
