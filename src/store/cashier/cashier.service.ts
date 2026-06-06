@@ -91,7 +91,7 @@ export class CashierService {
 
           // 如果是会员，处理余额扣除和积分更新
           if (orderDto.member_id && orderDto.member_id !== 'CASHIER_GUEST') {
-            const member = await tx.store_member.findUnique({
+            const member = await (tx as any).store_member.findUnique({
               where: { member_id: orderDto.member_id },
             });
 
@@ -107,7 +107,7 @@ export class CashierService {
                 throw new Error(`会员余额不足`);
               }
 
-              await tx.store_member.update({
+              await (tx as any).store_member.update({
                 where: { member_id: orderDto.member_id },
                 data: {
                   balance: { decrement: balanceDeduction },
@@ -199,7 +199,7 @@ export class CashierService {
     const memberIds = orders
       .map((o) => o.user_id)
       .filter((id) => id && id !== 'CASHIER_GUEST');
-    const members = await this.prisma.store_member.findMany({
+    const members = await (this.prisma as any).store_member.findMany({
       where: {
         member_id: { in: memberIds },
       },

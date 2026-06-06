@@ -12,7 +12,7 @@ export class MemberService {
   async create(createMemberDto: CreateMemberDto) {
     const { store_id, phone } = createMemberDto;
 
-    const existingMember = await this.prisma.store_member.findFirst({
+    const existingMember = await (this.prisma as any).store_member.findFirst({
       where: { store_id, phone },
     });
 
@@ -20,7 +20,7 @@ export class MemberService {
       if (existingMember.status === 1) {
         throw new BadRequestException('该手机号已注册为会员');
       } else {
-        return this.prisma.store_member.update({
+        return (this.prisma as any).store_member.update({
           where: { id: existingMember.id },
           data: {
             ...createMemberDto,
@@ -33,7 +33,7 @@ export class MemberService {
 
     const memberId = `member-${v4()}`;
 
-    return this.prisma.store_member.create({
+    return (this.prisma as any).store_member.create({
       data: {
         ...createMemberDto,
         member_id: memberId,
@@ -42,7 +42,7 @@ export class MemberService {
   }
 
   async findAll(store_id: string, query?: string) {
-    return this.prisma.store_member.findMany({
+    return (this.prisma as any).store_member.findMany({
       where: {
         store_id,
         status: 1,
@@ -55,7 +55,7 @@ export class MemberService {
   }
 
   async findOne(id: string) {
-    const member = await this.prisma.store_member.findUnique({
+    const member = await (this.prisma as any).store_member.findUnique({
       where: { member_id: id },
     });
     if (!member) {
@@ -65,13 +65,13 @@ export class MemberService {
   }
 
   async findByPhone(store_id: string, phone: string) {
-    return this.prisma.store_member.findFirst({
+    return (this.prisma as any).store_member.findFirst({
       where: { store_id, phone, status: 1 },
     });
   }
 
   async update(id: string, updateMemberDto: UpdateMemberDto) {
-    const member = await this.prisma.store_member.findUnique({
+    const member = await (this.prisma as any).store_member.findUnique({
       where: { member_id: id },
     });
 
@@ -79,7 +79,7 @@ export class MemberService {
       throw new BadRequestException('会员不存在');
     }
 
-    return this.prisma.store_member.update({
+    return (this.prisma as any).store_member.update({
       where: { id: member.id },
       data: {
         ...updateMemberDto,
@@ -89,7 +89,7 @@ export class MemberService {
   }
 
   async remove(id: string) {
-    const member = await this.prisma.store_member.findUnique({
+    const member = await (this.prisma as any).store_member.findUnique({
       where: { member_id: id },
     });
 
@@ -97,7 +97,7 @@ export class MemberService {
       throw new BadRequestException('会员不存在');
     }
 
-    return this.prisma.store_member.update({
+    return (this.prisma as any).store_member.update({
       where: { id: member.id },
       data: { status: 0, update_date: new Date() },
     });
@@ -106,7 +106,7 @@ export class MemberService {
   async recharge(dto: CreateRechargeDto) {
     const { member_id, received_amount } = dto;
 
-    const member = await this.prisma.store_member.findUnique({
+    const member = await (this.prisma as any).store_member.findUnique({
       where: { member_id },
     });
 
@@ -115,7 +115,7 @@ export class MemberService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      await tx.store_member.update({
+      await (tx as any).store_member.update({
         where: { id: member.id },
         data: {
           balance: { increment: received_amount },
@@ -123,7 +123,7 @@ export class MemberService {
         },
       });
 
-      return tx.store_recharge.create({
+      return (tx as any).store_recharge.create({
         data: {
           recharge_id: `recharge-${v4()}`,
           ...dto,
@@ -133,7 +133,7 @@ export class MemberService {
   }
 
   async findRecharges(store_id: string, member_id?: string) {
-    return this.prisma.store_recharge.findMany({
+    return (this.prisma as any).store_recharge.findMany({
       where: {
         store_id,
         member_id: member_id || undefined,
