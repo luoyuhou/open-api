@@ -16,11 +16,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  async validate(user: UserEntity) {
-    if (!user) {
+  async validate(payload: any) {
+    if (!payload) {
       throw new UnauthorizedException();
     }
 
-    return user;
+    // 兼容逻辑：如果 payload 中仍包含 data 或 user 属性，则返回该属性，否则返回 payload 本身
+    return payload.data || payload.user || payload;
   }
 }

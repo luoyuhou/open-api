@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
 import { UserEntity } from '../../users/entities/user.entity';
 import customLogger from '../logger';
 import { API_SOURCE_TYPES } from '../../auth/const';
@@ -8,7 +8,9 @@ import { parse } from 'useragent';
 
 @Injectable()
 export class RecordFetchMiddleware implements NestMiddleware {
-  use(req: Request, res: Response, next: () => void) {
+  constructor(private prisma: PrismaService) {}
+
+  async use(req: Request, res: Response, next: () => void) {
     const { url, method, user, headers } = req;
 
     let source =
@@ -26,18 +28,18 @@ export class RecordFetchMiddleware implements NestMiddleware {
 
     // 只有在用户已登录（存在 user 对象）时才记录
     if (user && (user as UserEntity).user_id) {
-      new PrismaClient().user_fetch
-        .create({
+      try {
+        await this.prisma.user_fetch.create({
           data: {
             user_id: (user as UserEntity).user_id,
             url,
             source: source,
             method: method.toUpperCase(),
           },
-        })
-        .catch((err) => {
-          return customLogger.error({ message: `Failed record fetch` }, err);
         });
+      } catch (err) {
+        customLogger.error({ message: `Failed record fetch` }, err);
+      }
     }
 
     next();

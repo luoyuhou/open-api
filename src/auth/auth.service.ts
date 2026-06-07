@@ -177,12 +177,19 @@ export class AuthService {
     return this.loginUserForWeb(request, user, Login_SOURCE_TYPES.wechat);
   }
 
-  public async verifyCode(code: string) {
-    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${env.WX_APP_ID}&secret=${env.WX_SECRET}&js_code=${code}&grant_type=authorization_code`;
-    const response = await fetchClient.get<{
-      openid: string;
-      session_key: string;
-    }>(url);
+  public async verifyCode(code: string, appType: 'user' | 'cashier' = 'user') {
+    const appId = appType === 'cashier' ? env.CASHIER_WX_APP_ID : env.WX_APP_ID;
+    const secret =
+      appType === 'cashier' ? env.CASHIER_WX_SECRET : env.WX_SECRET;
+
+    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
+    const response = await fetchClient.get<any>(url);
+
+    if (response.errcode) {
+      throw new BadRequestException(
+        `WeChat API error: ${response.errmsg} (code: ${response.errcode})`,
+      );
+    }
 
     const uuid = v4();
     await this.cacheService.client.set(uuid, JSON.stringify(response));
@@ -201,8 +208,20 @@ export class AuthService {
 
     const { session_key, openid } = JSON.parse(cache);
 
+    if (!session_key) {
+      throw new BadRequestException(
+        'Invalid session: session_key missing in cache',
+      );
+    }
+
     const signature2 = sha1(rawData + session_key);
     if (signature !== signature2) {
+      console.error('Signature mismatch:', {
+        received: signature,
+        expected: signature2,
+        // rawData,
+        // session_key,
+      });
       throw new BadRequestException('Invalid session');
     }
 

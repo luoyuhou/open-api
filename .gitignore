@@ -23,6 +23,8 @@ test.db
 test.db-journal
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 
 # IDEs and editors
 /.idea

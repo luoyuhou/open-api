@@ -79,8 +79,11 @@ export class AuthController {
   @Post('wx/verify-code')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: AuthEntity })
-  async verifyCode(@Req() _request: Request, @Body() { code }: VerifyCodeDot) {
-    const responses = await this.authService.verifyCode(code);
+  async verifyCode(
+    @Req() _request: Request,
+    @Body() { code, appType }: VerifyCodeDot,
+  ) {
+    const responses = await this.authService.verifyCode(code, appType);
     return { message: 'ok', data: responses };
   }
 
@@ -90,9 +93,7 @@ export class AuthController {
   @UseInterceptors(TokenInterceptor)
   @ApiOkResponse({ type: AuthEntity })
   async wxLogin(@Req() request: Request, @Body() wxLoginDto: WxLoginDto) {
-    const result = await this.authService.loginByWx(wxLoginDto);
-    const user = result.user;
-    const openid = result.openid;
+    const { user } = await this.authService.loginByWx(wxLoginDto);
 
     // 🔑 Guard 已经处理了 request.login() 和 session 保存，这里只记录登录历史
     const ip = (request.headers['x-forwarded-host'] as string) || request.ip;
@@ -103,7 +104,7 @@ export class AuthController {
       { ip: Utils.formatIp(ip), useragent },
     );
 
-    return { message: 'ok', data: { ...user, openid } };
+    return { message: 'ok', data: user };
   }
 
   @Get('sign-in')

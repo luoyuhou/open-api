@@ -51,7 +51,7 @@ describe('GoodsController', () => {
     it('should create goods with version', async () => {
       const dto: CreateGoodDto & CreateGoodsVersionDto = {
         store_id: 'store123',
-        category_id: 'cat1',
+        category_ids: ['cat1', 'cat2'],
         name: 'Product',
         price: 100,
         bar_code: '10010',
@@ -165,7 +165,7 @@ describe('GoodsController', () => {
     it('should update goods', async () => {
       const goodsId = 'goods123';
       const dto: UpdateGoodDto = {
-        category_id: 'category_1',
+        category_ids: ['category_1'],
         name: 'name',
         description: 'description',
       };

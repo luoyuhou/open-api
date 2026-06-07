@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsPhoneNumber,
   IsString,
   IsStrongPassword,
@@ -28,6 +29,11 @@ export class VerifyCodeDot {
   @IsNotEmpty()
   @ApiProperty()
   code: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false })
+  appType?: 'user' | 'cashier';
 }
 
 export class WxLoginDto {
@@ -45,6 +51,11 @@ export class WxLoginDto {
   @IsNotEmpty()
   @ApiProperty()
   rawData: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false })
+  appType?: 'user' | 'cashier';
 }
 
 export class WxUserInfo {

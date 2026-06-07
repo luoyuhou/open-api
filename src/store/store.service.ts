@@ -17,12 +17,78 @@ import { SearchStoreDto } from './dto/search-store.dto';
 import { ApproverStoreDto } from './dto/approver-store.dto';
 import { Prisma } from '@prisma/client';
 
+import { UpdateStoreSettingsDto } from './dto/store-settings.dto';
+
 @Injectable()
 export class StoreService {
   constructor(
     private prisma: PrismaService,
     private fileService: FileService,
   ) {}
+
+  public async getSettings(storeId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { store_id: storeId },
+    });
+
+    if (!store) {
+      throw new BadRequestException('店铺不存在');
+    }
+
+    // 查找最新的设置变更历史
+    const latestSettingsHistory = await this.prisma.store_history.findFirst({
+      where: {
+        store_id: storeId,
+        action_type: STORE_ACTION_TYPES.UPDATED,
+        action_content: 'UPDATE_SETTINGS',
+      },
+      orderBy: { create_date: 'desc' },
+    });
+
+    if (latestSettingsHistory && latestSettingsHistory.payload) {
+      try {
+        return JSON.parse(latestSettingsHistory.payload);
+      } catch (e) {
+        // 解析失败则返回默认值
+      }
+    }
+
+    // 默认设置
+    return {
+      pointsPerYuan: 1,
+      pointsRedemptionRatio: 100,
+      redemptionEnabled: true,
+      redemptionDays: [],
+    };
+  }
+
+  public async updateSettings(
+    storeId: string,
+    settings: UpdateStoreSettingsDto,
+    user: UserEntity,
+  ) {
+    const store = await this.prisma.store.findUnique({
+      where: { store_id: storeId },
+    });
+
+    if (!store) {
+      throw new BadRequestException('店铺不存在');
+    }
+
+    await this.prisma.store_history.create({
+      data: {
+        store_id: storeId,
+        action_type: STORE_ACTION_TYPES.UPDATED,
+        action_content: 'UPDATE_SETTINGS',
+        payload: JSON.stringify(settings),
+        action_user_id: user.user_id,
+        action_date: new Date(),
+      },
+    });
+
+    return settings;
+  }
+
   public async create(user: UserEntity, createStoreDto: CreateStoreInputDto) {
     const pendingStore = await this.prisma.store.findFirst({
       where: { user_id: user.user_id, status: STORE_STATUS_TYPES.PENDING },

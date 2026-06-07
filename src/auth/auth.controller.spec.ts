@@ -106,13 +106,16 @@ describe('AuthController', () => {
   describe('verifyCode', () => {
     it('should verify code and return response', async () => {
       const mockRequest = {} as Request;
-      const verifyCodeDot: VerifyCodeDot = { code: '123456' };
+      const verifyCodeDot: VerifyCodeDot = {
+        code: '123456',
+        appType: 'cashier',
+      };
       const mockResponse = { success: true };
       authService.verifyCode.mockResolvedValue(mockResponse as any);
 
       const result = await controller.verifyCode(mockRequest, verifyCodeDot);
 
-      expect(authService.verifyCode).toHaveBeenCalledWith('123456');
+      expect(authService.verifyCode).toHaveBeenCalledWith('123456', 'cashier');
       expect(result).toEqual({ message: 'ok', data: mockResponse });
     });
   });
@@ -145,7 +148,7 @@ describe('AuthController', () => {
       );
       expect(result).toEqual({
         message: 'ok',
-        data: { ...mockResult.user, openid: 'openid123' },
+        data: { ...mockResult.user },
       });
     });
   });

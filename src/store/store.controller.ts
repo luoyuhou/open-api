@@ -14,7 +14,12 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StoreService } from './store.service';
 import { CreateStoreInputDto } from './dto/create-store.dto';
-import { ApiOkResponse, ApiProperty, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiProperty,
+  ApiTags,
+} from '@nestjs/swagger';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { StoreEntity } from './entities/store.entity';
 import { Pagination } from '../common/dto/pagination';
@@ -23,12 +28,33 @@ import { UserEntity } from '../users/entities/user.entity';
 import { Request } from 'express';
 import { SearchHistoryDto } from './dto/search-history.dto';
 import { ApproverStoreDto } from './dto/approver-store.dto';
+import { UpdateStoreSettingsDto } from './dto/store-settings.dto';
 
 @UseGuards(SessionAuthGuard)
 @Controller('store')
 @ApiTags('store')
 export class StoreController {
   constructor(private readonly storeService: StoreService) {}
+
+  @Get('settings/:id')
+  @ApiOperation({ summary: '获取店铺系统设置' })
+  async getSettings(@Param('id') id: string) {
+    return this.storeService.getSettings(id);
+  }
+
+  @Patch('settings/:id')
+  @ApiOperation({ summary: '更新店铺系统设置' })
+  async updateSettings(
+    @Param('id') id: string,
+    @Body() settings: UpdateStoreSettingsDto,
+    @Req() req: Request,
+  ) {
+    return this.storeService.updateSettings(
+      id,
+      settings,
+      req.user as UserEntity,
+    );
+  }
 
   @Post()
   @ApiProperty()
