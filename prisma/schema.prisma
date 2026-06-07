@@ -46,6 +46,7 @@ model user_signin_password {
 model user_signin_wechat {
   id          Int       @id @default(autoincrement())
   openid      String    @unique
+  unionid     String?   @unique
   user_id     String    @unique
   create_date DateTime? @default(now())
   update_date DateTime? @default(now())
@@ -163,6 +164,10 @@ model user_order {
   pay_proof_url   String?
   recipient       String
   money           Int
+  original_amount Int?      @default(0) // 应收金额（商品原价合计）
+  discount_amount Int?      @default(0) // 积分抵扣金额
+  points_used     Int?      @default(0) // 使用积分数量
+  points_earn     Int?      @default(0) // 获得积分数量
   phone           String
   province        String
   city            String

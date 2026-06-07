@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import { CashierService } from './cashier.service';
 import { CashierOrderDto } from './dto/cashier-order.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
@@ -22,7 +22,21 @@ export class CashierController {
 
   @Get('orders/today/:storeId')
   @ApiOperation({ summary: '获取店铺今日成交订单（在线模式）' })
-  async getTodayOrders(@Param('storeId') storeId: string) {
-    return await this.cashierService.getTodayOrders(storeId);
+  async getTodayOrders(
+    @Param('storeId') storeId: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '5',
+  ) {
+    return await this.cashierService.getTodayOrders(
+      storeId,
+      parseInt(page, 10),
+      parseInt(pageSize, 10),
+    );
+  }
+
+  @Get('orders/today/:storeId/count')
+  @ApiOperation({ summary: '获取店铺今日成交订单数量' })
+  async getTodayOrderCount(@Param('storeId') storeId: string) {
+    return await this.cashierService.getTodayOrderCount(storeId);
   }
 }
