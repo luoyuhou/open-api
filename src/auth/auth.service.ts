@@ -192,6 +192,7 @@ export class AuthService {
     }
 
     const uuid = v4();
+    // 缓存包含 openid, session_key, unionid 的响应
     await this.cacheService.client.set(uuid, JSON.stringify(response));
     await this.cacheService.client.expire(uuid, 30);
     return { uuid };
@@ -206,7 +207,11 @@ export class AuthService {
 
     // await redisClient.del(uuid);
 
-    const { session_key, openid } = JSON.parse(cache);
+    const { session_key, openid, unionid } = JSON.parse(cache) as {
+      session_key?: string;
+      openid: string;
+      unionid?: string;
+    };
 
     if (!session_key) {
       throw new BadRequestException(
@@ -225,18 +230,41 @@ export class AuthService {
       throw new BadRequestException('Invalid session');
     }
 
-    const userSignWechat = await this.prisma.user_signin_wechat.findUnique({
-      where: { openid },
-    });
+    let userSignWechat = null;
+
+    // 优先使用 unionid 查找用户（跨小程序识别同一用户）
+    if (unionid) {
+      userSignWechat = await this.prisma.user_signin_wechat.findUnique({
+        where: { unionid },
+      });
+    }
+
+    // 如果没有找到 unionid 匹配的用户，再尝试使用 openid 查找
+    if (!userSignWechat) {
+      userSignWechat = await this.prisma.user_signin_wechat.findUnique({
+        where: { openid },
+      });
+    }
 
     let user: CreateUserDto;
     if (userSignWechat) {
       user = await this.prisma.user.findUnique({
         where: { user_id: userSignWechat.user_id },
       });
+      // 如果老用户没有 unionid，但当前登录有 unionid，则更新记录
+      if (unionid && !userSignWechat.unionid) {
+        await this.prisma.user_signin_wechat.update({
+          where: { openid },
+          data: { unionid },
+        });
+      }
     } else {
       const wxUserInfo: WxUserInfo = JSON.parse(rawData);
-      user = await this.usersService.createByWechat(wxUserInfo, openid);
+      user = await this.usersService.createByWechat(
+        wxUserInfo,
+        openid,
+        unionid,
+      );
     }
 
     return { user, openid };

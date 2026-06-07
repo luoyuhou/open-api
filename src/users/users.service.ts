@@ -215,7 +215,11 @@ export class UsersService {
     return results;
   }
 
-  public async createByWechat(wxUserInfo: WxUserInfo, openid: string) {
+  public async createByWechat(
+    wxUserInfo: WxUserInfo,
+    openid: string,
+    unionid?: string,
+  ) {
     const user_id = this.user_id;
     const user: CreateUserDto = {
       user_id,
@@ -231,7 +235,9 @@ export class UsersService {
 
     await this.prisma.$transaction([
       this.prisma.user.create({ data: user }),
-      this.prisma.user_signin_wechat.create({ data: { user_id, openid } }),
+      this.prisma.user_signin_wechat.create({
+        data: { user_id, openid, unionid },
+      }),
     ]);
 
     return user;

@@ -48,6 +48,7 @@ model user_signin_password {
 model user_signin_wechat {
   id          Int       @id @default(autoincrement())
   openid      String    @unique
+  unionid     String?   @unique
   user_id     String    @unique
   create_date DateTime? @default(now())
   update_date DateTime? @default(now())
@@ -153,28 +154,32 @@ model store_goods_version {
 }
 
 model user_order {
-  id             Int       @id @default(autoincrement())
-  order_id       String    @unique
-  user_id        String
-  store_id       String
-  status         Int
-  stage          Int
-  payment_method String    @default("cod")
+  id              Int       @id @default(autoincrement())
+  order_id        String    @unique
+  user_id         String
+  store_id        String
+  status          Int
+  stage           Int
+  payment_method  String    @default("cod")
   payment_channel String?
-  pay_status     Int       @default(0)
-  paid_at        DateTime?
-  pay_proof_url  String?
-  recipient      String
-  money          Int
-  phone          String
-  province       String
-  city           String
-  area           String
-  town           String
-  address        String
-  delivery_date  DateTime
-  create_date    DateTime? @default(now())
-  update_date    DateTime? @default(now())
+  pay_status      Int       @default(0)
+  paid_at         DateTime?
+  pay_proof_url   String?
+  recipient       String
+  money           Int
+  original_amount Int?      @default(0)
+  discount_amount Int?      @default(0)
+  points_used     Int?      @default(0)
+  points_earn     Int?      @default(0)
+  phone           String
+  province        String
+  city            String
+  area            String
+  town            String
+  address         String
+  delivery_date   DateTime
+  create_date     DateTime? @default(now())
+  update_date     DateTime? @default(now())
 }
 
 model user_order_info {

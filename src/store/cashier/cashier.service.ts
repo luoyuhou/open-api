@@ -117,6 +117,11 @@ export class CashierService {
             }
           }
 
+          // 计算抵扣金额
+          const totalAmount = orderDto.total_amount || 0;
+          const payableAmount = orderDto.payable_amount || totalAmount;
+          const discountAmount = totalAmount - payableAmount;
+
           const newOrder = await tx.user_order.create({
             data: {
               order_id: orderId,
@@ -125,7 +130,11 @@ export class CashierService {
               status: 1, // 已完成
               stage: 3, // 已结算
               payment_method: orderDto.payment_method || 'CASHIER_OFFLINE',
-              money: orderDto.payable_amount || orderDto.total_amount,
+              money: payableAmount,
+              original_amount: totalAmount,
+              discount_amount: discountAmount > 0 ? discountAmount : 0,
+              points_used: orderDto.points_used || 0,
+              points_earn: orderDto.earn_points || 0,
               recipient: 'CASHIER',
               phone: '',
               province: '',
@@ -172,9 +181,28 @@ export class CashierService {
     });
   }
 
-  async getTodayOrders(storeId: string) {
+  async getTodayOrderCount(storeId: string): Promise<number> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    const count = await this.prisma.user_order.count({
+      where: {
+        store_id: storeId,
+        create_date: {
+          gte: today,
+        },
+        status: 1, // 已完成
+      },
+    });
+
+    return count;
+  }
+
+  async getTodayOrders(storeId: string, page = 1, pageSize = 5) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const skip = (page - 1) * pageSize;
 
     const orders = await this.prisma.user_order.findMany({
       where: {
@@ -187,6 +215,8 @@ export class CashierService {
       orderBy: {
         create_date: 'desc',
       },
+      skip,
+      take: pageSize,
     });
 
     const orderIds = orders.map((o) => o.order_id);
@@ -231,13 +261,21 @@ export class CashierService {
 
       const member = members.find((m) => m.member_id === o.user_id);
 
+      // 计算各金额（分转元）
+      const originalAmount = (o.original_amount || o.money) / 100;
+      const discountAmount = (o.discount_amount || 0) / 100;
+      const payableAmount = o.money / 100;
+
       return {
         id: o.order_id,
         memberId: o.user_id,
         memberName: member ? member.name : '散客',
         memberPhone: member ? member.phone : '',
-        totalAmount: (o.money / 100).toFixed(2),
-        payableAmount: (o.money / 100).toFixed(2),
+        totalAmount: originalAmount.toFixed(2),
+        payableAmount: payableAmount.toFixed(2),
+        discountAmount: discountAmount.toFixed(2),
+        pointsUsed: o.points_used || 0,
+        earnPoints: o.points_earn || 0,
         createdAt: o.create_date,
         status: 'completed',
         paymentMethod: o.payment_method,
