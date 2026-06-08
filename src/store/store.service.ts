@@ -90,6 +90,47 @@ export class StoreService {
   }
 
   public async create(user: UserEntity, createStoreDto: CreateStoreInputDto) {
+    const { store_id: storeId, ...restData } = createStoreDto;
+
+    if (storeId) {
+      // 修改申请逻辑
+      const existingStore = await this.prisma.store.findUnique({
+        where: { store_id: storeId },
+      });
+
+      if (!existingStore) {
+        throw new BadRequestException('未找到要修改的店铺申请');
+      }
+
+      if (existingStore.user_id !== user.user_id) {
+        throw new BadRequestException('您无权修改此申请');
+      }
+
+      // 仅允许在待处理或被驳回等非最终状态下修改（这里根据业务需要可以调整，目前 status 为 0 是待处理）
+      // 如果已经通过，可能不允许通过此接口修改申请内容
+
+      await this.prisma.$transaction([
+        this.prisma.store.update({
+          where: { store_id: storeId },
+          data: {
+            ...restData,
+            status: 0, // 修改后重新回到待处理状态
+          },
+        }),
+        this.prisma.store_history.create({
+          data: {
+            store_id: storeId,
+            action_type: STORE_ACTION_TYPES.UPDATED,
+            action_content: `${user.first_name} ${user.last_name} updated store application content`,
+            action_user_id: user.user_id,
+            action_date: new Date(),
+          },
+        }),
+      ]);
+
+      return { store_id: storeId, ...restData };
+    }
+
     const pendingStore = await this.prisma.store.findFirst({
       where: { user_id: user.user_id, status: STORE_STATUS_TYPES.PENDING },
     });

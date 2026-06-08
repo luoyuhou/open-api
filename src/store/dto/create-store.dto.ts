@@ -1,6 +1,7 @@
 import {
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsPhoneNumber,
   IsString,
   Max,
@@ -109,4 +110,10 @@ export class CreateStoreInputDto extends PickType(CreateStoreDto, [
 
   @ApiProperty()
   address: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(64)
+  @ApiProperty({ required: false })
+  store_id?: string;
 }

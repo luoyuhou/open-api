@@ -40,6 +40,7 @@ describe('AuthController', () => {
       resetPasswordByPhone: jest.fn(),
       generateSmsToken: jest.fn(),
       sendSmsCode: jest.fn(),
+      getUserSignWechat: jest.fn(),
     };
 
     const mockCacheService = {
@@ -149,6 +150,7 @@ describe('AuthController', () => {
       expect(result).toEqual({
         message: 'ok',
         data: { ...mockResult.user },
+        openid: 'openid123',
       });
     });
   });

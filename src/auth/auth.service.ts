@@ -26,7 +26,7 @@ import { UpdateUser_signup_passwordInputDto } from '../users/dto/update-user_sig
 import fetchClient from '../common/client/fetch-client';
 import env from '../common/const/Env';
 import { v4 } from 'uuid';
-import { WxLoginDto, WxUserInfo } from './dto/login.dto';
+import { WxLoginDto, WxPhoneLoginDto, WxUserInfo } from './dto/login.dto';
 import sha1 = require('sha1');
 import { RoleManagementService } from './role-management/role-management.service';
 import { ResourcesFromAuth } from './role-management/dto/create-auth-for-role-management.dto';
@@ -35,6 +35,7 @@ import { QrCodeStatus } from './dto/qr-login.dto';
 import { Request } from 'express';
 import Utils from '../common/utils';
 import { SmsService } from '../common/sms/sms.service';
+import customLogger from '../common/logger';
 
 @Injectable()
 export class AuthService {
@@ -66,6 +67,12 @@ export class AuthService {
     resources: ResourcesFromAuth[];
   }> {
     return this.cacheService.getResourceForUser(user_id);
+  }
+
+  public async getUserSignWechat(user_id: string) {
+    return this.prisma.user_signin_wechat.findFirst({
+      where: { user_id },
+    });
   }
 
   public async createUserByPassword(createUserDto: CreateUserByPasswordDto) {
@@ -110,6 +117,100 @@ export class AuthService {
 
   public signToken(user: UserEntity) {
     return this.jwtService.sign(user);
+  }
+
+  public async loginByWxPhone(wxPhoneLoginDto: WxPhoneLoginDto) {
+    const { phone, smsCode, openid } = wxPhoneLoginDto;
+
+    // 1. 校验短信验证码
+    if (process.env.IS_UNIT_TEST !== 'true') {
+      await this.verifySmsCode(phone, smsCode);
+    }
+
+    // 2. 查找是否已有该手机号的用户
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+
+    // 3. 查找当前的 openid 绑定情况
+    const userSignWechat = await this.prisma.user_signin_wechat.findUnique({
+      where: { openid },
+    });
+
+    if (user) {
+      // 场景 A：手机号对应的用户已存在（可能在其他小程序登录过，或者之前通过手机号注册过）
+      if (userSignWechat) {
+        if (userSignWechat.user_id !== user.user_id) {
+          const oldUserId = userSignWechat.user_id;
+          // 将该幽灵用户关联的所有微信记录（可能包含多个小程序的 openid）全部迁移到真实用户下
+          await this.prisma.user_signin_wechat.updateMany({
+            where: { user_id: oldUserId },
+            data: { user_id: user.user_id },
+          });
+
+          // 清理幽灵用户：如果旧用户的手机号是自动生成的（长度大于11位），则认为它是幽灵用户，可以删除
+          const oldUser = await this.prisma.user.findUnique({
+            where: { user_id: oldUserId },
+          });
+          if (oldUser && oldUser.phone && oldUser.phone.length > 11) {
+            await this.prisma.user_signin_password
+              .deleteMany({ where: { user_id: oldUserId } })
+              .catch((err) =>
+                customLogger.error({
+                  summary: '删除幽灵用户',
+                  message: '删除密码登录',
+                  err: err.message,
+                }),
+              );
+            await this.prisma.user_auth
+              .deleteMany({ where: { user_id: oldUserId } })
+              .catch((err) =>
+                customLogger.error({
+                  summary: '删除幽灵用户',
+                  message: '删除用户auth',
+                  err: err.message,
+                }),
+              );
+            await this.prisma.user
+              .delete({ where: { user_id: oldUserId } })
+              .catch((err) =>
+                customLogger.error({
+                  summary: '删除幽灵用户',
+                  message: '删除用户',
+                  err: err.message,
+                }),
+              );
+          }
+        }
+      } else {
+        // 如果 openid 还没绑定过
+        await this.prisma.user_signin_wechat.create({
+          data: { openid, user_id: user.user_id },
+        });
+      }
+
+      return { user, openid };
+    }
+
+    // 场景 B：手机号对应的用户不存在（该手机号第一次出现）
+    if (userSignWechat) {
+      // 将当前用户记录的手机号从虚拟值更新为真实手机号
+      const newUser = await this.prisma.user.update({
+        where: { user_id: userSignWechat.user_id },
+        data: { phone },
+      });
+      return { user: newUser, openid };
+    }
+
+    // 兜底：创建新用户并绑定 openid 和手机号
+    const newUserCreated = await this.usersService.createByWechat(
+      { nickName: '微信用户', avatarUrl: '' } as any,
+      openid,
+    );
+    const newUser = await this.prisma.user.update({
+      where: { user_id: newUserCreated.user_id },
+      data: { phone },
+    });
+
+    return { user: newUser, openid };
   }
 
   private async getUserAuthPassword(user_id: string) {
@@ -234,7 +335,7 @@ export class AuthService {
 
     // 优先使用 unionid 查找用户（跨小程序识别同一用户）
     if (unionid) {
-      userSignWechat = await this.prisma.user_signin_wechat.findUnique({
+      userSignWechat = await this.prisma.user_signin_wechat.findFirst({
         where: { unionid },
       });
     }
@@ -513,12 +614,6 @@ export class AuthService {
       throw new BadRequestException('请输入有效的手机号');
     }
 
-    // 2. 检查手机号是否已存在
-    const user = await this.prisma.user.findUnique({ where: { phone } });
-    if (user) {
-      throw new BadRequestException('该手机号已注册，请直接登录');
-    }
-
     const token = v4();
     const cacheKey = `sms_token:${phone}:${token}`;
 
@@ -609,12 +704,6 @@ export class AuthService {
     // 1. 验证 Token 是否合法
     const tokenKey = `sms_token:${phone}:${token}`;
     await this.verifyTokenKey(phone, tokenKey);
-
-    // 2. 检查手机号是否已存在
-    const user = await this.prisma.user.findUnique({ where: { phone } });
-    if (user) {
-      throw new BadRequestException('该手机号已注册，请直接登录');
-    }
 
     // --- 安全防护逻辑开始 ---
     const cooldownKey = `sms_cooldown:${phone}`;
