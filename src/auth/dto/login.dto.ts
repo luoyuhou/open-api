@@ -58,6 +58,29 @@ export class WxLoginDto {
   appType?: 'user' | 'cashier';
 }
 
+export class WxPhoneLoginDto {
+  @IsString()
+  @IsNotEmpty()
+  @IsPhoneNumber('CN')
+  @ApiProperty()
+  phone: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty()
+  smsCode: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty()
+  openid: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false })
+  appType?: 'user' | 'cashier';
+}
+
 export class WxUserInfo {
   @IsString()
   avatarUrl: string;

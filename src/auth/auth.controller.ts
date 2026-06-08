@@ -35,7 +35,7 @@ import { LocalScanAuthGuard } from './guards/local-scan.guard';
 import { Login_SOURCE_TYPES } from './const';
 import { TokenInterceptor } from './interceptors/token.interceptor';
 import customLogger from '../common/logger';
-import { VerifyCodeDot, WxLoginDto } from './dto/login.dto';
+import { VerifyCodeDot, WxLoginDto, WxPhoneLoginDto } from './dto/login.dto';
 import { WxLocalAuthGuard } from './guards/wx-local-auth.guard';
 import { CacheService } from '../common/cache-manager/cache.service';
 import {
@@ -93,9 +93,40 @@ export class AuthController {
   @UseInterceptors(TokenInterceptor)
   @ApiOkResponse({ type: AuthEntity })
   async wxLogin(@Req() request: Request, @Body() wxLoginDto: WxLoginDto) {
-    const { user } = await this.authService.loginByWx(wxLoginDto);
+    const { user, openid } = await this.authService.loginByWx(wxLoginDto);
 
-    // 🔑 Guard 已经处理了 request.login() 和 session 保存，这里只记录登录历史
+    if (user) {
+      // 🔑 Guard 已经处理了 request.login() 和 session 保存，这里只记录登录历史
+      const ip = (request.headers['x-forwarded-host'] as string) || request.ip;
+      const useragent = request.headers['user-agent'];
+      this.authService.addLoginHistory(
+        (user as UserEntity).user_id,
+        Login_SOURCE_TYPES.wechat,
+        { ip: Utils.formatIp(ip), useragent },
+      );
+    }
+
+    return { message: 'ok', data: user, openid };
+  }
+
+  @Post('wx/phone-login')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(TokenInterceptor)
+  @ApiOkResponse({ type: AuthEntity })
+  async wxPhoneLogin(
+    @Req() request: Request,
+    @Body() wxPhoneLoginDto: WxPhoneLoginDto,
+  ) {
+    const { user } = await this.authService.loginByWxPhone(wxPhoneLoginDto);
+
+    // 手动执行登录，以初始化 Session
+    await new Promise<void>((resolve, reject) => {
+      request.logIn(user, (err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
+
     const ip = (request.headers['x-forwarded-host'] as string) || request.ip;
     const useragent = request.headers['user-agent'];
     this.authService.addLoginHistory(
@@ -111,15 +142,20 @@ export class AuthController {
   @UseGuards(SessionAuthGuard)
   @ApiOkResponse({ type: UserEntity })
   async getSignedUser(@Req() request: Request) {
-    const user_id = (request.user as UserEntity).user_id;
+    const user = request.user as UserEntity;
+    const user_id = user.user_id;
 
     const { userAuth, resources } = await this.authService.getCacheResources(
       user_id,
     );
 
+    // 查找该用户的 openid (如果有)
+    const userSignWechat = await this.authService.getUserSignWechat(user_id);
+
     return {
       message: 'ok',
-      data: request.user,
+      data: user,
+      openid: userSignWechat?.openid,
       resources: userAuth
         ? [{ auth_id: '*', side: 0, path: '*', method: '*' }].concat(
             ...resources,
