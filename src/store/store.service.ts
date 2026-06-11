@@ -577,20 +577,62 @@ export class StoreService {
   }
 
   public async findAllApprovedStoresBySessionUser(user: UserEntity) {
-    const stores = await this.prisma.store.findMany({
+    // 1. 获取用户拥有的店铺
+    const ownedStores = await this.prisma.store.findMany({
       where: {
         user_id: user.user_id,
         status: { gte: STORE_STATUS_TYPES.APPROVED },
       },
     });
 
-    const ids = stores.map(({ store_id }) => store_id);
+    // 2. 获取用户作为员工的店铺
+    const staffRecords = await (this.prisma as any).store_staff.findMany({
+      where: {
+        OR: [{ user_id: user.user_id }, { phone: user.phone }],
+        status: 1,
+      },
+    });
+
+    const staffStoreIds = staffRecords.map((r) => r.store_id);
+    const ownedStoreIds = ownedStores.map((s) => s.store_id);
+
+    // 过滤掉已拥有的店铺 ID，并查询其他店铺
+    const otherStoreIds = staffStoreIds.filter(
+      (id: string) => !ownedStoreIds.includes(id),
+    );
+
+    let otherStores = [];
+    if (otherStoreIds.length > 0) {
+      otherStores = await this.prisma.store.findMany({
+        where: {
+          store_id: { in: otherStoreIds },
+          status: { gte: STORE_STATUS_TYPES.APPROVED },
+        },
+      });
+    }
+
+    const allStores = [
+      ...ownedStores.map((s) => ({
+        ...(s instanceof Object ? s : {}),
+        role: 'OWNER',
+      })),
+      ...otherStores.map((s) => ({
+        ...(s instanceof Object ? s : {}),
+        role: 'STAFF',
+      })),
+    ];
+
+    const ids = allStores.map(({ store_id }) => store_id);
 
     const names = await this.formatAreaName(ids);
 
-    return stores.map((s) => {
+    return allStores.map((s) => {
       const find = names.find(({ store_id }) => store_id === s.store_id);
-      return { ...s, ...(find || {}) };
+      return {
+        ...s,
+        ...(find || {}),
+        role: (s as any).role, // 显式保留 role 字段
+      };
     });
   }
 }
