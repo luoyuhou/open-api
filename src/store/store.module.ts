@@ -10,6 +10,7 @@ import { SettlementModule } from './settlement/settlement.module';
 import { CashierController } from './cashier/cashier.controller';
 import { CashierService } from './cashier/cashier.service';
 import { MemberModule } from './member/member.module';
+import { StaffModule } from './staff/staff.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { MemberModule } from './member/member.module';
     FileModule,
     SettlementModule,
     MemberModule,
+    StaffModule,
   ],
   controllers: [StoreController, CashierController],
   providers: [StoreService, CashierService],

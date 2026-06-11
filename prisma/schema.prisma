@@ -699,3 +699,17 @@ model store_recharge {
   @@index([member_id])
   @@index([store_id])
 }
+
+model store_staff {
+  id           Int       @id @default(autoincrement())
+  staff_id     String    @unique
+  store_id     String
+  user_id      String?   // 关联真实用户ID
+  name         String
+  phone        String
+  status       Int       @default(1) // 1: 正常, 0: 禁用
+  create_date  DateTime? @default(now())
+  update_date  DateTime? @default(now())
+
+  @@unique([store_id, phone])
+}
