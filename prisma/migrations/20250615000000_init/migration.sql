@@ -160,6 +160,7 @@ CREATE TABLE "user_order" (
     "recipient" TEXT NOT NULL,
     "money" INTEGER NOT NULL,
     "original_amount" INTEGER DEFAULT 0,
+    "discount_rate" INTEGER DEFAULT 100,
     "discount_amount" INTEGER DEFAULT 0,
     "points_used" INTEGER DEFAULT 0,
     "points_earn" INTEGER DEFAULT 0,
