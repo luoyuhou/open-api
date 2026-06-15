@@ -34,6 +34,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate Prisma migrations
+        run: |
+          export DATABASE_URL=file:./prisma/ci-migrate.db
+          rm -f prisma/ci-migrate.db prisma/shadow.db
+          npx prisma migrate deploy
+          npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url file:./prisma/shadow.db \
+            --exit-code
+
       - name: Setup test database (SQLite)
         run: |
           chmod +x ./scripts/setup-test-db.sh

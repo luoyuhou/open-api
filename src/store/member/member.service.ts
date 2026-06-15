@@ -151,13 +151,32 @@ export class MemberService {
       orderBy: { create_date: 'desc' },
     });
 
-    return orders.map((o) => ({
-      id: o.order_id,
-      memberId: o.user_id,
-      totalAmount: (o.money / 100).toFixed(2),
-      createdAt: o.create_date,
-      paymentMethod: o.payment_method,
-      status: 'completed',
-    }));
+    return orders.map((o) => {
+      const originalAmount = (o.original_amount || o.money) / 100;
+      const totalDiscountAmount = (o.discount_amount || 0) / 100;
+      const discountRate = o.discount_rate ?? 100;
+      const manualDiscountAmount =
+        discountRate < 100 ? (originalAmount * (100 - discountRate)) / 100 : 0;
+      const pointsDiscountAmount = Math.max(
+        0,
+        totalDiscountAmount - manualDiscountAmount,
+      );
+
+      return {
+        id: o.order_id,
+        memberId: o.user_id,
+        totalAmount: originalAmount.toFixed(2),
+        payableAmount: (o.money / 100).toFixed(2),
+        discountAmount: totalDiscountAmount.toFixed(2),
+        manualDiscountAmount: manualDiscountAmount.toFixed(2),
+        pointsDiscountAmount: pointsDiscountAmount.toFixed(2),
+        discountRate:
+          discountRate < 100 ? (discountRate / 10).toFixed(1) : null,
+        pointsUsed: o.points_used || 0,
+        createdAt: o.create_date,
+        paymentMethod: o.payment_method,
+        status: 'completed',
+      };
+    });
   }
 }

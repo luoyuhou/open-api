@@ -69,6 +69,14 @@ class SyncOrderDto {
   @ApiProperty({ description: '实际支付金额（分）', required: false })
   payable_amount?: number;
 
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({
+    description: '折扣率（百分比×10，如85表示8.5折，100表示无折扣）',
+    required: false,
+  })
+  discount_rate?: number;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => StoreOrderItemDetailDto)

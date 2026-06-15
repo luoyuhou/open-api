@@ -165,7 +165,8 @@ model user_order {
   recipient       String
   money           Int
   original_amount Int?      @default(0) // 应收金额（商品原价合计）
-  discount_amount Int?      @default(0) // 积分抵扣金额
+  discount_rate   Int?      @default(100) // 折扣率（百分比×10，如85表示8.5折，100表示无折扣）
+  discount_amount Int?      @default(0) // 总优惠金额（折扣+积分抵扣）
   points_used     Int?      @default(0) // 使用积分数量
   points_earn     Int?      @default(0) // 获得积分数量
   phone           String
