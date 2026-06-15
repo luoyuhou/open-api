@@ -61,67 +61,114 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            set -e
+
+            APP_DIR=/home/apps/open-api
+            BACKUP_DIR=/home/apps/open-api.backup.$(date +%Y%m%d_%H%M%S)
+
             # 🔑 备份环境变量文件
-            if [ -f /home/apps/open-api/.env ]; then
-              cp /home/apps/open-api/.env /tmp/open-api.env.backup
+            if [ -f "$APP_DIR/.env" ]; then
+              cp "$APP_DIR/.env" /tmp/open-api.env.backup
               echo "✅ Backed up .env file"
             fi
-            
+
             # 📦 备份数据库文件
-            if [ -f /home/apps/open-api/prisma/prod.db ]; then
-              cp /home/apps/open-api/prisma/prod.db /tmp/open-api-prod.db.backup
+            if [ -f "$APP_DIR/prisma/prod.db" ]; then
+              cp "$APP_DIR/prisma/prod.db" /tmp/open-api-prod.db.backup
               echo "✅ Backed up prod.db file"
             fi
-            
+
+            # 停止服务，避免 SQLite 写入锁阻塞 migration
+            pm2 stop open-api 2>/dev/null || true
+            echo "⏸️ Service stopped"
+
             # 备份旧版本
-            if [ -d /home/apps/open-api ]; then
-              mv /home/apps/open-api /home/apps/open-api.backup.$(date +%Y%m%d_%H%M%S)
+            if [ -d "$APP_DIR" ]; then
+              mv "$APP_DIR" "$BACKUP_DIR"
             fi
-            
+
             # 解压新版本
-            mkdir -p /home/apps/open-api
-            tar -xzf /tmp/deploy.tar.gz -C /home/apps/open-api
-            
+            mkdir -p "$APP_DIR"
+            tar -xzf /tmp/deploy.tar.gz -C "$APP_DIR"
+
             # 🔑 恢复环境变量文件
             if [ -f /tmp/open-api.env.backup ]; then
-              cp /tmp/open-api.env.backup /home/apps/open-api/.env
+              cp /tmp/open-api.env.backup "$APP_DIR/.env"
               rm /tmp/open-api.env.backup
               echo "✅ Restored .env file"
             else
               echo "⚠️ No .env backup found, please create it manually"
             fi
-            
+
             # 📦 恢复数据库文件
             if [ -f /tmp/open-api-prod.db.backup ]; then
-              mkdir -p /home/apps/open-api/prisma
-              cp /tmp/open-api-prod.db.backup /home/apps/open-api/prisma/prod.db
+              mkdir -p "$APP_DIR/prisma"
+              cp /tmp/open-api-prod.db.backup "$APP_DIR/prisma/prod.db"
               rm /tmp/open-api-prod.db.backup
               echo "✅ Restored prod.db file"
             else
               echo "⚠️ No prod.db backup found (this is normal for first deployment)"
             fi
-            
-            # 生成 Prisma Client
-            cd /home/apps/open-api
-            npx prisma generate
-            echo 'Prisma Client generated'
 
-            # 🗄️ 运行数据库迁移
-            npx prisma migrate deploy
-            echo 'Database migration completed'
-            
+            # 🗄️ Prisma Migrate：自动 baseline 旧库 + 应用增量 migration
+            cd "$APP_DIR"
+            set -a && source .env && set +a
+
+            resolve_db_path() {
+              local url="$1"
+              local path="${url#file:}"
+              path="${path%%\?*}"
+              echo "$path"
+            }
+
+            has_sqlite_table() {
+              sqlite3 "$1" "SELECT 1 FROM sqlite_master WHERE type='table' AND name='$2' LIMIT 1;" 2>/dev/null | grep -q 1
+            }
+
+            has_sqlite_column() {
+              sqlite3 "$1" "SELECT 1 FROM pragma_table_info('$2') WHERE name='$3' LIMIT 1;" 2>/dev/null | grep -q 1
+            }
+
+            run_migrate() {
+              DB_PATH="$(resolve_db_path "$DATABASE_URL")"
+
+              echo "📦 Generating Prisma Client..."
+              npx prisma generate
+
+              if [ -f "$DB_PATH" ] && has_sqlite_table "$DB_PATH" "user_order" && ! has_sqlite_table "$DB_PATH" "_prisma_migrations"; then
+                echo "📋 Existing database without migration history, baselining..."
+                npx prisma migrate resolve --applied "20250615000000_init"
+                if has_sqlite_column "$DB_PATH" "user_order" "discount_rate"; then
+                  npx prisma migrate resolve --applied "20250615000001_add_user_order_discount_rate"
+                fi
+              fi
+
+              echo "🗄️ Applying pending migrations..."
+              npx prisma migrate deploy
+              echo "✅ Database migrations completed"
+            }
+
+            if ! run_migrate; then
+              echo "❌ Database migration failed, rolling back..."
+              pm2 stop open-api 2>/dev/null || true
+              rm -rf "$APP_DIR"
+              mv "$BACKUP_DIR" "$APP_DIR"
+              pm2 restart open-api || pm2 start "$APP_DIR/dist/src/main.js" --name open-api
+              exit 1
+            fi
+
             # 重启服务 (使用 PM2)
             pm2 restart open-api || pm2 start dist/src/main.js --name open-api
-            echo 'Service restarted'
-            
+            echo "✅ Service restarted"
+
             # 清理临时文件
             rm /tmp/deploy.tar.gz
-            
+
             # 只保留最近3个备份
             cd /home/apps && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf
-            echo 'Cleanup completed'
+            echo "✅ Cleanup completed"
       # 健康检查
       - name: Health check
         run: |
           sleep 10
-          curl --fail http://${{ secrets.SERVER_HOST }}/api || exit 1
+          curl --fail https://${{ secrets.SERVER_HOST }}/api || exit 1

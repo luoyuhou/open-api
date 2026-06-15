@@ -121,6 +121,7 @@ export class CashierService {
           const totalAmount = orderDto.total_amount || 0;
           const payableAmount = orderDto.payable_amount || totalAmount;
           const discountAmount = totalAmount - payableAmount;
+          const discountRate = orderDto.discount_rate ?? 100;
 
           const newOrder = await tx.user_order.create({
             data: {
@@ -132,6 +133,7 @@ export class CashierService {
               payment_method: orderDto.payment_method || 'CASHIER_OFFLINE',
               money: payableAmount,
               original_amount: totalAmount,
+              discount_rate: discountRate,
               discount_amount: discountAmount > 0 ? discountAmount : 0,
               points_used: orderDto.points_used || 0,
               points_earn: orderDto.earn_points || 0,
@@ -263,8 +265,15 @@ export class CashierService {
 
       // 计算各金额（分转元）
       const originalAmount = (o.original_amount || o.money) / 100;
-      const discountAmount = (o.discount_amount || 0) / 100;
+      const totalDiscountAmount = (o.discount_amount || 0) / 100;
       const payableAmount = o.money / 100;
+      const discountRate = o.discount_rate ?? 100;
+      const manualDiscountAmount =
+        discountRate < 100 ? (originalAmount * (100 - discountRate)) / 100 : 0;
+      const pointsDiscountAmount = Math.max(
+        0,
+        totalDiscountAmount - manualDiscountAmount,
+      );
 
       return {
         id: o.order_id,
@@ -273,7 +282,11 @@ export class CashierService {
         memberPhone: member ? member.phone : '',
         totalAmount: originalAmount.toFixed(2),
         payableAmount: payableAmount.toFixed(2),
-        discountAmount: discountAmount.toFixed(2),
+        discountAmount: totalDiscountAmount.toFixed(2),
+        manualDiscountAmount: manualDiscountAmount.toFixed(2),
+        pointsDiscountAmount: pointsDiscountAmount.toFixed(2),
+        discountRate:
+          discountRate < 100 ? (discountRate / 10).toFixed(1) : null,
         pointsUsed: o.points_used || 0,
         earnPoints: o.points_earn || 0,
         createdAt: o.create_date,

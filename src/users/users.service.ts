@@ -5,10 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUser_signup_passwordDto } from './dto/create-user_signup_password.dto';
 import { v4 } from 'uuid';
 import bcrypt = require('bcryptjs');
-import {
-  UpdateUser_signup_passwordDto,
-  UpdateUser_signup_passwordInputDto,
-} from './dto/update-user_signin_password.dto';
+import { UpdateUser_signup_passwordInputDto } from './dto/update-user_signin_password.dto';
 import { WxUserInfo } from '../auth/dto/login.dto';
 import { Pagination } from '../common/dto/pagination';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
@@ -66,6 +63,23 @@ export class UsersService {
     return user;
   }
 
+  private async upsertSignInByPassword(user_id: string, password: string) {
+    const { pwd, salt } = this.bcryptPassword(password);
+    const existed = await this.prisma.user_signin_password.findUnique({
+      where: { user_id },
+    });
+    if (existed) {
+      return this.prisma.user_signin_password.update({
+        where: { user_id },
+        data: { salt, password: pwd },
+      });
+    }
+
+    return this.prisma.user_signin_password.create({
+      data: { user_id, password: pwd, salt },
+    });
+  }
+
   public async updateUserProfileWithPassword(
     user: UserEntity,
     profile: UpdateUserDto & UpdateUserPasswordDto,
@@ -95,23 +109,8 @@ export class UsersService {
       return result;
     }
 
-    const { pwd, salt } = this.bcryptPassword(password);
-    const existed = await this.prisma.user_signin_password.findFirst({
-      where: {
-        user_id,
-      },
-    });
-    if (existed) {
-      await this.prisma.user_signin_password.update({
-        where: { user_id },
-        data: { salt, password: pwd },
-      });
-      return result;
-    }
+    await this.upsertSignInByPassword(user_id, password);
 
-    await this.prisma.user_signin_password.create({
-      data: { user_id, password: pwd, salt },
-    });
     return result;
   }
 
@@ -142,12 +141,7 @@ export class UsersService {
     user_id: string,
     resetPasswordDto: UpdateUser_signup_passwordInputDto,
   ) {
-    const { salt, pwd } = this.bcryptPassword(resetPasswordDto.password);
-    const data: UpdateUser_signup_passwordDto = { salt, password: pwd };
-    return this.prisma.user_signin_password.update({
-      where: { user_id },
-      data: data,
-    });
+    return this.upsertSignInByPassword(user_id, resetPasswordDto.password);
   }
 
   /**
