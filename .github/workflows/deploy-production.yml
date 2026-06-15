@@ -110,50 +110,69 @@ jobs:
               echo "⚠️ No prod.db backup found (this is normal for first deployment)"
             fi
 
-            # 🗄️ Prisma Migrate：自动 baseline 旧库 + 应用增量 migration
+            # 🗄️ 同步 schema 到 SQLite（单文件 init + db push，无需新增 migration 文件夹）
             cd "$APP_DIR"
             set -a && source .env && set +a
 
-            resolve_db_path() {
-              local url="$1"
-              local path="${url#file:}"
-              path="${path%%\?*}"
-              echo "$path"
+            PROD_DB="$APP_DIR/prisma/prod.db"
+
+            # 统一 DATABASE_URL 为绝对路径（db push 相对 prisma/ 目录，migrate diff 相对 cwd，必须一致）
+            normalize_database_url() {
+              local params=""
+              if [[ "${DATABASE_URL:-}" == *"?"* ]]; then
+                params="?${DATABASE_URL#*\?}"
+              fi
+              export DATABASE_URL="file:${PROD_DB}${params}"
             }
 
-            has_sqlite_table() {
-              sqlite3 "$1" "SELECT 1 FROM sqlite_master WHERE type='table' AND name='$2' LIMIT 1;" 2>/dev/null | grep -q 1
-            }
+            run_schema_sync() {
+              normalize_database_url
 
-            has_sqlite_column() {
-              sqlite3 "$1" "SELECT 1 FROM pragma_table_info('$2') WHERE name='$3' LIMIT 1;" 2>/dev/null | grep -q 1
-            }
-
-            run_migrate() {
-              DB_PATH="$(resolve_db_path "$DATABASE_URL")"
+              echo "📂 Database: ${PROD_DB}"
+              echo "🔗 DATABASE_URL: ${DATABASE_URL}"
 
               echo "📦 Generating Prisma Client..."
               npx prisma generate
 
-              if [ -f "$DB_PATH" ] && has_sqlite_table "$DB_PATH" "user_order" && ! has_sqlite_table "$DB_PATH" "_prisma_migrations"; then
-                echo "📋 Existing database without migration history, baselining..."
-                npx prisma migrate resolve --applied "20250615000000_init"
-                if has_sqlite_column "$DB_PATH" "user_order" "discount_rate"; then
-                  npx prisma migrate resolve --applied "20250615000001_add_user_order_discount_rate"
-                fi
+              if [ ! -f "$PROD_DB" ]; then
+                echo "🆕 Fresh database, applying init migration..."
+                npx prisma migrate deploy
+              else
+                echo "🗄️ Syncing schema via db push..."
+                npx prisma db push --skip-generate
               fi
 
-              echo "🗄️ Applying pending migrations..."
-              npx prisma migrate deploy
-              echo "✅ Database migrations completed"
+              echo "🔍 Verifying database matches schema.prisma..."
+              if ! npx prisma migrate diff \
+                --from-url "$DATABASE_URL" \
+                --to-schema-datamodel prisma/schema.prisma \
+                --exit-code; then
+                echo "❌ Schema drift detected"
+                npx prisma migrate diff \
+                  --from-url "$DATABASE_URL" \
+                  --to-schema-datamodel prisma/schema.prisma \
+                  --script || true
+                return 1
+              fi
+
+              echo "✅ Schema sync completed"
             }
 
-            if ! run_migrate; then
-              echo "❌ Database migration failed, rolling back..."
+            rollback_deploy() {
+              echo "❌ Rolling back to previous version..."
               pm2 stop open-api 2>/dev/null || true
+              cd /home/apps
               rm -rf "$APP_DIR"
-              mv "$BACKUP_DIR" "$APP_DIR"
-              pm2 restart open-api || pm2 start "$APP_DIR/dist/src/main.js" --name open-api
+              if [ -d "$BACKUP_DIR" ]; then
+                mv "$BACKUP_DIR" "$APP_DIR"
+              fi
+              cd "$APP_DIR"
+              pm2 restart open-api || pm2 start dist/src/main.js --name open-api
+            }
+
+            if ! run_schema_sync; then
+              echo "❌ Database schema sync failed, rolling back..."
+              rollback_deploy
               exit 1
             fi
 
@@ -161,14 +180,25 @@ jobs:
             pm2 restart open-api || pm2 start dist/src/main.js --name open-api
             echo "✅ Service restarted"
 
+            # 健康检查（服务器本机）
+            PORT="${SERVER_PORT:-3001}"
+            for i in $(seq 1 10); do
+              if curl -fsS "http://127.0.0.1:${PORT}/health" > /dev/null; then
+                echo "✅ Health check passed"
+                break
+              fi
+              if [ "$i" -eq 10 ]; then
+                echo "❌ Health check failed, rolling back..."
+                rollback_deploy
+                exit 1
+              fi
+              echo "⏳ Waiting for service ($i/10)..."
+              sleep 3
+            done
+
             # 清理临时文件
             rm /tmp/deploy.tar.gz
 
             # 只保留最近3个备份
             cd /home/apps && ls -t | grep open-api.backup | tail -n +4 | xargs -r rm -rf
             echo "✅ Cleanup completed"
-      # 健康检查
-      - name: Health check
-        run: |
-          sleep 10
-          curl --fail https://${{ secrets.SERVER_HOST }}/api || exit 1
