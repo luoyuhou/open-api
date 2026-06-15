@@ -1,21 +1,44 @@
 # prisma
 
-## 数据库迁移（生产使用 Prisma Migrate）
+## 数据库变更（单 init migration 模式）
 
-开发时修改 `prisma/schema.prisma` 后：
+本项目采用 **单一 init migration 文件** + **`db push` 部署** 的方式，不新增 migration 文件夹。
 
-```bash
-npx prisma migrate dev --name add_field_name --create-only
-# 检查 prisma/migrations/ 下的 SQL，提交到 git
-```
-
-合并到 `master` 后，GitHub Actions 自动执行 `prisma migrate deploy`，无需人工介入。
-
-服务器上如需手动执行 migration：
+### 每次改 schema 的流程
 
 ```bash
-cd /home/apps/open-api && set -a && source .env && set +a && npx prisma migrate deploy
+# 1. 修改 prisma/schema.prisma
+
+# 2. 重新生成 init/migration.sql（完整建表 SQL，与 schema 保持一致）
+npm run db:init-sql
+
+# 3. 本地验证
+npm run schema2mysql
+
+# 4. 提交 schema.prisma + migrations/20250615000000_init/migration.sql，merge 到 master
+#    GitHub Actions 自动 db push 同步生产库
 ```
+
+### 文件说明
+
+| 文件 | 作用 |
+|------|------|
+| `schema.prisma` | 模型定义，Prisma Client 和 db push 的源 |
+| `migrations/20250615000000_init/migration.sql` | 完整 DDL 快照，供全新库 `migrate deploy` 初始化 |
+| `migrations/migration_lock.toml` | 数据库类型锁定（sqlite） |
+
+### 部署行为
+
+| 场景 | 命令 |
+|------|------|
+| 全新服务器（无 prod.db） | `migrate deploy` 执行 init/migration.sql |
+| 已有生产库 | `db push` 按 schema.prisma 增量同步 |
+
+### 注意
+
+- **不要**在 init 已应用于生产后修改其 checksum 并再跑 `migrate deploy`（Prisma 会报 migration 被篡改）
+- 已有库的变更靠 **`db push`**，init.sql 仅作 DDL 文档和全新环境初始化
+- 破坏性变更（删列等）db push 可能失败，需人工处理
 
 ## 其他命令
 

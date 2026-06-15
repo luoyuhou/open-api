@@ -19,6 +19,7 @@
     "lint-staged": "lint-staged",
     "mysql2schema": "prisma db pull && prisma generate",
     "schema2mysql": "prisma db push",
+    "db:init-sql": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/20250615000000_init/migration.sql",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "prisma:prod": "npx prisma generate",
