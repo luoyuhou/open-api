@@ -21,6 +21,7 @@ import { UpdateGoodsVersionDto } from './dto/update-goods-version.dto';
 import { Pagination } from '../../common/dto/pagination';
 import { UpsertGoodsVersionDto } from './dto/upsert-goods-version.dto';
 import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
+import { SwitchRankGoodsDto } from './dto/switch-rank-goods.dto';
 
 @UseGuards(SessionAuthGuard)
 @Controller('store/goods')
@@ -81,6 +82,12 @@ export class GoodsController {
   async findOne(@Param('id') id: string) {
     const data = await this.goodsService.findOne(id);
     return { data };
+  }
+
+  @Patch(':id/rank')
+  @ApiProperty()
+  async switchRank(@Param('id') id: string, @Body() args: SwitchRankGoodsDto) {
+    return this.goodsService.switchRank(id, args);
   }
 
   @Patch(':id')

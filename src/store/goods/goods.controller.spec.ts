@@ -24,6 +24,7 @@ describe('GoodsController', () => {
       update: jest.fn(),
       remove: jest.fn(),
       reactive: jest.fn(),
+      switchRank: jest.fn(),
       updateGoodsVersion: jest.fn(),
     };
 
@@ -158,6 +159,20 @@ describe('GoodsController', () => {
 
       expect(goodsService.findOne).toHaveBeenCalledWith(goodsId);
       expect(result).toEqual({ data: mockGoods });
+    });
+  });
+
+  describe('switchRank', () => {
+    it('should switch goods rank', async () => {
+      const goodsId = 'goods123';
+      const dto = { type: 'up' };
+      const mockResult = [{ goods_id: goodsId, rank: 0 }];
+      goodsService.switchRank.mockResolvedValue(mockResult as any);
+
+      const result = await controller.switchRank(goodsId, dto);
+
+      expect(goodsService.switchRank).toHaveBeenCalledWith(goodsId, dto);
+      expect(result).toEqual(mockResult);
     });
   });
 
