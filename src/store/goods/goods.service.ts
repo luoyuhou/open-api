@@ -12,6 +12,7 @@ import { Pagination } from '../../common/dto/pagination';
 import { UpsertGoodsVersionDto } from './dto/upsert-goods-version.dto';
 import customLogger from '../../common/logger';
 import Utils from '../../common/utils';
+import { SwitchRankGoodsDto } from './dto/switch-rank-goods.dto';
 
 @Injectable()
 export class GoodsService {
@@ -157,6 +158,10 @@ export class GoodsService {
         let goodsId: string;
         if (!goods) {
           goodsId = `goods-${v4()}`;
+          const lastGoods = await prisma.store_goods.findFirst({
+            where: { store_id },
+            orderBy: { rank: 'desc' },
+          });
           await prisma.store_goods.create({
             data: {
               store_id,
@@ -165,6 +170,7 @@ export class GoodsService {
               description,
               goods_id: goodsId,
               status: E_GOODS_STATUS.active,
+              rank: lastGoods ? lastGoods.rank + 1 : 0,
             },
           });
         } else {
@@ -319,6 +325,103 @@ export class GoodsService {
       where: { goods_id: id },
       data: { status: E_GOODS_STATUS.active },
     });
+  }
+
+  async switchRank(goodsId: string, { type, target_id }: SwitchRankGoodsDto) {
+    const goods = await this.prisma.store_goods.findUnique({
+      where: { goods_id: goodsId },
+    });
+    if (!goods) {
+      throw new BadRequestException('商品不存在');
+    }
+
+    if (target_id) {
+      const target = await this.prisma.store_goods.findUnique({
+        where: { goods_id: target_id },
+      });
+      if (!target) {
+        throw new BadRequestException('目标商品不存在');
+      }
+      if (target.store_id !== goods.store_id) {
+        throw new BadRequestException('不能跨店铺调整排序');
+      }
+      return this.prisma.$transaction([
+        this.prisma.store_goods.update({
+          where: { goods_id: goodsId },
+          data: { rank: target.rank },
+        }),
+        this.prisma.store_goods.update({
+          where: { goods_id: target_id },
+          data: { rank: goods.rank },
+        }),
+      ]);
+    }
+
+    if (!type) {
+      throw new BadRequestException('请指定排序方向或目标商品');
+    }
+
+    const brothers = await this.prisma.store_goods.findMany({
+      where: { store_id: goods.store_id },
+      orderBy: { rank: 'asc' },
+    });
+
+    if (!brothers.length) {
+      throw new BadRequestException('未能找到商品');
+    }
+
+    if (brothers.length === 1) {
+      throw new BadRequestException('仅一个商品，无需调整排序');
+    }
+
+    let index: number | undefined;
+    brothers.forEach((item, i) => {
+      if (item.goods_id === goodsId) {
+        index = i;
+      }
+    });
+
+    if (index === undefined) {
+      throw new BadRequestException(`未能找到商品 ${goods.name} 的位置`);
+    }
+
+    if (index === 0 && type === 'up') {
+      throw new BadRequestException(`商品 ${goods.name} 已经是第一位`);
+    }
+
+    if (type === 'up') {
+      const preItem = brothers[index - 1];
+      return this.prisma.$transaction([
+        this.prisma.store_goods.update({
+          where: { goods_id: goodsId },
+          data: { rank: preItem.rank },
+        }),
+        this.prisma.store_goods.update({
+          where: { goods_id: preItem.goods_id },
+          data: { rank: goods.rank },
+        }),
+      ]);
+    }
+
+    if (index === brothers.length - 1 && type === 'down') {
+      throw new BadRequestException(`商品 ${goods.name} 已经是最后一位`);
+    }
+
+    if (type === 'down') {
+      const nextItem = brothers[index + 1];
+      return this.prisma.$transaction([
+        this.prisma.store_goods.update({
+          where: { goods_id: goodsId },
+          data: { rank: nextItem.rank },
+        }),
+        this.prisma.store_goods.update({
+          where: { goods_id: nextItem.goods_id },
+          data: { rank: goods.rank },
+        }),
+      ]);
+    }
+
+    throw new BadRequestException('未知的操作');
   }
 
   async upsertGoodsVersion(

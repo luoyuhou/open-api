@@ -121,6 +121,7 @@ model store_goods {
   goods_id    String    @unique
   store_id    String
   category_id String
+  rank        Int       @default(0)
   name        String
   description String?
   status      Int

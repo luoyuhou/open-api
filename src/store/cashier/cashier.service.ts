@@ -27,9 +27,7 @@ export class CashierService {
 
     const goods = await this.prisma.store_goods.findMany({
       where: { store_id: storeId, status: 1 },
-      // include: {
-      //   // 实际上模型里没有直接定义 relation，我们需要手动查询或假设结构
-      // },
+      orderBy: { rank: 'asc' },
     });
 
     // 由于 prisma schema 中没有定义显示关联，我们通过 goods_id 手动聚合
@@ -65,6 +63,7 @@ export class CashierService {
         price: p.price / 100, // 后端分转前端元
         billingMode: p.billingMode,
         status: 'on',
+        rank: p.rank ?? 0,
         versions: p.versions.map((v) => ({
           id: v.version_id,
           name: v.version_number || v.unit_name,
