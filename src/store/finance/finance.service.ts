@@ -757,4 +757,108 @@ export class FinanceService {
       days,
     };
   }
+
+  /** 某日财务明细（盈亏日历弹窗） */
+  async getDayDetail(storeId: string, recordDate: string) {
+    const date = this.normalizeFinanceDate(recordDate);
+    const records = await this.prisma.store_finance_record.findMany({
+      where: { store_id: storeId, record_date: date },
+      orderBy: [{ create_date: 'asc' }],
+    });
+
+    const items: {
+      record_id: string;
+      type: string;
+      kind: 'income' | 'expense';
+      title: string;
+      detail: string;
+      amount: number;
+    }[] = [];
+
+    let revenueTotal = 0;
+    let expenseTotal = 0;
+    const round = (n: number) => Number(n.toFixed(2));
+
+    records.forEach((raw) => {
+      const item = this.formatRecord(raw as unknown as RawRecord);
+      switch (item.type) {
+        case E_FINANCE_TYPE.daily_revenue: {
+          revenueTotal += item.total;
+          const parts: string[] = [];
+          if (item.alipay) parts.push(`支付宝 ￥${item.alipay}`);
+          if (item.wechat) parts.push(`微信 ￥${item.wechat}`);
+          if (item.cash) parts.push(`现金 ￥${item.cash}`);
+          items.push({
+            record_id: item.record_id,
+            type: item.type,
+            kind: 'income',
+            title: '营业额',
+            detail: parts.join(' · '),
+            amount: item.total,
+          });
+          break;
+        }
+        case E_FINANCE_TYPE.ingredient_cost:
+          expenseTotal += item.amount;
+          items.push({
+            record_id: item.record_id,
+            type: item.type,
+            kind: 'expense',
+            title: item.item_name || '食材',
+            detail: '食材成本',
+            amount: item.amount,
+          });
+          break;
+        case E_FINANCE_TYPE.monthly_overhead: {
+          const overheadTotal =
+            item.rent_amount + item.water_amount + item.electricity_amount;
+          expenseTotal += overheadTotal;
+          const parts: string[] = [];
+          if (item.rent_amount) parts.push(`房租 ￥${item.rent_amount}`);
+          if (item.water_amount) parts.push(`水费 ￥${item.water_amount}`);
+          if (item.electricity_amount) {
+            parts.push(`电费 ￥${item.electricity_amount}`);
+          }
+          items.push({
+            record_id: item.record_id,
+            type: item.type,
+            kind: 'expense',
+            title: '房租与水电',
+            detail: parts.join(' · '),
+            amount: overheadTotal,
+          });
+          break;
+        }
+        case E_FINANCE_TYPE.rent:
+          expenseTotal += item.amount;
+          items.push({
+            record_id: item.record_id,
+            type: item.type,
+            kind: 'expense',
+            title: '房租',
+            detail: '',
+            amount: item.amount,
+          });
+          break;
+        case E_FINANCE_TYPE.utilities:
+          expenseTotal += item.amount;
+          items.push({
+            record_id: item.record_id,
+            type: item.type,
+            kind: 'expense',
+            title: '水电',
+            detail: '',
+            amount: item.amount,
+          });
+          break;
+      }
+    });
+
+    return {
+      date,
+      revenue_total: round(revenueTotal),
+      expense_total: round(expenseTotal),
+      items,
+    };
+  }
 }

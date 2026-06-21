@@ -34,6 +34,12 @@ export class FinanceController {
     );
   }
 
+  @Get(':storeId/day/:date')
+  @ApiOperation({ summary: '获取某日财务明细' })
+  dayDetail(@Param('storeId') storeId: string, @Param('date') date: string) {
+    return this.financeService.getDayDetail(storeId, date);
+  }
+
   @Get(':storeId/list')
   @ApiOperation({ summary: '获取店铺财务记录' })
   list(
