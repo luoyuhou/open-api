@@ -715,3 +715,27 @@ model store_staff {
 
   @@unique([store_id, phone])
 }
+
+model store_finance_record {
+  id          Int       @id @default(autoincrement())
+  record_id   String    @unique
+  store_id    String
+  type        String
+  record_date String
+  item_name   String    @default("")
+  alipay      Int       @default(0)
+  wechat      Int       @default(0)
+  cash        Int       @default(0)
+  amount      Int       @default(0)
+  rent_amount Int       @default(0)
+  water_volume Float    @default(0)
+  water_amount Int       @default(0)
+  electricity_kwh Float @default(0)
+  electricity_amount Int @default(0)
+  remark      String?
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([store_id, type, record_date, item_name])
+  @@index([store_id, type])
+}

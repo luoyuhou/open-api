@@ -21,7 +21,7 @@ export class UsersService {
   }
 
   private bcryptPassword(password: string): { pwd: string; salt: string } {
-    const salt = bcrypt.genSaltSync(16);
+    const salt = bcrypt.genSaltSync(10);
     const pwd = bcrypt.hashSync(password, salt);
     return { pwd, salt };
   }

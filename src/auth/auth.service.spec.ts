@@ -8,6 +8,7 @@ import { UsersService } from '../users/users.service';
 import { CacheService } from '../common/cache-manager/cache.service';
 import { SmsService } from '../common/sms/sms.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import bcrypt = require('bcryptjs');
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -47,24 +48,54 @@ describe('AuthService', () => {
 
   describe('createUserByPassword and loginByPassword', () => {
     it('Create User | Login by password', async () => {
-      const password = Math.random().toString().slice(2, 15);
+      const password = 'testPassword123';
+      const phone = '13800138001';
       const userInfo: CreateUserByPasswordDto = {
-        first_name: password.slice(0, 5),
-        last_name: password.slice(5, 10),
-        phone: password,
-        code: password.slice(-6),
+        first_name: 'Test',
+        last_name: 'User',
+        phone,
+        code: '123456',
         password,
       };
 
+      const mockUser = {
+        user_id: 'user-test-id',
+        phone,
+        status: 1,
+        first_name: 'Test',
+        last_name: 'User',
+      };
+
+      const salt = bcrypt.genSaltSync(10);
+      const hashedPassword = bcrypt.hashSync(password, salt);
+
+      jest
+        .spyOn(usersService, 'createUserByPassword')
+        .mockResolvedValue(mockUser as any);
+
       const user = await service.createUserByPassword(userInfo);
-      expect(user?.phone).toBe(password);
+      expect(user?.phone).toBe(phone);
+      expect(usersService.createUserByPassword).toHaveBeenCalledWith(userInfo);
+
+      jest
+        .spyOn(prismaService.user, 'findUnique')
+        .mockResolvedValue(mockUser as any);
+      jest
+        .spyOn(prismaService.user_signin_password, 'findUnique')
+        .mockResolvedValue({
+          user_id: mockUser.user_id,
+          password: hashedPassword,
+          salt,
+          failed_login_times: 0,
+          locked_date: null,
+        } as any);
 
       const loginUserByPassword = await service.loginByPassword(
-        password,
+        phone,
         password,
       );
-      expect(loginUserByPassword?.phone).toBe(password);
-    }, 10000);
+      expect(loginUserByPassword?.phone).toBe(phone);
+    });
   });
 
   describe('generateForgetPasswordSmsToken', () => {
