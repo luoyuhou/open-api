@@ -119,6 +119,7 @@ CREATE TABLE "store_goods" (
     "goods_id" TEXT NOT NULL,
     "store_id" TEXT NOT NULL,
     "category_id" TEXT NOT NULL,
+    "rank" INTEGER NOT NULL DEFAULT 0,
     "name" TEXT NOT NULL,
     "description" TEXT,
     "status" INTEGER NOT NULL,
@@ -666,6 +667,28 @@ CREATE TABLE "store_staff" (
     "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- CreateTable
+CREATE TABLE "store_finance_record" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "record_id" TEXT NOT NULL,
+    "store_id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "record_date" TEXT NOT NULL,
+    "item_name" TEXT NOT NULL DEFAULT '',
+    "alipay" INTEGER NOT NULL DEFAULT 0,
+    "wechat" INTEGER NOT NULL DEFAULT 0,
+    "cash" INTEGER NOT NULL DEFAULT 0,
+    "amount" INTEGER NOT NULL DEFAULT 0,
+    "rent_amount" INTEGER NOT NULL DEFAULT 0,
+    "water_volume" REAL NOT NULL DEFAULT 0,
+    "water_amount" INTEGER NOT NULL DEFAULT 0,
+    "electricity_kwh" REAL NOT NULL DEFAULT 0,
+    "electricity_amount" INTEGER NOT NULL DEFAULT 0,
+    "remark" TEXT,
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "user_user_id_key" ON "user"("user_id");
 
@@ -884,4 +907,13 @@ CREATE UNIQUE INDEX "store_staff_staff_id_key" ON "store_staff"("staff_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "store_staff_store_id_phone_key" ON "store_staff"("store_id", "phone");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "store_finance_record_record_id_key" ON "store_finance_record"("record_id");
+
+-- CreateIndex
+CREATE INDEX "store_finance_record_store_id_type_idx" ON "store_finance_record"("store_id", "type");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "store_finance_record_store_id_type_record_date_item_name_key" ON "store_finance_record"("store_id", "type", "record_date", "item_name");
 
