@@ -199,47 +199,114 @@ export class CashierService {
     return count;
   }
 
-  async getTodayOrders(storeId: string, page = 1, pageSize = 5) {
+  /** 今日各商品销量（已完成订单明细聚合，不分页） */
+  async getTodaySalesByGoods(storeId: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const rows = await this.prisma.$queryRaw<
+      { goods_id: string; quantity: number | bigint }[]
+    >`
+      SELECT oi.goods_id, SUM(oi.count) AS quantity
+      FROM user_order_info oi
+      INNER JOIN user_order o ON o.order_id = oi.order_id
+      WHERE o.store_id = ${storeId}
+        AND o.status = 1
+        AND o.create_date >= ${today}
+      GROUP BY oi.goods_id
+    `;
+
+    const sales: Record<string, number> = {};
+    for (const row of rows) {
+      sales[row.goods_id] = Number(row.quantity);
+    }
+
+    return { sales };
+  }
+
+  async getTodayOrders(storeId: string, page = 1, pageSize = 5) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return this.getOrders(storeId, page, pageSize, { fromDate: today });
+  }
+
+  /** 分页查询已完成订单，支持手机号模糊检索 */
+  async getOrders(
+    storeId: string,
+    page = 1,
+    pageSize = 10,
+    options: { phone?: string; fromDate?: Date } = {},
+  ) {
     const skip = (page - 1) * pageSize;
+    const where: {
+      store_id: string;
+      status: number;
+      create_date?: { gte: Date };
+      user_id?: { in: string[] };
+    } = {
+      store_id: storeId,
+      status: 1,
+    };
+
+    if (options.fromDate) {
+      where.create_date = { gte: options.fromDate };
+    }
+
+    const phone = options.phone?.trim();
+    if (phone) {
+      const members = await (this.prisma as any).store_member.findMany({
+        where: {
+          store_id: storeId,
+          phone: { contains: phone },
+        },
+        select: { member_id: true },
+      });
+      const memberIds = members.map((m: { member_id: string }) => m.member_id);
+      if (memberIds.length === 0) {
+        return [];
+      }
+      where.user_id = { in: memberIds };
+    }
 
     const orders = await this.prisma.user_order.findMany({
-      where: {
-        store_id: storeId,
-        create_date: {
-          gte: today,
-        },
-        status: 1, // 已完成
-      },
-      orderBy: {
-        create_date: 'desc',
-      },
+      where,
+      orderBy: { create_date: 'desc' },
       skip,
       take: pageSize,
     });
 
+    return this.formatCashierOrders(orders);
+  }
+
+  private async formatCashierOrders(
+    orders: Awaited<ReturnType<PrismaService['user_order']['findMany']>>,
+  ) {
+    if (orders.length === 0) {
+      return [];
+    }
+
     const orderIds = orders.map((o) => o.order_id);
     const orderInfos = await this.prisma.user_order_info.findMany({
-      where: {
-        order_id: { in: orderIds },
-      },
+      where: { order_id: { in: orderIds } },
     });
 
     const memberIds = orders
       .map((o) => o.user_id)
       .filter((id) => id && id !== 'CASHIER_GUEST');
-    const members = await (this.prisma as any).store_member.findMany({
-      where: {
-        member_id: { in: memberIds },
-      },
-    });
+    const members =
+      memberIds.length > 0
+        ? await (this.prisma as any).store_member.findMany({
+            where: { member_id: { in: memberIds } },
+          })
+        : [];
 
     const versionIds = orderInfos.map((i) => i.goods_version_id);
-    const versions = await this.prisma.store_goods_version.findMany({
-      where: { version_id: { in: versionIds } },
-    });
+    const versions =
+      versionIds.length > 0
+        ? await this.prisma.store_goods_version.findMany({
+            where: { version_id: { in: versionIds } },
+          })
+        : [];
 
     return orders.map((o) => {
       const items = orderInfos
@@ -256,13 +323,11 @@ export class CashierService {
             name: item.goods_name,
             quantity: item.count,
             price: (item.price / 100).toFixed(2),
-            billingMode: billingMode,
+            billingMode,
           };
         });
 
       const member = members.find((m) => m.member_id === o.user_id);
-
-      // 计算各金额（分转元）
       const originalAmount = (o.original_amount || o.money) / 100;
       const totalDiscountAmount = (o.discount_amount || 0) / 100;
       const payableAmount = o.money / 100;
@@ -291,7 +356,7 @@ export class CashierService {
         createdAt: o.create_date,
         status: 'completed',
         paymentMethod: o.payment_method,
-        items: items,
+        items,
       };
     });
   }

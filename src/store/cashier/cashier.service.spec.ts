@@ -28,13 +28,16 @@ describe('CashierService', () => {
             },
             user_order_info: {
               create: jest.fn(),
+              findMany: jest.fn(),
             },
             store_member: {
               findUnique: jest.fn(),
+              findMany: jest.fn(),
               update: jest.fn(),
             },
             $transaction: jest.fn((callback) => callback(prisma)),
             $executeRawUnsafe: jest.fn(),
+            $queryRaw: jest.fn(),
           },
         },
       ],
@@ -62,6 +65,89 @@ describe('CashierService', () => {
       expect(result.products[0].id).toBe('g1');
       expect(result.products[0].price).toBe(10); // 分转元
       expect(result.products[0].categoryIds).toContain('cat1');
+    });
+  });
+
+  describe('getOrders', () => {
+    it('无手机号匹配时应返回空列表', async () => {
+      (prisma.store_member.findMany as jest.Mock).mockResolvedValue([]);
+
+      const result = await service.getOrders('s1', 1, 10, { phone: '999' });
+
+      expect(result).toEqual([]);
+      expect(prisma.user_order.findMany).not.toHaveBeenCalled();
+    });
+
+    it('应按会员手机号筛选并格式化订单', async () => {
+      (prisma.store_member.findMany as jest.Mock)
+        .mockResolvedValueOnce([{ member_id: 'm1' }])
+        .mockResolvedValueOnce([
+          { member_id: 'm1', name: '张三', phone: '13800138000' },
+        ]);
+      (prisma.user_order.findMany as jest.Mock).mockResolvedValue([
+        {
+          order_id: 'o1',
+          user_id: 'm1',
+          original_amount: 1000,
+          money: 1000,
+          discount_amount: 0,
+          discount_rate: 100,
+          points_used: 0,
+          points_earn: 0,
+          create_date: new Date('2026-06-01T10:00:00Z'),
+          payment_method: 'CASHIER_OFFLINE',
+        },
+      ]);
+      (prisma.user_order_info.findMany as jest.Mock).mockResolvedValue([
+        {
+          order_id: 'o1',
+          goods_id: 'g1',
+          goods_name: '商品1',
+          goods_version_id: 'v1',
+          count: 2,
+          price: 500,
+        },
+      ]);
+      (prisma.store_goods_version.findMany as jest.Mock).mockResolvedValue([
+        { version_id: 'v1', unit_name: '件' },
+      ]);
+
+      const result = await service.getOrders('s1', 1, 10, { phone: '138' });
+
+      expect(prisma.store_member.findMany).toHaveBeenCalledWith({
+        where: { store_id: 's1', phone: { contains: '138' } },
+        select: { member_id: true },
+      });
+      expect(prisma.user_order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            user_id: { in: ['m1'] },
+          }),
+        }),
+      );
+      expect(result[0].memberPhone).toBe('13800138000');
+      expect(result[0].items[0].quantity).toBe(2);
+    });
+  });
+
+  describe('getTodaySalesByGoods', () => {
+    it('应该按商品汇总今日销量', async () => {
+      (prisma.$queryRaw as jest.Mock).mockResolvedValue([
+        { goods_id: 'g1', quantity: 3 },
+        { goods_id: 'g2', quantity: BigInt(5) },
+      ]);
+
+      const result = await service.getTodaySalesByGoods('s1');
+
+      expect(result.sales).toEqual({ g1: 3, g2: 5 });
+    });
+
+    it('无订单时应返回空汇总', async () => {
+      (prisma.$queryRaw as jest.Mock).mockResolvedValue([]);
+
+      const result = await service.getTodaySalesByGoods('s1');
+
+      expect(result.sales).toEqual({});
     });
   });
 

@@ -345,6 +345,22 @@ model report_store_daily_goods {
   @@index([store_id, goods_id, goods_version_id])
 }
 
+model report_store_finance_daily {
+  id                 Int       @id @default(autoincrement())
+  store_id           String
+  record_date        String
+  revenue            Int       @default(0)
+  ingredient_cost    Int       @default(0)
+  rent_amount        Int       @default(0)
+  water_amount       Int       @default(0)
+  electricity_amount Int       @default(0)
+  create_date        DateTime? @default(now())
+  update_date        DateTime? @default(now())
+
+  @@unique([store_id, record_date])
+  @@index([store_id, record_date])
+}
+
 model home_banner {
   id          Int       @id @default(autoincrement())
   banner_id   String    @unique
@@ -738,4 +754,5 @@ model store_finance_record {
 
   @@unique([store_id, type, record_date, item_name])
   @@index([store_id, type])
+  @@index([store_id, record_date])
 }
