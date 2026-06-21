@@ -176,4 +176,53 @@ describe('FinanceService', () => {
       expect(result.revenue).toBe(50);
     });
   });
+
+  describe('getDayDetail', () => {
+    it('应返回某日可删除的明细项', async () => {
+      (prisma.store_finance_record.findMany as jest.Mock).mockResolvedValue([
+        {
+          record_id: 'r1',
+          store_id: 's1',
+          type: 'daily_revenue',
+          record_date: '2026-06-01',
+          item_name: '',
+          alipay: 10000,
+          wechat: 5000,
+          cash: 0,
+          amount: 0,
+          rent_amount: 0,
+          water_volume: 0,
+          water_amount: 0,
+          electricity_kwh: 0,
+          electricity_amount: 0,
+          remark: null,
+        },
+        {
+          record_id: 'r2',
+          store_id: 's1',
+          type: 'ingredient_cost',
+          record_date: '2026-06-01',
+          item_name: '牛肉',
+          alipay: 0,
+          wechat: 0,
+          cash: 0,
+          amount: 3000,
+          rent_amount: 0,
+          water_volume: 0,
+          water_amount: 0,
+          electricity_kwh: 0,
+          electricity_amount: 0,
+          remark: null,
+        },
+      ]);
+
+      const result = await service.getDayDetail('s1', '2026-06-01');
+
+      expect(result.revenue_total).toBe(150);
+      expect(result.expense_total).toBe(30);
+      expect(result.items).toHaveLength(2);
+      expect(result.items[0].record_id).toBe('r1');
+      expect(result.items[1].title).toBe('牛肉');
+    });
+  });
 });
