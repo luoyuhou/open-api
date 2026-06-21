@@ -20,6 +20,20 @@ import { E_FINANCE_TYPE } from './const';
 export class FinanceController {
   constructor(private readonly financeService: FinanceService) {}
 
+  @Get(':storeId/summary')
+  @ApiOperation({ summary: '盈亏汇总（营业额 − 成本 − 固定开销）' })
+  summary(
+    @Param('storeId') storeId: string,
+    @Query('year') year: string,
+    @Query('month') month?: string,
+  ) {
+    return this.financeService.getProfitLossSummary(
+      storeId,
+      Number(year),
+      month ? Number(month) : undefined,
+    );
+  }
+
   @Get(':storeId/list')
   @ApiOperation({ summary: '获取店铺财务记录' })
   list(

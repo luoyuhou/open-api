@@ -389,6 +389,10 @@ export class FinanceService {
               : type,
         },
       });
+      await this.afterFinanceMutation(store_id, [
+        record_date,
+        existingById.record_date,
+      ]);
       return this.formatRecord(updated as unknown as RawRecord);
     }
 
@@ -409,6 +413,7 @@ export class FinanceService {
         where: { record_id: existing.record_id },
         data,
       });
+      await this.afterFinanceMutation(store_id, [record_date]);
       return this.formatRecord(updated as unknown as RawRecord);
     }
 
@@ -422,6 +427,7 @@ export class FinanceService {
       },
     });
 
+    await this.afterFinanceMutation(store_id, [record_date]);
     return this.formatRecord(created as unknown as RawRecord);
   }
 
@@ -435,6 +441,320 @@ export class FinanceService {
     await this.prisma.store_finance_record.delete({
       where: { record_id: recordId },
     });
+    await this.afterFinanceMutation(record.store_id, [record.record_date]);
     return { success: true };
+  }
+
+  /** 盈亏汇总：收入 − 食材成本 − 房租水电（读日汇总报表） */
+  async getProfitLossSummary(storeId: string, year: number, month?: number) {
+    if (!year || Number.isNaN(year)) {
+      throw new BadRequestException('请指定年份');
+    }
+
+    await this.ensureFinanceReports(storeId);
+
+    const datePrefix = month
+      ? `${year}-${String(month).padStart(2, '0')}`
+      : `${year}-`;
+
+    const dailyRows = await this.prisma.report_store_finance_daily.findMany({
+      where: {
+        store_id: storeId,
+        record_date: { startsWith: datePrefix },
+      },
+    });
+
+    let revenue = 0;
+    let ingredientCost = 0;
+    let rent = 0;
+    let water = 0;
+    let electricity = 0;
+
+    dailyRows.forEach((row) => {
+      revenue += this.toYuan(row.revenue);
+      ingredientCost += this.toYuan(row.ingredient_cost);
+      rent += this.toYuan(row.rent_amount);
+      water += this.toYuan(row.water_amount);
+      electricity += this.toYuan(row.electricity_amount);
+    });
+
+    const round = (n: number) => Number(n.toFixed(2));
+    const overheadTotal = rent + water + electricity;
+    const totalExpense = ingredientCost + overheadTotal;
+    const profit = revenue - totalExpense;
+
+    const result: {
+      year: number;
+      month: number | null;
+      period_label: string;
+      revenue: number;
+      ingredient_cost: number;
+      overhead: {
+        rent: number;
+        water: number;
+        electricity: number;
+        total: number;
+      };
+      total_expense: number;
+      profit: number;
+      calendar?: ReturnType<FinanceService['buildMonthlyCalendarFromDaily']>;
+      year_calendar?: ReturnType<
+        FinanceService['buildYearlyCalendarFromDaily']
+      >;
+    } = {
+      year,
+      month: month ?? null,
+      period_label: month ? `${year}年${month}月` : `${year}年`,
+      revenue: round(revenue),
+      ingredient_cost: round(ingredientCost),
+      overhead: {
+        rent: round(rent),
+        water: round(water),
+        electricity: round(electricity),
+        total: round(overheadTotal),
+      },
+      total_expense: round(totalExpense),
+      profit: round(profit),
+    };
+
+    if (month) {
+      result.calendar = this.buildMonthlyCalendarFromDaily(
+        dailyRows,
+        year,
+        month,
+      );
+    } else {
+      result.year_calendar = this.buildYearlyCalendarFromDaily(dailyRows, year);
+    }
+
+    return result;
+  }
+
+  private normalizeFinanceDate(recordDate: string) {
+    return String(recordDate).slice(0, 10);
+  }
+
+  private async afterFinanceMutation(storeId: string, dates: string[]) {
+    const uniqueDates = [
+      ...new Set(
+        dates.map((d) => this.normalizeFinanceDate(d)).filter(Boolean),
+      ),
+    ];
+    for (const date of uniqueDates) {
+      await this.syncFinanceDailyReport(storeId, date);
+    }
+  }
+
+  private async ensureFinanceReports(storeId: string) {
+    const reportCount = await this.prisma.report_store_finance_daily.count({
+      where: { store_id: storeId },
+    });
+    if (reportCount > 0) {
+      return;
+    }
+    const financeCount = await this.prisma.store_finance_record.count({
+      where: { store_id: storeId },
+    });
+    if (financeCount > 0) {
+      await this.rebuildFinanceDailyReports(storeId);
+    }
+  }
+
+  private async rebuildFinanceDailyReports(storeId: string) {
+    const records = await this.prisma.store_finance_record.findMany({
+      where: { store_id: storeId },
+      select: { record_date: true },
+    });
+    const dates = [
+      ...new Set(records.map((r) => this.normalizeFinanceDate(r.record_date))),
+    ];
+    for (const date of dates) {
+      await this.syncFinanceDailyReport(storeId, date);
+    }
+  }
+
+  private accumFromRawRecord(
+    bucket: {
+      revenue: number;
+      ingredient_cost: number;
+      rent_amount: number;
+      water_amount: number;
+      electricity_amount: number;
+    },
+    raw: RawRecord,
+  ) {
+    switch (raw.type) {
+      case E_FINANCE_TYPE.daily_revenue:
+        bucket.revenue += raw.alipay + raw.wechat + raw.cash;
+        break;
+      case E_FINANCE_TYPE.ingredient_cost:
+        bucket.ingredient_cost += raw.amount;
+        break;
+      case E_FINANCE_TYPE.monthly_overhead:
+        bucket.rent_amount += raw.rent_amount;
+        bucket.water_amount += raw.water_amount;
+        bucket.electricity_amount += raw.electricity_amount;
+        break;
+      case E_FINANCE_TYPE.rent:
+        bucket.rent_amount += raw.amount;
+        break;
+      case E_FINANCE_TYPE.utilities:
+        bucket.electricity_amount += raw.amount;
+        break;
+    }
+  }
+
+  private async syncFinanceDailyReport(storeId: string, recordDate: string) {
+    const date = this.normalizeFinanceDate(recordDate);
+    const records = await this.prisma.store_finance_record.findMany({
+      where: { store_id: storeId, record_date: date },
+    });
+
+    const bucket = {
+      revenue: 0,
+      ingredient_cost: 0,
+      rent_amount: 0,
+      water_amount: 0,
+      electricity_amount: 0,
+    };
+
+    records.forEach((raw) =>
+      this.accumFromRawRecord(bucket, raw as unknown as RawRecord),
+    );
+
+    const hasData =
+      bucket.revenue > 0 ||
+      bucket.ingredient_cost > 0 ||
+      bucket.rent_amount > 0 ||
+      bucket.water_amount > 0 ||
+      bucket.electricity_amount > 0;
+
+    if (!hasData) {
+      await this.prisma.report_store_finance_daily.deleteMany({
+        where: { store_id: storeId, record_date: date },
+      });
+      return;
+    }
+
+    await this.prisma.report_store_finance_daily.upsert({
+      where: {
+        store_id_record_date: { store_id: storeId, record_date: date },
+      },
+      create: {
+        store_id: storeId,
+        record_date: date,
+        ...bucket,
+      },
+      update: {
+        ...bucket,
+        update_date: new Date(),
+      },
+    });
+  }
+
+  private dailyRowExpenseCents(row: {
+    ingredient_cost: number;
+    rent_amount: number;
+    water_amount: number;
+    electricity_amount: number;
+  }) {
+    return (
+      row.ingredient_cost +
+      row.rent_amount +
+      row.water_amount +
+      row.electricity_amount
+    );
+  }
+
+  private buildYearlyCalendarFromDaily(
+    rows: {
+      record_date: string;
+      revenue: number;
+      ingredient_cost: number;
+      rent_amount: number;
+      water_amount: number;
+      electricity_amount: number;
+    }[],
+    year: number,
+  ) {
+    const monthMap = new Map<string, { revenue: number; expense: number }>();
+
+    rows.forEach((row) => {
+      const monthKey = row.record_date.slice(0, 7);
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, { revenue: 0, expense: 0 });
+      }
+      const bucket = monthMap.get(monthKey)!;
+      bucket.revenue += this.toYuan(row.revenue);
+      bucket.expense += this.toYuan(this.dailyRowExpenseCents(row));
+    });
+
+    const round = (n: number) => Number(n.toFixed(2));
+    const months = [];
+
+    for (let m = 1; m <= 12; m++) {
+      const key = `${year}-${String(m).padStart(2, '0')}`;
+      const data = monthMap.get(key) || { revenue: 0, expense: 0 };
+      const revenue = round(data.revenue);
+      const expense = round(data.expense);
+      months.push({
+        month: m,
+        month_label: `${m}月`,
+        revenue,
+        expense,
+        profit: round(revenue - expense),
+        has_data: revenue > 0 || expense > 0,
+      });
+    }
+
+    return { months };
+  }
+
+  private buildMonthlyCalendarFromDaily(
+    rows: {
+      record_date: string;
+      revenue: number;
+      ingredient_cost: number;
+      rent_amount: number;
+      water_amount: number;
+      electricity_amount: number;
+    }[],
+    year: number,
+    month: number,
+  ) {
+    const monthStr = String(month).padStart(2, '0');
+    const dayMap = new Map<string, { revenue: number; expense: number }>();
+
+    rows.forEach((row) => {
+      dayMap.set(row.record_date, {
+        revenue: this.toYuan(row.revenue),
+        expense: this.toYuan(this.dailyRowExpenseCents(row)),
+      });
+    });
+
+    const round = (n: number) => Number(n.toFixed(2));
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const days = [];
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = `${year}-${monthStr}-${String(d).padStart(2, '0')}`;
+      const data = dayMap.get(date) || { revenue: 0, expense: 0 };
+      const revenue = round(data.revenue);
+      const expense = round(data.expense);
+      days.push({
+        date,
+        day: d,
+        revenue,
+        expense,
+        profit: round(revenue - expense),
+        has_data: revenue > 0 || expense > 0,
+      });
+    }
+
+    return {
+      days_in_month: daysInMonth,
+      start_weekday: new Date(year, month - 1, 1).getDay(),
+      days,
+    };
   }
 }

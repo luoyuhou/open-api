@@ -340,6 +340,20 @@ CREATE TABLE "report_store_daily_goods" (
 );
 
 -- CreateTable
+CREATE TABLE "report_store_finance_daily" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "store_id" TEXT NOT NULL,
+    "record_date" TEXT NOT NULL,
+    "revenue" INTEGER NOT NULL DEFAULT 0,
+    "ingredient_cost" INTEGER NOT NULL DEFAULT 0,
+    "rent_amount" INTEGER NOT NULL DEFAULT 0,
+    "water_amount" INTEGER NOT NULL DEFAULT 0,
+    "electricity_amount" INTEGER NOT NULL DEFAULT 0,
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
 CREATE TABLE "home_banner" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "banner_id" TEXT NOT NULL,
@@ -777,6 +791,12 @@ CREATE INDEX "report_store_daily_goods_store_id_goods_id_idx" ON "report_store_d
 CREATE INDEX "report_store_daily_goods_store_id_goods_id_goods_version_id_idx" ON "report_store_daily_goods"("store_id", "goods_id", "goods_version_id");
 
 -- CreateIndex
+CREATE INDEX "report_store_finance_daily_store_id_record_date_idx" ON "report_store_finance_daily"("store_id", "record_date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "report_store_finance_daily_store_id_record_date_key" ON "report_store_finance_daily"("store_id", "record_date");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "home_banner_banner_id_key" ON "home_banner"("banner_id");
 
 -- CreateIndex
@@ -913,6 +933,9 @@ CREATE UNIQUE INDEX "store_finance_record_record_id_key" ON "store_finance_recor
 
 -- CreateIndex
 CREATE INDEX "store_finance_record_store_id_type_idx" ON "store_finance_record"("store_id", "type");
+
+-- CreateIndex
+CREATE INDEX "store_finance_record_store_id_record_date_idx" ON "store_finance_record"("store_id", "record_date");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "store_finance_record_store_id_type_record_date_item_name_key" ON "store_finance_record"("store_id", "type", "record_date", "item_name");

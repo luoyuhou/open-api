@@ -39,4 +39,26 @@ export class CashierController {
   async getTodayOrderCount(@Param('storeId') storeId: string) {
     return await this.cashierService.getTodayOrderCount(storeId);
   }
+
+  @Get('orders/:storeId')
+  @ApiOperation({ summary: '分页查询店铺已完成订单，支持手机号检索' })
+  async getOrders(
+    @Param('storeId') storeId: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '10',
+    @Query('phone') phone?: string,
+  ) {
+    return await this.cashierService.getOrders(
+      storeId,
+      parseInt(page, 10),
+      parseInt(pageSize, 10),
+      { phone },
+    );
+  }
+
+  @Get('sales/today/:storeId')
+  @ApiOperation({ summary: '获取店铺今日各商品销量汇总' })
+  async getTodaySalesByGoods(@Param('storeId') storeId: string) {
+    return await this.cashierService.getTodaySalesByGoods(storeId);
+  }
 }
