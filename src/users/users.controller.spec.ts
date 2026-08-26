@@ -26,10 +26,6 @@ describe('UsersController', () => {
     usersService = module.get(UsersService) as jest.Mocked<UsersService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('findAll', () => {
     it('should return all users as UserEntity array', async () => {
       const mockUsers = [

@@ -35,10 +35,6 @@ describe('StoreController', () => {
     storeService = module.get(StoreService) as jest.Mocked<StoreService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('create', () => {
     it('should create store', async () => {
       const mockUser = { user_id: 'user123' } as UserEntity;

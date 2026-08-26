@@ -50,10 +50,6 @@ describe('SettlementController', () => {
     ) as jest.Mocked<PlatformSettlementService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   // ========== 商家结算测试 ==========
 
   describe('generateStoreSettlement', () => {

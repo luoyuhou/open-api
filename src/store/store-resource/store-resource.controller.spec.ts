@@ -26,10 +26,6 @@ describe('StoreResourceController', () => {
     service = module.get<StoreResourceService>(StoreResourceService);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('pagination', () => {
     it('should return paginated orders', async () => {
       const pagination = {

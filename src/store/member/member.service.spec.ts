@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MemberService } from './member.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PlatformService } from '../../platform/platform.service';
 import { BadRequestException } from '@nestjs/common';
+
+const mockPlatformService = {
+  assertCanAddMember: jest.fn().mockResolvedValue(undefined),
+};
 
 describe('MemberService', () => {
   let service: MemberService;
@@ -35,6 +40,7 @@ describe('MemberService', () => {
             $transaction: jest.fn((callback) => callback(prisma)),
           },
         },
+        { provide: PlatformService, useValue: mockPlatformService },
       ],
     }).compile();
 

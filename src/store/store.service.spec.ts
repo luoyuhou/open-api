@@ -2,8 +2,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { StoreService } from './store.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileService } from '../file/file.service';
+import { PlatformService } from '../platform/platform.service';
 import { STORE_ACTION_TYPES } from './const';
 import { BadRequestException } from '@nestjs/common';
+
+const mockPlatformService = {
+  assertStoreCreateAllowed: jest.fn().mockResolvedValue(undefined),
+  getStoreQuotaCheck: jest.fn().mockResolvedValue({ needsCode: false }),
+  redeemStoreCreateCode: jest.fn().mockResolvedValue(undefined),
+};
 
 describe('StoreService', () => {
   let service: StoreService;
@@ -33,6 +40,7 @@ describe('StoreService', () => {
           },
         },
         { provide: FileService, useValue: mockFileService },
+        { provide: PlatformService, useValue: mockPlatformService },
       ],
     }).compile();
 
@@ -54,6 +62,7 @@ describe('StoreService', () => {
         pointsRedemptionRatio: 100,
         redemptionEnabled: true,
         redemptionDays: [],
+        memberDiscountRate: 10,
       });
     });
 
@@ -63,6 +72,7 @@ describe('StoreService', () => {
         pointsRedemptionRatio: 50,
         redemptionEnabled: false,
         redemptionDays: ['Monday'],
+        memberDiscountRate: 10,
       };
 
       (prisma.store.findUnique as jest.Mock).mockResolvedValue({

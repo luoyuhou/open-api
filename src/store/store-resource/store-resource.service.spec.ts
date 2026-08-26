@@ -30,10 +30,6 @@ describe('StoreResourceService', () => {
     cacheService = module.get<CacheService>(CacheService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
   describe('getUsedQuota', () => {
     it('should return cached quota when available', async () => {
       const store_id = 'store123';

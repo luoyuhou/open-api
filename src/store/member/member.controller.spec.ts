@@ -29,10 +29,6 @@ describe('MemberController', () => {
     service = module.get<MemberService>(MemberService);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('create', () => {
     it('should call service create', async () => {
       const dto = { store_id: 's1', phone: '138', name: 'N' };

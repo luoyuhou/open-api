@@ -71,7 +71,7 @@ export class PlatformService {
       throw new NotFoundException('店铺不存在');
     }
 
-    const usedCount = await (this.prisma as any).store_member.count({
+    const usedCount = await this.prisma.store_member.count({
       where: { store_id: storeId, status: 1 },
     });
 

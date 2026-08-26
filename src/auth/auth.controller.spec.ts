@@ -63,10 +63,6 @@ describe('AuthController', () => {
     cacheService = module.get(CacheService);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('createWithPassword', () => {
     it('should create user with password and return UserEntity', async () => {
       const createUserDto: CreateUserByPasswordDto = {
