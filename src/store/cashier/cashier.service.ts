@@ -456,7 +456,7 @@ export class CashierService {
 
   private async buildQrPayload(pendingId: string) {
     const qrText = `jyb:${pendingId}`;
-    const qrDataUrl = QRCode.toDataURL(qrText, {
+    const qrDataUrl = await QRCode.toDataURL(qrText, {
       width: 280,
       margin: 1,
       errorCorrectionLevel: 'M',

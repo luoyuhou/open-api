@@ -155,6 +155,41 @@ describe('CashierService', () => {
     });
   });
 
+  describe('createOrUpdatePendingOrder', () => {
+    it('应返回可用的二维码 data URL', async () => {
+      const pendingPrisma = {
+        create: jest.fn().mockResolvedValue({}),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      };
+      (prisma as any).store_pay_pending = pendingPrisma;
+
+      const result = await service.createOrUpdatePendingOrder({
+        store_id: 's1',
+        order: {
+          local_id: 'local-1',
+          total_amount: 1000,
+          created_at: '2026-06-01 10:00:00',
+          discount_rate: 100,
+          items: [
+            {
+              goods_id: 'g1',
+              version_id: 'v1',
+              count: 1,
+              name: '商品1',
+              price: 1000,
+            },
+          ],
+        },
+      });
+
+      expect(pendingPrisma.create).toHaveBeenCalled();
+      expect(result.pendingId).toBeDefined();
+      expect(result.qrText).toBe(`jyb:${result.pendingId}`);
+      expect(result.qrDataUrl).toMatch(/^data:image\/png;base64,/);
+    });
+  });
+
   describe('pushOrder', () => {
     it('应该处理会员支付并更新余额和积分', async () => {
       const dto = {
