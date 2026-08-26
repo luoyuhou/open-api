@@ -47,7 +47,15 @@ export class StoreService {
 
     if (latestSettingsHistory && latestSettingsHistory.payload) {
       try {
-        return JSON.parse(latestSettingsHistory.payload);
+        const parsed = JSON.parse(latestSettingsHistory.payload);
+        return {
+          pointsPerYuan: 1,
+          pointsRedemptionRatio: 100,
+          redemptionEnabled: true,
+          redemptionDays: [],
+          memberDiscountRate: 10,
+          ...parsed,
+        };
       } catch (e) {
         // 解析失败则返回默认值
       }
@@ -59,6 +67,7 @@ export class StoreService {
       pointsRedemptionRatio: 100,
       redemptionEnabled: true,
       redemptionDays: [],
+      memberDiscountRate: 10,
     };
   }
 
@@ -131,25 +140,18 @@ export class StoreService {
       return { store_id: storeId, ...restData };
     }
 
-    const pendingStore = await this.prisma.store.findFirst({
-      where: { user_id: user.user_id, status: STORE_STATUS_TYPES.PENDING },
-    });
-
-    if (pendingStore) {
-      throw new BadRequestException(
-        `您有一个商店 ${pendingStore.store_name} 正等待审核，请耐性等待`,
-      );
-    }
-
+    // 收银小程序：申请即通过，无需后台审核
     const store_id = 'store-' + v4();
+    const freeQuota = 10 * 1024 * 1024;
     const data: CreateStoreDto = new StoreEntity({
       store_id,
-      status: 0,
+      status: STORE_STATUS_TYPES.APPROVED,
       user_id: user.user_id,
       ...createStoreDto,
+      town: createStoreDto.town || '',
     });
 
-    const history: ApplicantStoreHistoryInputDto = {
+    const applyHistory: ApplicantStoreHistoryInputDto = {
       store_id,
       action_type: STORE_ACTION_TYPES.APPLY,
       action_content: `${user.first_name} ${user.last_name} apply store name is ${createStoreDto.store_name}`,
@@ -159,7 +161,33 @@ export class StoreService {
 
     await this.prisma.$transaction([
       this.prisma.store.create({ data }),
-      this.prisma.store_history.create({ data: history }),
+      this.prisma.store_history.create({ data: applyHistory }),
+      this.prisma.store_history.create({
+        data: {
+          store_id,
+          action_user_id: user.user_id,
+          action_date: new Date(),
+          action_type: STORE_ACTION_TYPES.APPROVED,
+          action_content: `${user.first_name} ${user.last_name} auto-approved store on apply.`,
+          payload: 'auto-approved',
+        },
+      }),
+      this.prisma.store_resource.create({
+        data: {
+          store_id,
+          total_quota: freeQuota,
+        },
+      }),
+      this.prisma.store_resource_order.create({
+        data: {
+          store_id,
+          order_id: `RO-${v4()}`,
+          type: STORE_RESOURCE_TYPES.free,
+          price: 0,
+          status: 1,
+          quota_amount: freeQuota,
+        },
+      }),
     ]);
 
     return data;
@@ -287,7 +315,6 @@ export class StoreService {
       if (
         [
           'store_id',
-          'id_code',
           'id_name',
           'user_id',
           'status',

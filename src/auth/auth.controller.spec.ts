@@ -41,6 +41,9 @@ describe('AuthController', () => {
       generateSmsToken: jest.fn(),
       sendSmsCode: jest.fn(),
       getUserSignWechat: jest.fn(),
+      getUserById: jest.fn(),
+      bindPhoneForUser: jest.fn(),
+      loginByWxPhone: jest.fn(),
     };
 
     const mockCacheService = {
@@ -157,24 +160,30 @@ describe('AuthController', () => {
 
   describe('getSignedUser', () => {
     it('should return signed user with resources', async () => {
+      const mockUser = { user_id: 'user123', phone: '13800138000' };
       const mockRequest = {
-        user: { user_id: 'user123' },
+        user: { user_id: 'user123', phone: '13800138000' },
+        logIn: jest.fn((user, cb) => cb(null)),
       } as unknown as Request;
       const mockResources = [
         { auth_id: 'auth1', side: 0, path: '/test', method: 'GET' },
       ];
       const mockUserAuth: UserEntity = new UserEntity({ id: 1 });
+      authService.getUserById.mockResolvedValue(mockUser);
       authService.getCacheResources.mockResolvedValue({
         userAuth: mockUserAuth,
         resources: mockResources,
       });
+      authService.getUserSignWechat.mockResolvedValue(null);
 
       const result = await controller.getSignedUser(mockRequest);
 
+      expect(authService.getUserById).toHaveBeenCalledWith('user123');
       expect(authService.getCacheResources).toHaveBeenCalledWith('user123');
       expect(result).toEqual({
         message: 'ok',
-        data: mockRequest.user,
+        data: mockUser,
+        openid: undefined,
         resources: [
           { auth_id: '*', side: 0, path: '*', method: '*' },
           ...mockResources,
@@ -183,16 +192,20 @@ describe('AuthController', () => {
     });
 
     it('should return signed user without special auth', async () => {
+      const mockUser = { user_id: 'user123', phone: '13800138000' };
       const mockRequest = {
-        user: { user_id: 'user123' },
+        user: { user_id: 'user123', phone: '13800138000' },
+        logIn: jest.fn((user, cb) => cb(null)),
       } as unknown as Request;
       const mockResources = [
         { auth_id: 'auth1', side: 0, path: '/test', method: 'GET' },
       ];
+      authService.getUserById.mockResolvedValue(mockUser);
       authService.getCacheResources.mockResolvedValue({
         userAuth: null,
         resources: mockResources,
       });
+      authService.getUserSignWechat.mockResolvedValue(null);
 
       const result = await controller.getSignedUser(mockRequest);
 

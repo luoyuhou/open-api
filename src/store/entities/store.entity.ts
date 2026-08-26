@@ -1,6 +1,7 @@
 import {
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsPhoneNumber,
   IsString,
   Max,
@@ -32,11 +33,6 @@ export class StoreEntity {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(32)
-  id_code: string;
-
-  @IsString()
-  @IsNotEmpty()
   @MaxLength(64)
   user_id: string;
 
@@ -62,7 +58,7 @@ export class StoreEntity {
   area: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(16)
   town: string;
 

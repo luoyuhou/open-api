@@ -21,15 +21,11 @@ export class CreateStoreDto {
   @MaxLength(64)
   store_name: string;
 
+  /** 联系人 */
   @IsString()
   @IsNotEmpty()
   @MaxLength(32)
   id_name: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(32)
-  id_code: string;
 
   @IsString()
   @IsNotEmpty()
@@ -75,7 +71,6 @@ export class CreateStoreDto {
 
 export class CreateStoreInputDto extends PickType(CreateStoreDto, [
   'store_name',
-  'id_code',
   'id_name',
   'phone',
   'province',
@@ -84,13 +79,10 @@ export class CreateStoreInputDto extends PickType(CreateStoreDto, [
   'town',
   'address',
 ]) {
-  @ApiProperty()
+  @ApiProperty({ description: '店铺名称' })
   store_name: string;
 
-  @ApiProperty()
-  id_code: string;
-
-  @ApiProperty()
+  @ApiProperty({ description: '联系人' })
   id_name: string;
 
   @ApiProperty()

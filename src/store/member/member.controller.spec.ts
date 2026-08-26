@@ -16,6 +16,8 @@ describe('MemberController', () => {
       recharge: jest.fn(),
       findRecharges: jest.fn(),
       findMemberOrders: jest.fn(),
+      findMyMemberships: jest.fn(),
+      findMyMembershipDetail: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -54,6 +56,35 @@ describe('MemberController', () => {
       const result = await controller.findMemberOrders(memberId);
       expect(service.findMemberOrders).toHaveBeenCalledWith(memberId);
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('findMyMemberships', () => {
+    it('should call service with user phone', async () => {
+      const req = { user: { phone: '13800000000' } };
+      (service.findMyMemberships as jest.Mock).mockResolvedValue({
+        needBindPhone: false,
+        list: [],
+      });
+      const result = await controller.findMyMemberships(req as any);
+      expect(service.findMyMemberships).toHaveBeenCalledWith('13800000000');
+      expect(result.list).toEqual([]);
+    });
+  });
+
+  describe('findMyMembershipDetail', () => {
+    it('should call service with memberId and phone', async () => {
+      const req = { user: { phone: '13800000000' } };
+      (service.findMyMembershipDetail as jest.Mock).mockResolvedValue({
+        member: { memberId: 'm1' },
+        orders: [],
+        recharges: [],
+      });
+      await controller.findMyMembershipDetail('m1', req as any);
+      expect(service.findMyMembershipDetail).toHaveBeenCalledWith(
+        'm1',
+        '13800000000',
+      );
     });
   });
 });

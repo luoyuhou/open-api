@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Req,
 } from '@nestjs/common';
 import { MemberService } from './member.service';
 import { CreateMemberDto } from './dto/create-member.dto';
@@ -15,12 +16,28 @@ import { UpdateMemberDto } from './dto/update-member.dto';
 import { CreateRechargeDto } from './dto/create-recharge.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
+import { UserEntity } from '../../users/entities/user.entity';
 
 @UseGuards(SessionAuthGuard)
 @Controller('store/member')
 @ApiTags('store/member')
 export class MemberController {
   constructor(private readonly memberService: MemberService) {}
+
+  @Get('mine')
+  @ApiOperation({ summary: '当前用户在各店的会员列表（按绑定手机号）' })
+  findMyMemberships(@Req() req: { user: UserEntity }) {
+    return this.memberService.findMyMemberships(req.user?.phone);
+  }
+
+  @Get('mine/:memberId')
+  @ApiOperation({ summary: '我的某店会员详情（消费+充值）' })
+  findMyMembershipDetail(
+    @Param('memberId') memberId: string,
+    @Req() req: { user: UserEntity },
+  ) {
+    return this.memberService.findMyMembershipDetail(memberId, req.user?.phone);
+  }
 
   @Post('recharge')
   @ApiOperation({ summary: '会员充值' })

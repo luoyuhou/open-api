@@ -30,5 +30,6 @@ describe('UsersService', () => {
 
     const user = await service.createByWechat(userInfo, openId);
     expect(user?.first_name).toBe(`nickName-${openId}`);
+    expect(user?.phone).toMatch(/^tmp\d+$/);
   });
 });

@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsArray, IsInt, Min, Max } from 'class-validator';
+import {
+  IsNumber,
+  IsArray,
+  IsInt,
+  Min,
+  Max,
+  IsOptional,
+} from 'class-validator';
 
 export class UpdateStoreSettingsDto {
   @ApiProperty({ description: '每元消费可得积分' })
@@ -18,4 +25,15 @@ export class UpdateStoreSettingsDto {
   @Min(1, { each: true })
   @Max(31, { each: true })
   redemptionDays: number[];
+
+  @ApiProperty({
+    description: '会员默认折扣（折），10为不打折，如8.5表示八五折',
+    required: false,
+    default: 10,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0.1)
+  @Max(10)
+  memberDiscountRate?: number;
 }

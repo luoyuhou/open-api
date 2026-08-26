@@ -45,7 +45,6 @@ describe('StoreController', () => {
       const mockRequest = { user: mockUser } as unknown as Request;
       const dto: CreateStoreInputDto = {
         store_name: 'Store',
-        id_code: 'id_code',
         id_name: 'id_name',
         phone: 'phone',
         province: '123',

@@ -28,6 +28,10 @@ describe('MemberService', () => {
             user_order: {
               findMany: jest.fn(),
             },
+            store: {
+              findMany: jest.fn(),
+              findUnique: jest.fn(),
+            },
             $transaction: jest.fn((callback) => callback(prisma)),
           },
         },
@@ -99,12 +103,45 @@ describe('MemberService', () => {
           money: 10000,
           create_date: new Date(),
           payment_method: 'balance',
+          points_used: 50,
+          points_earn: 10,
         },
       ]);
 
       const result = await service.findMemberOrders('m1');
       expect(result[0].totalAmount).toBe('100.00');
+      expect(result[0].pointsUsed).toBe(50);
+      expect(result[0].pointsEarn).toBe(10);
       expect(result[0].status).toBe('completed');
+    });
+  });
+
+  describe('findMyMemberships', () => {
+    it('未绑定手机号时返回 needBindPhone', async () => {
+      const result = await service.findMyMemberships('tmp123');
+      expect(result.needBindPhone).toBe(true);
+      expect(result.list).toEqual([]);
+    });
+
+    it('应返回各店会员列表', async () => {
+      (prisma as any).store_member.findMany.mockResolvedValue([
+        {
+          member_id: 'm1',
+          store_id: 's1',
+          name: '张三',
+          balance: 10000,
+          points: 200,
+        },
+      ]);
+      (prisma.store.findMany as jest.Mock).mockResolvedValue([
+        { store_id: 's1', store_name: '测试店' },
+      ]);
+
+      const result = await service.findMyMemberships('13800000000');
+      expect(result.needBindPhone).toBe(false);
+      expect(result.list).toHaveLength(1);
+      expect(result.list[0].storeName).toBe('测试店');
+      expect(result.list[0].balance).toBe(100);
     });
   });
 });

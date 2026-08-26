@@ -7,7 +7,6 @@ export class UpdateStoreDto extends PickType(CreateStoreDto, [
   'user_id',
   'store_name',
   'id_name',
-  'id_code',
   'user_id',
   'phone',
   'province',
@@ -21,11 +20,8 @@ export class UpdateStoreDto extends PickType(CreateStoreDto, [
   @ApiProperty()
   store_name: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '联系人' })
   id_name: string;
-
-  @ApiProperty()
-  id_code: string;
 
   @ApiProperty({ required: false, description: '微信收款码 URL' })
   @IsString()

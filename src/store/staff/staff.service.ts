@@ -2,12 +2,14 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateStaffDto } from './dto/create-staff.dto';
 
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { v4 as uuidv4 } from 'uuid';
+import Utils from '../../common/utils';
 
 @Injectable()
 export class StaffService {
@@ -15,13 +17,18 @@ export class StaffService {
 
   async create(createStaffDto: CreateStaffDto) {
     const { store_id, phone } = createStaffDto;
+    const normalizedPhone = String(phone || '').trim();
+
+    if (!Utils.isRealMobilePhone(normalizedPhone)) {
+      throw new BadRequestException('请输入有效的11位手机号，不能使用临时账号');
+    }
 
     // Check if staff already exists in this store
     const existingStaff = await this.prisma.store_staff.findUnique({
       where: {
         store_id_phone: {
           store_id,
-          phone,
+          phone: normalizedPhone,
         },
       },
     });
@@ -34,6 +41,7 @@ export class StaffService {
       data: {
         staff_id: uuidv4(),
         ...createStaffDto,
+        phone: normalizedPhone,
       },
     });
   }

@@ -35,7 +35,6 @@ import { QrCodeStatus } from './dto/qr-login.dto';
 import { Request } from 'express';
 import Utils from '../common/utils';
 import { SmsService } from '../common/sms/sms.service';
-import customLogger from '../common/logger';
 
 @Injectable()
 export class AuthService {
@@ -73,6 +72,15 @@ export class AuthService {
     return this.prisma.user_signin_wechat.findFirst({
       where: { user_id },
     });
+  }
+
+  /** 从数据库读取最新用户（避免 session 快照过期） */
+  public async getUserById(user_id: string) {
+    const user = await this.prisma.user.findUnique({ where: { user_id } });
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+    return new UserEntity(user);
   }
 
   public async createUserByPassword(createUserDto: CreateUserByPasswordDto) {
@@ -119,98 +127,90 @@ export class AuthService {
     return this.jwtService.sign(user);
   }
 
-  public async loginByWxPhone(wxPhoneLoginDto: WxPhoneLoginDto) {
-    const { phone, smsCode, openid } = wxPhoneLoginDto;
+  private getAppIdAndSecretByAppType(appType: 'user' | 'cashier' = 'user') {
+    const appId = appType === 'cashier' ? env.CASHIER_WX_APP_ID : env.WX_APP_ID;
+    const secret =
+      appType === 'cashier' ? env.CASHIER_WX_SECRET : env.WX_SECRET;
 
-    // 1. 校验短信验证码
+    return { appId, secret };
+  }
+
+  /** 通过 wx.login code 解析 openid */
+  public async getOpenidFromCode(
+    code: string,
+    appType: 'user' | 'cashier' = 'user',
+  ): Promise<string> {
+    const { appId, secret } = this.getAppIdAndSecretByAppType(appType);
+    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
+    const response = await fetchClient.get<any>(url);
+    if (response.errcode) {
+      throw new BadRequestException(
+        `WeChat API error: ${response.errmsg} (code: ${response.errcode})`,
+      );
+    }
+    if (!response.openid) {
+      throw new BadRequestException('无法获取微信身份');
+    }
+    return response.openid as string;
+  }
+
+  /**
+   * 手机号 + 短信验证码登录。
+   * 只按手机号找/建用户，完全忽略微信 openid，绝不修改其他账号的手机号。
+   */
+  public async loginByWxPhone(wxPhoneLoginDto: WxPhoneLoginDto) {
+    const { phone, smsCode } = wxPhoneLoginDto;
+
     if (process.env.IS_UNIT_TEST !== 'true') {
       await this.verifySmsCode(phone, smsCode);
     }
 
-    // 2. 查找是否已有该手机号的用户
+    if (!Utils.isRealMobilePhone(phone)) {
+      throw new BadRequestException('请输入有效手机号');
+    }
+
     const user = await this.prisma.user.findUnique({ where: { phone } });
 
-    // 3. 查找当前的 openid 绑定情况
-    const userSignWechat = await this.prisma.user_signin_wechat.findUnique({
-      where: { openid },
-    });
-
     if (user) {
-      // 场景 A：手机号对应的用户已存在（可能在其他小程序登录过，或者之前通过手机号注册过）
-      if (userSignWechat) {
-        if (userSignWechat.user_id !== user.user_id) {
-          const oldUserId = userSignWechat.user_id;
-          // 将该幽灵用户关联的所有微信记录（可能包含多个小程序的 openid）全部迁移到真实用户下
-          await this.prisma.user_signin_wechat.updateMany({
-            where: { user_id: oldUserId },
-            data: { user_id: user.user_id },
-          });
-
-          // 清理幽灵用户：如果旧用户的手机号是自动生成的（长度大于11位），则认为它是幽灵用户，可以删除
-          const oldUser = await this.prisma.user.findUnique({
-            where: { user_id: oldUserId },
-          });
-          if (oldUser && oldUser.phone && oldUser.phone.length > 11) {
-            await this.prisma.user_signin_password
-              .deleteMany({ where: { user_id: oldUserId } })
-              .catch((err) =>
-                customLogger.error({
-                  summary: '删除幽灵用户',
-                  message: '删除密码登录',
-                  err: err.message,
-                }),
-              );
-            await this.prisma.user_auth
-              .deleteMany({ where: { user_id: oldUserId } })
-              .catch((err) =>
-                customLogger.error({
-                  summary: '删除幽灵用户',
-                  message: '删除用户auth',
-                  err: err.message,
-                }),
-              );
-            await this.prisma.user
-              .delete({ where: { user_id: oldUserId } })
-              .catch((err) =>
-                customLogger.error({
-                  summary: '删除幽灵用户',
-                  message: '删除用户',
-                  err: err.message,
-                }),
-              );
-          }
-        }
-      } else {
-        // 如果 openid 还没绑定过
-        await this.prisma.user_signin_wechat.create({
-          data: { openid, user_id: user.user_id },
-        });
-      }
-
-      return { user, openid };
+      return { user, openid: null as string | null };
     }
 
-    // 场景 B：手机号对应的用户不存在（该手机号第一次出现）
-    if (userSignWechat) {
-      // 将当前用户记录的手机号从虚拟值更新为真实手机号
-      const newUser = await this.prisma.user.update({
-        where: { user_id: userSignWechat.user_id },
-        data: { phone },
-      });
-      return { user: newUser, openid };
+    const newUser = await this.usersService.createUserByPhone(phone);
+    return { user: newUser, openid: null as string | null };
+  }
+
+  /** 已登录用户绑定/修正手机号（需短信验证码） */
+  public async bindPhoneForUser(
+    userId: string,
+    phone: string,
+    smsCode: string,
+  ) {
+    if (process.env.IS_UNIT_TEST !== 'true') {
+      await this.verifySmsCode(phone, smsCode);
     }
 
-    // 兜底：创建新用户并绑定 openid 和手机号
-    const newUserCreated = await this.usersService.createByWechat(
-      { nickName: '微信用户', avatarUrl: '' } as any,
-      openid,
-    );
-    const newUser = await this.prisma.user.update({
-      where: { user_id: newUserCreated.user_id },
-      data: { phone },
+    const occupied = await this.prisma.user.findUnique({ where: { phone } });
+    if (occupied && occupied.user_id !== userId) {
+      throw new BadRequestException('该手机号已被其他账号绑定');
+    }
+
+    const current = await this.prisma.user.findUnique({
+      where: { user_id: userId },
     });
+    if (!current) {
+      throw new NotFoundException('用户不存在');
+    }
 
-    return { user: newUser, openid };
+    const first_name = this.usersService.resolveWechatDisplayName(
+      current.first_name,
+      '',
+      phone,
+    );
+
+    return this.prisma.user.update({
+      where: { user_id: userId },
+      data: { phone, first_name },
+    });
   }
 
   private async getUserAuthPassword(user_id: string) {
@@ -279,9 +279,7 @@ export class AuthService {
   }
 
   public async verifyCode(code: string, appType: 'user' | 'cashier' = 'user') {
-    const appId = appType === 'cashier' ? env.CASHIER_WX_APP_ID : env.WX_APP_ID;
-    const secret =
-      appType === 'cashier' ? env.CASHIER_WX_SECRET : env.WX_SECRET;
+    const { appId, secret } = this.getAppIdAndSecretByAppType(appType);
 
     const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
     const response = await fetchClient.get<any>(url);
@@ -333,14 +331,14 @@ export class AuthService {
 
     let userSignWechat = null;
 
-    // 优先使用 unionid 查找用户（跨小程序识别同一用户）
+    // 优先使用 unionId 查找用户（跨小程序识别同一用户）
     if (unionid) {
       userSignWechat = await this.prisma.user_signin_wechat.findFirst({
         where: { unionid },
       });
     }
 
-    // 如果没有找到 unionid 匹配的用户，再尝试使用 openid 查找
+    // 如果没有找到 unionId 匹配的用户，再尝试使用 openid 查找
     if (!userSignWechat) {
       userSignWechat = await this.prisma.user_signin_wechat.findUnique({
         where: { openid },
@@ -352,7 +350,7 @@ export class AuthService {
       user = await this.prisma.user.findUnique({
         where: { user_id: userSignWechat.user_id },
       });
-      // 如果老用户没有 unionid，但当前登录有 unionid，则更新记录
+      // 如果老用户没有 unionId，但当前登录有 unionId，则更新记录
       if (unionid && !userSignWechat.unionid) {
         await this.prisma.user_signin_wechat.update({
           where: { openid },
@@ -603,6 +601,26 @@ export class AuthService {
     await this.cacheService.client.expire(cacheKey, ttl);
 
     return { message: 'ok', user: new UserEntity(user) };
+  }
+
+  /** 检查手机号是否可绑定（是否已被其他真实账号占用） */
+  public async checkPhoneAvailable(phone: string, currentUserId?: string) {
+    const normalized = String(phone || '').trim();
+    if (!Utils.isRealMobilePhone(normalized)) {
+      throw new BadRequestException('请输入有效手机号');
+    }
+
+    const existing = await this.prisma.user.findUnique({
+      where: { phone: normalized },
+    });
+    if (existing && existing.user_id !== currentUserId) {
+      return {
+        available: false,
+        message: '该手机号已绑定账户',
+      };
+    }
+
+    return { available: true, message: 'ok' };
   }
 
   /**

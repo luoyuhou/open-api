@@ -940,3 +940,24 @@ CREATE INDEX "store_finance_record_store_id_record_date_idx" ON "store_finance_r
 -- CreateIndex
 CREATE UNIQUE INDEX "store_finance_record_store_id_type_record_date_item_name_key" ON "store_finance_record"("store_id", "type", "record_date", "item_name");
 
+ALTER TABLE "store" DROP COLUMN "id_code";
+
+-- CreateTable
+CREATE TABLE "store_pay_pending" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "pending_id" TEXT NOT NULL,
+    "store_id" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "payload" TEXT NOT NULL,
+    "order_id" TEXT,
+    "member_id" TEXT,
+    "expire_at" DATETIME NOT NULL,
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "store_pay_pending_pending_id_key" ON "store_pay_pending"("pending_id");
+
+-- CreateIndex
+CREATE INDEX "store_pay_pending_store_id_status_idx" ON "store_pay_pending"("store_id", "status");

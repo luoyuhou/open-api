@@ -11,6 +11,7 @@ import { Pagination } from '../common/dto/pagination';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { UserEntity } from './entities/user.entity';
 import * as moment from 'moment';
+import Utils from '../common/utils';
 
 @Injectable()
 export class UsersService {
@@ -209,20 +210,48 @@ export class UsersService {
     return results;
   }
 
+  /**
+   * 微信常返回统一「微信用户」。优先真实昵称，否则用手机尾号 / openid 后缀区分。
+   */
+  resolveWechatDisplayName(
+    nickName: string | undefined | null,
+    openid: string,
+    phone?: string,
+  ): string {
+    const name = (nickName || '').trim();
+    if (name && name !== '微信用户') {
+      return name;
+    }
+    if (phone && Utils.verifyPhoneNumber(phone)) {
+      return `用户${phone.slice(-4)}`;
+    }
+    const suffix = (openid || '').replace(/[^a-zA-Z0-9]/g, '').slice(-6);
+    return suffix ? `微信用户_${suffix}` : '微信用户';
+  }
+
   public async createByWechat(
     wxUserInfo: WxUserInfo,
     openid: string,
     unionid?: string,
+    phone?: string,
   ) {
     const user_id = this.user_id;
+    const first_name = this.resolveWechatDisplayName(
+      wxUserInfo?.nickName,
+      openid,
+      phone,
+    );
     const user: CreateUserDto = {
       user_id,
-      first_name: wxUserInfo.nickName,
+      first_name,
       last_name: '',
-      phone: new Date().getTime() + '',
+      phone:
+        phone && Utils.isRealMobilePhone(phone)
+          ? phone
+          : Utils.createTempPhone(),
       status: 1,
       email: null,
-      avatar: wxUserInfo.avatarUrl,
+      avatar: wxUserInfo?.avatarUrl || '',
       gender: 0,
       bio: null,
     };
@@ -234,6 +263,27 @@ export class UsersService {
       }),
     ]);
 
+    return user;
+  }
+
+  /** 仅按手机号创建用户（不绑定微信，用于手机号登录且微信已绑其他真实账号时） */
+  public async createUserByPhone(phone: string) {
+    if (!Utils.isRealMobilePhone(phone)) {
+      throw new BadRequestException('请输入有效手机号');
+    }
+    const user_id = this.user_id;
+    const user: CreateUserDto = {
+      user_id,
+      first_name: `用户${phone.slice(-4)}`,
+      last_name: '',
+      phone,
+      status: 1,
+      email: null,
+      avatar: '',
+      gender: 0,
+      bio: null,
+    };
+    await this.prisma.user.create({ data: user });
     return user;
   }
 
