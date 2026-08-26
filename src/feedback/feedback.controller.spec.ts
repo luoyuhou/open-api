@@ -16,6 +16,8 @@ describe('FeedbackController', () => {
     const mockFeedbackService = {
       create: jest.fn(),
       pagination: jest.fn(),
+      listMine: jest.fn(),
+      countSupportPendingForDutyUser: jest.fn(),
       updateStatus: jest.fn(),
       listComments: jest.fn(),
       createComment: jest.fn(),

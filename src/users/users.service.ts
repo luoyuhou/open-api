@@ -289,10 +289,20 @@ export class UsersService {
 
   public async usersPagination(pagination: Pagination) {
     const { pageNum, pageSize, sorted, filtered } = pagination;
-    const where = {};
+    const where: Record<string, unknown> = {};
     filtered.forEach(({ id, value }) => {
+      if (value === undefined || value === null || value === '') return;
       if (Array.isArray(value)) {
         where[id] = { in: value };
+        return;
+      }
+
+      // 手机号 / 姓名支持模糊搜索，便于值班管理员等场景按号检索
+      if (
+        typeof value === 'string' &&
+        (id === 'phone' || id === 'first_name' || id === 'last_name')
+      ) {
+        where[id] = { contains: value };
         return;
       }
 

@@ -45,6 +45,22 @@ export class FeedbackController {
     return this.feedbackService.pagination(pagination);
   }
 
+  @Get('mine')
+  async listMine(@Req() req: Request) {
+    const user = req.user as UserEntity;
+    const data = await this.feedbackService.listMine(user);
+    return { message: 'ok', data };
+  }
+
+  @Get('support-pending-count')
+  async supportPendingCount(@Req() req: Request) {
+    const user = req.user as UserEntity;
+    const count = await this.feedbackService.countSupportPendingForDutyUser(
+      user,
+    );
+    return { count };
+  }
+
   @Patch(':id/status')
   async updateStatus(
     @Param('id') id: string,

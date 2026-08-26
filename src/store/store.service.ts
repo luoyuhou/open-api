@@ -18,12 +18,14 @@ import { ApproverStoreDto } from './dto/approver-store.dto';
 import { Prisma } from '@prisma/client';
 
 import { UpdateStoreSettingsDto } from './dto/store-settings.dto';
+import { PlatformService } from '../platform/platform.service';
 
 @Injectable()
 export class StoreService {
   constructor(
     private prisma: PrismaService,
     private fileService: FileService,
+    private platformService: PlatformService,
   ) {}
 
   public async getSettings(storeId: string) {
@@ -99,7 +101,11 @@ export class StoreService {
   }
 
   public async create(user: UserEntity, createStoreDto: CreateStoreInputDto) {
-    const { store_id: storeId, ...restData } = createStoreDto;
+    const {
+      store_id: storeId,
+      activation_code: activationCode,
+      ...storeFields
+    } = createStoreDto;
 
     if (storeId) {
       // 修改申请逻辑
@@ -122,7 +128,7 @@ export class StoreService {
         this.prisma.store.update({
           where: { store_id: storeId },
           data: {
-            ...restData,
+            ...storeFields,
             status: 0, // 修改后重新回到待处理状态
           },
         }),
@@ -137,8 +143,13 @@ export class StoreService {
         }),
       ]);
 
-      return { store_id: storeId, ...restData };
+      return { store_id: storeId, ...storeFields };
     }
+
+    await this.platformService.assertStoreCreateAllowed(user, activationCode);
+
+    const needsCode = (await this.platformService.getStoreQuotaCheck(user))
+      .needsCode;
 
     // 收银小程序：申请即通过，无需后台审核
     const store_id = 'store-' + v4();
@@ -147,8 +158,8 @@ export class StoreService {
       store_id,
       status: STORE_STATUS_TYPES.APPROVED,
       user_id: user.user_id,
-      ...createStoreDto,
-      town: createStoreDto.town || '',
+      ...storeFields,
+      town: storeFields.town || '',
     });
 
     const applyHistory: ApplicantStoreHistoryInputDto = {
@@ -159,10 +170,10 @@ export class StoreService {
       action_date: new Date(),
     };
 
-    await this.prisma.$transaction([
-      this.prisma.store.create({ data }),
-      this.prisma.store_history.create({ data: applyHistory }),
-      this.prisma.store_history.create({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.store.create({ data });
+      await tx.store_history.create({ data: applyHistory });
+      await tx.store_history.create({
         data: {
           store_id,
           action_user_id: user.user_id,
@@ -171,14 +182,14 @@ export class StoreService {
           action_content: `${user.first_name} ${user.last_name} auto-approved store on apply.`,
           payload: 'auto-approved',
         },
-      }),
-      this.prisma.store_resource.create({
+      });
+      await tx.store_resource.create({
         data: {
           store_id,
           total_quota: freeQuota,
         },
-      }),
-      this.prisma.store_resource_order.create({
+      });
+      await tx.store_resource_order.create({
         data: {
           store_id,
           order_id: `RO-${v4()}`,
@@ -187,8 +198,17 @@ export class StoreService {
           status: 1,
           quota_amount: freeQuota,
         },
-      }),
-    ]);
+      });
+
+      if (needsCode && activationCode) {
+        await this.platformService.redeemStoreCreateCode(
+          user,
+          activationCode,
+          store_id,
+          tx,
+        );
+      }
+    });
 
     return data;
   }

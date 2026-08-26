@@ -108,4 +108,10 @@ export class CreateStoreInputDto extends PickType(CreateStoreDto, [
   @MaxLength(64)
   @ApiProperty({ required: false })
   store_id?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(16)
+  @ApiProperty({ required: false, description: '创建第2个及以后门店时必填' })
+  activation_code?: string;
 }

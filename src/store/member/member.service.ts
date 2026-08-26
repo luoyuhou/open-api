@@ -9,10 +9,14 @@ import { CreateRechargeDto } from './dto/create-recharge.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { v4 } from 'uuid';
 import Utils from '../../common/utils';
+import { PlatformService } from '../../platform/platform.service';
 
 @Injectable()
 export class MemberService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private platformService: PlatformService,
+  ) {}
 
   async create(createMemberDto: CreateMemberDto) {
     const { store_id, phone } = createMemberDto;
@@ -25,6 +29,7 @@ export class MemberService {
       if (existingMember.status === 1) {
         throw new BadRequestException('该手机号已注册为会员');
       } else {
+        await this.platformService.assertCanAddMember(store_id);
         return (this.prisma as any).store_member.update({
           where: { id: existingMember.id },
           data: {
@@ -35,6 +40,8 @@ export class MemberService {
         });
       }
     }
+
+    await this.platformService.assertCanAddMember(store_id);
 
     const memberId = `member-${v4()}`;
 

@@ -961,3 +961,60 @@ CREATE UNIQUE INDEX "store_pay_pending_pending_id_key" ON "store_pay_pending"("p
 
 -- CreateIndex
 CREATE INDEX "store_pay_pending_store_id_status_idx" ON "store_pay_pending"("store_id", "status");
+
+-- AlterTable
+ALTER TABLE `store` ADD COLUMN `extra_member_limit` INTEGER NOT NULL DEFAULT 0;
+
+-- CreateTable
+CREATE TABLE `platform_quota_order` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `order_id` VARCHAR(191) NOT NULL,
+    `user_id` VARCHAR(191) NOT NULL,
+    `phone` VARCHAR(191) NOT NULL,
+    `order_type` VARCHAR(191) NOT NULL,
+    `store_id` VARCHAR(191) NULL,
+    `quota_amount` INTEGER NULL,
+    `amount` INTEGER NOT NULL DEFAULT 0,
+    `status` INTEGER NOT NULL DEFAULT 0,
+    `remark` VARCHAR(191) NULL,
+    `create_date` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `confirm_date` DATETIME(3) NULL,
+    `confirm_user_id` VARCHAR(191) NULL,
+
+    UNIQUE INDEX `platform_quota_order_order_id_key`(`order_id`),
+    INDEX `platform_quota_order_user_id_idx`(`user_id`),
+    INDEX `platform_quota_order_status_idx`(`status`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `platform_activation_code` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `code` VARCHAR(191) NOT NULL,
+    `order_id` VARCHAR(191) NULL,
+    `code_type` VARCHAR(191) NOT NULL,
+    `bound_phone` VARCHAR(191) NOT NULL,
+    `user_id` VARCHAR(191) NULL,
+    `store_id` VARCHAR(191) NULL,
+    `quota_amount` INTEGER NULL,
+    `status` INTEGER NOT NULL DEFAULT 0,
+    `create_date` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `used_date` DATETIME(3) NULL,
+    `used_store_id` VARCHAR(191) NULL,
+
+    UNIQUE INDEX `platform_activation_code_code_key`(`code`),
+    INDEX `platform_activation_code_bound_phone_idx`(`bound_phone`),
+    INDEX `platform_activation_code_status_idx`(`status`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `platform_setting` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `setting_key` VARCHAR(191) NOT NULL,
+    `setting_value` VARCHAR(191) NOT NULL,
+    `update_date` DATETIME(3) NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `platform_setting_setting_key_key`(`setting_key`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
