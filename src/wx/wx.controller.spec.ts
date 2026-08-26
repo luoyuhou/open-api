@@ -60,10 +60,6 @@ describe('WxController', () => {
     wxService = module.get(WxService) as jest.Mocked<WxService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('createOrder', () => {
     it('should create order', async () => {
       const mockUser = { user_id: 'user123' } as UserEntity;

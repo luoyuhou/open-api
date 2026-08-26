@@ -42,10 +42,6 @@ describe('PlatformSettlementService', () => {
     prisma = module.get(PrismaService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
   describe('generateMonthlySettlement', () => {
     it('should skip if settlement already exists', async () => {
       const existingSettlement = { settlement_id: 'p1', month: '2024-01' };

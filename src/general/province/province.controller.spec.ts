@@ -24,10 +24,6 @@ describe('ProvinceController', () => {
     ) as jest.Mocked<ProvinceService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('findAll', () => {
     it('should return all provinces with optional pid filter', async () => {
       const query: SearchProvinceListDto = { pid: '0' };

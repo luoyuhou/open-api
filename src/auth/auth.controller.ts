@@ -15,12 +15,14 @@ import {
   Req,
   UseGuards,
   UseInterceptors,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthEntity } from './entity/auth.entity';
@@ -35,7 +37,12 @@ import { LocalScanAuthGuard } from './guards/local-scan.guard';
 import { Login_SOURCE_TYPES } from './const';
 import { TokenInterceptor } from './interceptors/token.interceptor';
 import customLogger from '../common/logger';
-import { VerifyCodeDot, WxLoginDto, WxPhoneLoginDto } from './dto/login.dto';
+import {
+  VerifyCodeDot,
+  WxLoginDto,
+  WxPhoneLoginDto,
+  BindPhoneDto,
+} from './dto/login.dto';
 import { WxLocalAuthGuard } from './guards/wx-local-auth.guard';
 import { CacheService } from '../common/cache-manager/cache.service';
 import {
@@ -117,7 +124,9 @@ export class AuthController {
     @Req() request: Request,
     @Body() wxPhoneLoginDto: WxPhoneLoginDto,
   ) {
-    const { user } = await this.authService.loginByWxPhone(wxPhoneLoginDto);
+    const { user, openid } = await this.authService.loginByWxPhone(
+      wxPhoneLoginDto,
+    );
 
     // 手动执行登录，以初始化 Session
     await new Promise<void>((resolve, reject) => {
@@ -135,15 +144,74 @@ export class AuthController {
       { ip: Utils.formatIp(ip), useragent },
     );
 
-    return { message: 'ok', data: user };
+    return { message: 'ok', data: user, openid };
+  }
+
+  @Post('wx/bind-phone/send-sms')
+  @UseGuards(SessionAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '绑定手机号：校验未被占用后发送验证码' })
+  async sendBindPhoneSms(
+    @Req() request: Request,
+    @Body() sendSmsDto: SendSmsDto,
+  ) {
+    const user = request.user as UserEntity;
+    const check = await this.authService.checkPhoneAvailable(
+      sendSmsDto.phone,
+      user.user_id,
+    );
+    if (!check.available) {
+      throw new BadRequestException(check.message || '该手机号已绑定账户');
+    }
+    const ip = (request.headers['x-forwarded-for'] as string) || request.ip;
+    return this.authService.sendSmsCode(sendSmsDto.phone, sendSmsDto.token, ip);
+  }
+
+  @Post('wx/bind-phone')
+  @UseGuards(SessionAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: UserEntity })
+  async bindPhone(@Req() request: Request, @Body() bindPhoneDto: BindPhoneDto) {
+    const user = request.user as UserEntity;
+    const updated = await this.authService.bindPhoneForUser(
+      user.user_id,
+      bindPhoneDto.phone,
+      bindPhoneDto.smsCode,
+    );
+    const entity = new UserEntity(updated);
+
+    // 刷新 session，避免后续 /auth/sign-in 仍返回绑定前的手机号
+    await new Promise<void>((resolve, reject) => {
+      request.logIn(entity, (err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
+
+    return { message: 'ok', data: entity };
   }
 
   @Get('sign-in')
   @UseGuards(SessionAuthGuard)
   @ApiOkResponse({ type: UserEntity })
   async getSignedUser(@Req() request: Request) {
-    const user = request.user as UserEntity;
-    const user_id = user.user_id;
+    const sessionUser = request.user as UserEntity;
+    const user_id = sessionUser.user_id;
+
+    // 始终读库，避免 session 里缓存的手机号/昵称过期
+    const user = await this.authService.getUserById(user_id);
+
+    if (
+      user.phone !== sessionUser.phone ||
+      user.first_name !== sessionUser.first_name
+    ) {
+      await new Promise<void>((resolve, reject) => {
+        request.logIn(user, (err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+      });
+    }
 
     const { userAuth, resources } = await this.authService.getCacheResources(
       user_id,

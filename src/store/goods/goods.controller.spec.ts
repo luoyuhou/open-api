@@ -44,10 +44,6 @@ describe('GoodsController', () => {
     goodsService = module.get(GoodsService) as jest.Mocked<GoodsService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('create', () => {
     it('should create goods with version', async () => {
       const dto: CreateGoodDto & CreateGoodsVersionDto = {

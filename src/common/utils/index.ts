@@ -68,6 +68,30 @@ class Utils {
   static verifyPhoneNumber(phone: string) {
     return /^[1][3-9]\d{9}$/.test(phone);
   }
+
+  /** 微信登录等场景下的临时手机号前缀，后台可一眼区分 */
+  static readonly TEMP_PHONE_PREFIX = 'tmp';
+
+  /** 生成临时手机号，例如 tmp1730000000000 */
+  static createTempPhone(): string {
+    return `${Utils.TEMP_PHONE_PREFIX}${Date.now()}`;
+  }
+
+  /** 是否为临时手机号（含历史纯时间戳 / tmp_ 虚拟号） */
+  static isTempPhone(phone?: string | null): boolean {
+    if (!phone) return true;
+    const p = String(phone).trim();
+    if (p.startsWith(Utils.TEMP_PHONE_PREFIX)) return true;
+    // 兼容旧数据：未加前缀的时间戳虚拟号
+    if (/^\d{13}$/.test(p)) return true;
+    return false;
+  }
+
+  /** 是否为真实可用的大陆手机号 */
+  static isRealMobilePhone(phone?: string | null): boolean {
+    if (!phone || Utils.isTempPhone(phone)) return false;
+    return Utils.verifyPhoneNumber(String(phone).trim());
+  }
 }
 
 export default Utils;

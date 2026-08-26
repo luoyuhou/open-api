@@ -4,7 +4,7 @@ import {
   IsString,
   IsOptional,
   IsInt,
-  IsPhoneNumber,
+  Matches,
 } from 'class-validator';
 
 export class CreateStaffDto {
@@ -18,9 +18,10 @@ export class CreateStaffDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ description: '员工手机号' })
+  @ApiProperty({ description: '员工手机号（须为有效大陆手机号）' })
   @IsNotEmpty()
   @IsString()
+  @Matches(/^1[3-9]\d{9}$/, { message: '请输入有效的11位手机号' })
   phone: string;
 
   @ApiPropertyOptional({ description: '关联用户ID' })

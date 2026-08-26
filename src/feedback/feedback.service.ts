@@ -13,15 +13,18 @@ import { UpdateFeedbackStatusDto } from './dto/update-feedback-status.dto';
 import { UserEntity } from '../users/entities/user.entity';
 import { CreateFeedbackCommentDto } from './dto/create-feedback-comment.dto';
 import { FileService } from '../file/file.service';
+import { PlatformService } from '../platform/platform.service';
 
 @Injectable()
 export class FeedbackService {
   private static readonly DAILY_FEEDBACK_LIMIT = 3;
   private static readonly MAX_ATTACHMENTS_PER_FEEDBACK = 5;
+  static readonly SUPPORT_CATEGORY = 'support';
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileService: FileService,
+    private readonly platformService: PlatformService,
   ) {}
 
   private mapAttachmentType(type: FeedbackAttachmentDto['type']): number {
@@ -120,6 +123,40 @@ export class FeedbackService {
     }
 
     return feedback;
+  }
+
+  async countSupportPendingForDutyUser(user: UserEntity): Promise<number> {
+    const dutyIds = await this.platformService.getDutyUserIds();
+    if (!dutyIds.includes(user.user_id)) {
+      return 0;
+    }
+    return this.prisma.user_feedback.count({
+      where: {
+        category: FeedbackService.SUPPORT_CATEGORY,
+        status: 0,
+      },
+    });
+  }
+
+  async listMine(user: UserEntity) {
+    const data = await this.prisma.user_feedback.findMany({
+      where: { user_id: user.user_id },
+      orderBy: { create_date: 'desc' },
+      take: 50,
+    });
+
+    const feedbackIds = data.map((item) => item.feedback_id);
+    const comments = feedbackIds.length
+      ? await this.prisma.user_feedback_comment.findMany({
+          where: { feedback_id: { in: feedbackIds } },
+          orderBy: { create_date: 'asc' },
+        })
+      : [];
+
+    return data.map((item) => ({
+      ...item,
+      comments: comments.filter((c) => c.feedback_id === item.feedback_id),
+    }));
   }
 
   async pagination(pagination: Pagination) {

@@ -29,6 +29,7 @@ import { StoreSubscriptionModule } from './store/store-subscription/store-subscr
 import { StoreResourceModule } from './store/store-resource/store-resource.module';
 import { StoreServiceBillingCronService } from './schedules/store-service-billing.cron';
 import { StoreOrderDailyReportCronService } from './schedules/store-order-daily-report.cron';
+import { PlatformModule } from './platform/platform.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { StoreOrderDailyReportCronService } from './schedules/store-order-daily-
     FeedbackModule,
     StoreSubscriptionModule,
     StoreResourceModule,
+    PlatformModule,
     TerminusModule,
     UsersFetchModule,
     ScheduleModule.forRoot(),

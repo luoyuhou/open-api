@@ -16,6 +16,8 @@ describe('FeedbackController', () => {
     const mockFeedbackService = {
       create: jest.fn(),
       pagination: jest.fn(),
+      listMine: jest.fn(),
+      countSupportPendingForDutyUser: jest.fn(),
       updateStatus: jest.fn(),
       listComments: jest.fn(),
       createComment: jest.fn(),
@@ -32,8 +34,19 @@ describe('FeedbackController', () => {
     ) as jest.Mocked<FeedbackService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
+  describe('supportPendingCount', () => {
+    it('应返回值班管理员的待处理留言数', async () => {
+      const mockUser = { user_id: 'admin-1' } as UserEntity;
+      const mockRequest = { user: mockUser } as unknown as Request;
+      feedbackService.countSupportPendingForDutyUser.mockResolvedValue(3);
+
+      const result = await controller.supportPendingCount(mockRequest);
+
+      expect(
+        feedbackService.countSupportPendingForDutyUser,
+      ).toHaveBeenCalledWith(mockUser);
+      expect(result).toEqual({ count: 3 });
+    });
   });
 
   describe('create', () => {

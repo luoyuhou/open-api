@@ -47,10 +47,6 @@ describe('RoleManagementController', () => {
     ) as jest.Mocked<RoleManagementService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('authPagination', () => {
     it('should return paginated auth list', async () => {
       const pagination: Pagination = {

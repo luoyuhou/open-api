@@ -41,10 +41,6 @@ describe('StoreServiceController', () => {
     ) as jest.Mocked<StoreServiceService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('listPlans', () => {
     it('should list all plans', async () => {
       const mockPlans = [{ plan_id: 'plan-uuid-1', name: 'Basic' }];

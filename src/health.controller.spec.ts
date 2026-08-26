@@ -46,10 +46,6 @@ describe('HealthController', () => {
     prismaService = module.get(PrismaService) as jest.Mocked<PrismaService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('check', () => {
     it('should return health check result with redis up', async () => {
       const mockResult = {

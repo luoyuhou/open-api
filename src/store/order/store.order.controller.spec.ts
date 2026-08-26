@@ -35,10 +35,6 @@ describe('StoreOrderController', () => {
     storeOrderService = module.get(StoreOrderService);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('pagination', () => {
     it('should call service with user ID and pagination', async () => {
       const mockReq = { user: { user_id: 'user123' } } as unknown as Request;

@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CashierService } from './cashier.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MemberService } from '../member/member.service';
+import { StoreService } from '../store.service';
 
 describe('CashierService', () => {
   let service: CashierService;
@@ -40,6 +42,8 @@ describe('CashierService', () => {
             $queryRaw: jest.fn(),
           },
         },
+        { provide: MemberService, useValue: {} },
+        { provide: StoreService, useValue: {} },
       ],
     }).compile();
 
@@ -208,6 +212,52 @@ describe('CashierService', () => {
       const result = await service.pushOrder(dto);
       expect(result[0].status).toBe('error');
       expect(result[0].message).toContain('余额不足');
+    });
+
+    it('实付为0时仅扣积分不扣余额', async () => {
+      const dto = {
+        store_id: 's1',
+        order: {
+          member_id: 'm1',
+          total_amount: 30,
+          payable_amount: 0,
+          points_used: 30,
+          earn_points: 0,
+          payment_method: 'balance',
+          created_at: new Date().toISOString(),
+          items: [],
+        },
+      } as any;
+
+      (prisma as any).store_member.findUnique.mockResolvedValue({
+        member_id: 'm1',
+        balance: 1000,
+        points: 100,
+      });
+      (prisma as any).store_member.update.mockResolvedValue({});
+      (prisma.user_order.create as jest.Mock).mockResolvedValue({
+        order_id: 'o-points-only',
+      });
+
+      const result = await service.pushOrder(dto);
+
+      expect(result[0].status).toBe('success');
+      expect((prisma as any).store_member.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            balance: { decrement: 0 },
+            points: { increment: -30 },
+          }),
+        }),
+      );
+      expect(prisma.user_order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            money: 0,
+            points_used: 30,
+          }),
+        }),
+      );
     });
   });
 });

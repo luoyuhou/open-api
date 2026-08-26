@@ -36,10 +36,6 @@ describe('CategoryController', () => {
     ) as jest.Mocked<CategoryService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('create', () => {
     it('should create category', async () => {
       const mockUser = { user_id: 'user123' } as UserEntity;

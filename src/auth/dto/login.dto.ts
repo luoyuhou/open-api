@@ -71,14 +71,35 @@ export class WxPhoneLoginDto {
   smsCode: string;
 
   @IsString()
-  @IsNotEmpty()
-  @ApiProperty()
-  openid: string;
+  @IsOptional()
+  @ApiProperty({ required: false, description: '微信 openid，与 code 二选一' })
+  openid?: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({
+    required: false,
+    description: 'wx.login code，与 openid 二选一',
+  })
+  code?: string;
 
   @IsString()
   @IsOptional()
   @ApiProperty({ required: false })
   appType?: 'user' | 'cashier';
+}
+
+export class BindPhoneDto {
+  @IsString()
+  @IsNotEmpty()
+  @IsPhoneNumber('CN')
+  @ApiProperty()
+  phone: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty()
+  smsCode: string;
 }
 
 export class WxUserInfo {

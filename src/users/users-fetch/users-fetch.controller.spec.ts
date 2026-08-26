@@ -29,10 +29,6 @@ describe('UsersFetchController', () => {
     ) as jest.Mocked<UsersFetchService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('realtime', () => {
     it('should return realtime user data', async () => {
       const mockUser = { user_id: 'user123' } as UserEntity;

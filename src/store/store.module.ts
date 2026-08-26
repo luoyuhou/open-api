@@ -12,10 +12,12 @@ import { CashierService } from './cashier/cashier.service';
 import { MemberModule } from './member/member.module';
 import { StaffModule } from './staff/staff.module';
 import { FinanceModule } from './finance/finance.module';
+import { PlatformModule } from '../platform/platform.module';
 
 @Module({
   imports: [
     PrismaModule,
+    PlatformModule,
     CategoryModule,
     GoodsModule,
     StoreOrderModule,

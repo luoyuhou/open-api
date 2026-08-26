@@ -30,10 +30,6 @@ describe('HomeBannerController', () => {
     ) as jest.Mocked<HomeBannerService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('pagination', () => {
     it('should return paginated banners', async () => {
       const pagination: Pagination = {

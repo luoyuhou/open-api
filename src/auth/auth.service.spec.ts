@@ -42,10 +42,6 @@ describe('AuthService', () => {
     smsService = module.get<SmsService>(SmsService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
   describe('createUserByPassword and loginByPassword', () => {
     it('Create User | Login by password', async () => {
       const password = 'testPassword123';

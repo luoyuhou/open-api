@@ -1,7 +1,24 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
 import { CashierService } from './cashier.service';
 import { CashierOrderDto } from './dto/cashier-order.dto';
+import {
+  CreatePendingOrderDto,
+  UpdatePendingOrderDto,
+} from './dto/pending-order.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
+import { UserEntity } from '../../users/entities/user.entity';
+import Utils from '../../common/utils';
 
 @ApiTags('商家收银')
 @Controller('store/cashier')
@@ -18,6 +35,64 @@ export class CashierController {
   @ApiOperation({ summary: '批量同步离线订单' })
   async pushOrders(@Body() dto: CashierOrderDto) {
     return await this.cashierService.pushOrder(dto);
+  }
+
+  @Post('pending-order')
+  @ApiOperation({ summary: '创建或更新会员扫码待支付订单' })
+  async createPendingOrder(@Body() dto: CreatePendingOrderDto) {
+    return await this.cashierService.createOrUpdatePendingOrder(dto);
+  }
+
+  @Post('pending-order/:pendingId')
+  @ApiOperation({ summary: '更新会员扫码待支付订单' })
+  async updatePendingOrder(
+    @Param('pendingId') pendingId: string,
+    @Body() dto: UpdatePendingOrderDto,
+  ) {
+    return await this.cashierService.updatePendingOrder(pendingId, dto);
+  }
+
+  @Get('pending-order/:pendingId')
+  @ApiOperation({ summary: '查询待支付订单状态（店员轮询）' })
+  async getPendingOrderStatus(
+    @Param('pendingId') pendingId: string,
+    @Query('storeId') storeId: string,
+  ) {
+    return await this.cashierService.getPendingOrderStatus(pendingId, storeId);
+  }
+
+  @Get('member-pay/:pendingId')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: '会员扫码支付预览' })
+  async getMemberPayPreview(
+    @Param('pendingId') pendingId: string,
+    @Req() request: { user: UserEntity },
+  ) {
+    const user = request.user as UserEntity;
+    if (!Utils.isRealMobilePhone(user.phone)) {
+      throw new BadRequestException('请先绑定手机号后再扫码支付');
+    }
+    return await this.cashierService.getMemberPayPreview(
+      pendingId,
+      String(user.phone).trim(),
+    );
+  }
+
+  @Post('member-pay/:pendingId')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: '会员扫码确认支付' })
+  async memberPay(
+    @Param('pendingId') pendingId: string,
+    @Req() request: { user: UserEntity },
+  ) {
+    const user = request.user as UserEntity;
+    if (!Utils.isRealMobilePhone(user.phone)) {
+      throw new BadRequestException('请先绑定手机号后再扫码支付');
+    }
+    return await this.cashierService.memberPay(
+      pendingId,
+      String(user.phone).trim(),
+    );
   }
 
   @Get('orders/today/:storeId')

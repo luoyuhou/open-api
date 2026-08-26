@@ -55,7 +55,6 @@ model user_signin_wechat {
 model store {
   id            Int       @id @default(autoincrement())
   store_id      String    @unique
-  id_code       String
   id_name       String
   user_id       String
   store_name    String
@@ -67,9 +66,10 @@ model store {
   address       String
   wechat_qr_url String?
   alipay_qr_url String?
-  status        Int       @default(0)
-  create_date   DateTime? @default(now())
-  update_date   DateTime? @default(now())
+  status              Int       @default(0)
+  extra_member_limit  Int       @default(0)
+  create_date         DateTime? @default(now())
+  update_date         DateTime? @default(now())
 }
 
 model store_history {
@@ -755,4 +755,63 @@ model store_finance_record {
   @@unique([store_id, type, record_date, item_name])
   @@index([store_id, type])
   @@index([store_id, record_date])
+}
+
+model store_pay_pending {
+  id          Int       @id @default(autoincrement())
+  pending_id  String    @unique
+  store_id    String
+  status      String    @default("pending") // pending | paid | cancelled | expired
+  payload     String // JSON 订单草稿（金额单位：分）
+  order_id    String?
+  member_id   String?
+  expire_at   DateTime
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@index([store_id, status])
+}
+
+model platform_quota_order {
+  id              Int       @id @default(autoincrement())
+  order_id        String    @unique
+  user_id         String
+  phone           String
+  order_type      String // STORE_CREATE | MEMBER_QUOTA
+  store_id        String?
+  quota_amount    Int?
+  amount          Int       @default(0)
+  status          Int       @default(0) // 0 待处理 1 已确认 2 已取消
+  remark          String?
+  create_date     DateTime  @default(now())
+  confirm_date    DateTime?
+  confirm_user_id String?
+
+  @@index([user_id])
+  @@index([status])
+}
+
+model platform_activation_code {
+  id            Int       @id @default(autoincrement())
+  code          String    @unique
+  order_id      String?
+  code_type     String // STORE_CREATE | MEMBER_QUOTA
+  bound_phone   String
+  user_id       String?
+  store_id      String?
+  quota_amount  Int?
+  status        Int       @default(0) // 0 未使用 1 已使用
+  create_date   DateTime  @default(now())
+  used_date     DateTime?
+  used_store_id String?
+
+  @@index([bound_phone])
+  @@index([status])
+}
+
+model platform_setting {
+  id            Int       @id @default(autoincrement())
+  setting_key   String    @unique
+  setting_value String
+  update_date   DateTime? @default(now())
 }

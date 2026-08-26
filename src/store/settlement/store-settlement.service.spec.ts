@@ -34,10 +34,6 @@ describe('StoreSettlementService', () => {
     prisma = module.get(PrismaService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
   describe('generateMonthlySettlement', () => {
     it('should skip if settlement already exists', async () => {
       const existingSettlement = {

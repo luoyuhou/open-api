@@ -1,12 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CashierOrderDto } from './dto/cashier-order.dto';
+import {
+  CreatePendingOrderDto,
+  PendingOrderPayloadDto,
+  UpdatePendingOrderDto,
+} from './dto/pending-order.dto';
 import { v4 as uuidv4 } from 'uuid';
 import customLogger from '../../common/logger';
+import { MemberService } from '../member/member.service';
+import { StoreService } from '../store.service';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const QRCode = require('qrcode') as typeof import('qrcode');
+
+const PENDING_TTL_MS = 30 * 60 * 1000;
 
 @Injectable()
 export class CashierService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private memberService: MemberService,
+    private storeService: StoreService,
+  ) {}
 
   // 使用 Promise 链实现简单的互斥锁，防止 SQLite 在非 WAL 模式下的写入冲突
   private lockPromise: Promise<any> = Promise.resolve();
@@ -95,10 +110,10 @@ export class CashierService {
             });
 
             if (member) {
+              const payableCents =
+                orderDto.payable_amount ?? orderDto.total_amount ?? 0;
               const balanceDeduction =
-                orderDto.payment_method === 'balance'
-                  ? orderDto.payable_amount || orderDto.total_amount
-                  : 0;
+                orderDto.payment_method === 'balance' ? payableCents : 0;
               const pointsDeduction = orderDto.points_used || 0;
               const pointsAddition = orderDto.earn_points || 0;
 
@@ -118,7 +133,7 @@ export class CashierService {
 
           // 计算抵扣金额
           const totalAmount = orderDto.total_amount || 0;
-          const payableAmount = orderDto.payable_amount || totalAmount;
+          const payableAmount = orderDto.payable_amount ?? totalAmount;
           const discountAmount = totalAmount - payableAmount;
           const discountRate = orderDto.discount_rate ?? 100;
 
@@ -186,7 +201,7 @@ export class CashierService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const count = await this.prisma.user_order.count({
+    return this.prisma.user_order.count({
       where: {
         store_id: storeId,
         create_date: {
@@ -195,8 +210,6 @@ export class CashierService {
         status: 1, // 已完成
       },
     });
-
-    return count;
   }
 
   /** 今日各商品销量（已完成订单明细聚合，不分页） */
@@ -327,7 +340,9 @@ export class CashierService {
           };
         });
 
-      const member = members.find((m) => m.member_id === o.user_id);
+      const member = members.find(
+        (m: { member_id: string }) => m.member_id === o.user_id,
+      );
       const originalAmount = (o.original_amount || o.money) / 100;
       const totalDiscountAmount = (o.discount_amount || 0) / 100;
       const payableAmount = o.money / 100;
@@ -359,5 +374,278 @@ export class CashierService {
         items,
       };
     });
+  }
+
+  private getMemberScanDiscountRate(settings: {
+    memberDiscountRate?: number;
+  }): number {
+    const memberRate = settings.memberDiscountRate ?? 10;
+    if (memberRate >= 10) return 100;
+    return Math.round(memberRate * 10);
+  }
+
+  private isPointsRedemptionDay(settings: {
+    redemptionDays?: number[];
+    redemptionEnabled?: boolean;
+  }): boolean {
+    if (settings.redemptionEnabled === false) return false;
+    const today = new Date().getDate();
+    const redemptionDays = (settings.redemptionDays || [])
+      .map((d) => Number(d))
+      .filter((d) => !Number.isNaN(d) && d >= 1 && d <= 31);
+    return redemptionDays.length === 0 || redemptionDays.includes(today);
+  }
+
+  private calcMemberPayAmounts(
+    payload: PendingOrderPayloadDto,
+    member: { points: number },
+    settings: {
+      redemptionDays?: number[];
+      pointsRedemptionRatio?: number;
+      pointsPerYuan?: number;
+      memberDiscountRate?: number;
+      redemptionEnabled?: boolean;
+    },
+  ) {
+    const totalAmount = payload.total_amount || 0;
+    const discountRate = this.getMemberScanDiscountRate(settings);
+    const discountedTotalCents = Math.round((totalAmount * discountRate) / 100);
+
+    const isRedemptionDay = this.isPointsRedemptionDay(settings);
+    const availablePoints = Number(member.points) || 0;
+
+    let pointsUsed = 0;
+    let pointsDiscountCents = 0;
+
+    if (isRedemptionDay && availablePoints > 0) {
+      const ratio = Number(settings.pointsRedemptionRatio) || 100;
+      // 与结账页一致：支持不足 1 元的积分抵扣（如 50 积分抵 0.5 元）
+      const maxDiscountByPointsCents = Math.round(
+        (availablePoints / ratio) * 100,
+      );
+      pointsDiscountCents = Math.min(
+        discountedTotalCents,
+        maxDiscountByPointsCents,
+      );
+      pointsUsed = Math.round((pointsDiscountCents / 100) * ratio);
+      // 防止四舍五入后超过可用积分
+      if (pointsUsed > availablePoints) {
+        pointsUsed = availablePoints;
+        pointsDiscountCents = Math.round((pointsUsed / ratio) * 100);
+        pointsDiscountCents = Math.min(
+          pointsDiscountCents,
+          discountedTotalCents,
+        );
+      }
+    }
+
+    const payableCents = discountedTotalCents - pointsDiscountCents;
+    const pointsPerYuan = settings.pointsPerYuan || 1;
+    const earnPoints = Math.floor((payableCents / 100) * pointsPerYuan);
+
+    return {
+      discountedTotalCents,
+      pointsUsed,
+      pointsDiscountCents,
+      payableCents,
+      earnPoints,
+      isRedemptionDay,
+      discountRate,
+    };
+  }
+
+  private async buildQrPayload(pendingId: string) {
+    const qrText = `jyb:${pendingId}`;
+    const qrDataUrl = QRCode.toDataURL(qrText, {
+      width: 280,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+    });
+    return { qrText, qrDataUrl };
+  }
+
+  private async getPendingRow(pendingId: string, storeId?: string) {
+    const row = await this.prisma.store_pay_pending.findUnique({
+      where: { pending_id: pendingId },
+    });
+    if (!row) {
+      throw new BadRequestException('待支付订单不存在');
+    }
+    if (storeId && row.store_id !== storeId) {
+      throw new BadRequestException('待支付订单不存在');
+    }
+    if (row.status === 'pending' && row.expire_at < new Date()) {
+      await this.prisma.store_pay_pending.update({
+        where: { pending_id: pendingId },
+        data: { status: 'expired', update_date: new Date() },
+      });
+      row.status = 'expired';
+    }
+    return row;
+  }
+
+  async createOrUpdatePendingOrder(dto: CreatePendingOrderDto) {
+    const expireAt = new Date(Date.now() + PENDING_TTL_MS);
+    const payload = JSON.stringify(dto.order);
+    let pendingId = dto.pending_id;
+
+    if (pendingId) {
+      const existing = await this.getPendingRow(pendingId, dto.store_id);
+      if (existing.status !== 'pending') {
+        throw new BadRequestException('待支付订单已失效');
+      }
+      await this.prisma.store_pay_pending.update({
+        where: { pending_id: pendingId },
+        data: {
+          payload,
+          expire_at: expireAt,
+          update_date: new Date(),
+        },
+      });
+    } else {
+      pendingId = uuidv4();
+      await this.prisma.store_pay_pending.create({
+        data: {
+          pending_id: pendingId,
+          store_id: dto.store_id,
+          status: 'pending',
+          payload,
+          expire_at: expireAt,
+        },
+      });
+    }
+
+    const { qrText, qrDataUrl } = await this.buildQrPayload(pendingId);
+    return {
+      pendingId,
+      qrText,
+      qrDataUrl,
+      status: 'pending',
+      expireAt,
+    };
+  }
+
+  async updatePendingOrder(pendingId: string, dto: UpdatePendingOrderDto) {
+    return this.createOrUpdatePendingOrder({
+      store_id: dto.store_id,
+      order: dto.order,
+      pending_id: pendingId,
+    });
+  }
+
+  async getPendingOrderStatus(pendingId: string, storeId: string) {
+    const row = await this.getPendingRow(pendingId, storeId);
+    return {
+      status: row.status,
+      orderId: row.order_id || null,
+      memberId: row.member_id || null,
+    };
+  }
+
+  private async calcByPendingIdAndPhone(pendingId: string, phone: string) {
+    const row = await this.getPendingRow(pendingId);
+    if (row.status !== 'pending') {
+      throw new BadRequestException('订单已失效或已支付');
+    }
+
+    const member = await this.memberService.findByPhone(row.store_id, phone);
+    if (!member) {
+      throw new BadRequestException('您不是本店会员，请联系店员');
+    }
+
+    const settings = await this.storeService.getSettings(row.store_id);
+    const payload = JSON.parse(row.payload) as PendingOrderPayloadDto;
+    const calc = this.calcMemberPayAmounts(payload, member, settings);
+
+    return { row, payload, calc, settings, member };
+  }
+
+  async getMemberPayPreview(pendingId: string, phone: string) {
+    const { row, payload, calc, settings, member } =
+      await this.calcByPendingIdAndPhone(pendingId, phone);
+    const store = await this.prisma.store.findUnique({
+      where: { store_id: row.store_id },
+      select: { store_name: true },
+    });
+
+    const discountRate = calc.discountRate;
+
+    return {
+      storeId: row.store_id,
+      storeName: store?.store_name || '',
+      pendingId,
+      items: payload.items.map((item) => ({
+        name: item.name,
+        count: item.count,
+        price: item.price / 100,
+      })),
+      totalAmount: payload.total_amount / 100,
+      discountRate: discountRate < 100 ? discountRate / 10 : null,
+      manualDiscountAmount:
+        (payload.total_amount - calc.discountedTotalCents) / 100,
+      discountedTotal: calc.discountedTotalCents / 100,
+      pointsUsed: calc.pointsUsed,
+      pointsDiscountAmount: calc.pointsDiscountCents / 100,
+      pointsRedemptionRatio: Number(settings.pointsRedemptionRatio) || 100,
+      payableAmount: calc.payableCents / 100,
+      earnPoints: calc.earnPoints,
+      memberBalance: member.balance / 100,
+      memberPoints: member.points,
+      memberName: member.name,
+      isRedemptionDay: calc.isRedemptionDay,
+      balanceEnough: member.balance >= calc.payableCents,
+    };
+  }
+
+  async memberPay(pendingId: string, phone: string) {
+    const { row, member, payload, calc } = await this.calcByPendingIdAndPhone(
+      pendingId,
+      phone,
+    );
+
+    if (member.balance < calc.payableCents) {
+      throw new BadRequestException('支付失败，请联系店员充值');
+    }
+
+    const orderDto = {
+      local_id: payload.local_id,
+      member_id: member.member_id,
+      total_amount: payload.total_amount,
+      payable_amount: calc.payableCents,
+      discount_rate: calc.discountRate,
+      payment_method: 'balance',
+      points_used: calc.pointsUsed,
+      earn_points: calc.earnPoints,
+      created_at: payload.created_at,
+      items: payload.items,
+    };
+
+    const [result] = await this.pushOrder({
+      store_id: row.store_id,
+      order: orderDto,
+    });
+
+    if (result.status !== 'success') {
+      throw new BadRequestException(
+        result.message || '支付失败，请联系店员充值',
+      );
+    }
+
+    await this.prisma.store_pay_pending.update({
+      where: { pending_id: pendingId },
+      data: {
+        status: 'paid',
+        order_id: result.remote_id,
+        member_id: member.member_id,
+        update_date: new Date(),
+      },
+    });
+
+    return {
+      orderId: result.remote_id,
+      payableAmount: calc.payableCents / 100,
+      pointsUsed: calc.pointsUsed,
+      earnPoints: calc.earnPoints,
+    };
   }
 }

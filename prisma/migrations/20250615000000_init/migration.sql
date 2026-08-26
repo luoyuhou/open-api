@@ -1,4 +1,4 @@
--- CreateTable
+﻿-- CreateTable
 CREATE TABLE "user" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "user_id" TEXT NOT NULL,
@@ -51,7 +51,6 @@ CREATE TABLE "user_signin_wechat" (
 CREATE TABLE "store" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "store_id" TEXT NOT NULL,
-    "id_code" TEXT NOT NULL,
     "id_name" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
     "store_name" TEXT NOT NULL,
@@ -64,6 +63,7 @@ CREATE TABLE "store" (
     "wechat_qr_url" TEXT,
     "alipay_qr_url" TEXT,
     "status" INTEGER NOT NULL DEFAULT 0,
+    "extra_member_limit" INTEGER NOT NULL DEFAULT 0,
     "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
     "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -703,6 +703,61 @@ CREATE TABLE "store_finance_record" (
     "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- CreateTable
+CREATE TABLE "store_pay_pending" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "pending_id" TEXT NOT NULL,
+    "store_id" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "payload" TEXT NOT NULL,
+    "order_id" TEXT,
+    "member_id" TEXT,
+    "expire_at" DATETIME NOT NULL,
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "platform_quota_order" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "order_id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "order_type" TEXT NOT NULL,
+    "store_id" TEXT,
+    "quota_amount" INTEGER,
+    "amount" INTEGER NOT NULL DEFAULT 0,
+    "status" INTEGER NOT NULL DEFAULT 0,
+    "remark" TEXT,
+    "create_date" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "confirm_date" DATETIME,
+    "confirm_user_id" TEXT
+);
+
+-- CreateTable
+CREATE TABLE "platform_activation_code" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "code" TEXT NOT NULL,
+    "order_id" TEXT,
+    "code_type" TEXT NOT NULL,
+    "bound_phone" TEXT NOT NULL,
+    "user_id" TEXT,
+    "store_id" TEXT,
+    "quota_amount" INTEGER,
+    "status" INTEGER NOT NULL DEFAULT 0,
+    "create_date" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "used_date" DATETIME,
+    "used_store_id" TEXT
+);
+
+-- CreateTable
+CREATE TABLE "platform_setting" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "setting_key" TEXT NOT NULL,
+    "setting_value" TEXT NOT NULL,
+    "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "user_user_id_key" ON "user"("user_id");
 
@@ -939,4 +994,31 @@ CREATE INDEX "store_finance_record_store_id_record_date_idx" ON "store_finance_r
 
 -- CreateIndex
 CREATE UNIQUE INDEX "store_finance_record_store_id_type_record_date_item_name_key" ON "store_finance_record"("store_id", "type", "record_date", "item_name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "store_pay_pending_pending_id_key" ON "store_pay_pending"("pending_id");
+
+-- CreateIndex
+CREATE INDEX "store_pay_pending_store_id_status_idx" ON "store_pay_pending"("store_id", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "platform_quota_order_order_id_key" ON "platform_quota_order"("order_id");
+
+-- CreateIndex
+CREATE INDEX "platform_quota_order_user_id_idx" ON "platform_quota_order"("user_id");
+
+-- CreateIndex
+CREATE INDEX "platform_quota_order_status_idx" ON "platform_quota_order"("status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "platform_activation_code_code_key" ON "platform_activation_code"("code");
+
+-- CreateIndex
+CREATE INDEX "platform_activation_code_bound_phone_idx" ON "platform_activation_code"("bound_phone");
+
+-- CreateIndex
+CREATE INDEX "platform_activation_code_status_idx" ON "platform_activation_code"("status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "platform_setting_setting_key_key" ON "platform_setting"("setting_key");
 

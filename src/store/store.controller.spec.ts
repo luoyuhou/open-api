@@ -35,17 +35,12 @@ describe('StoreController', () => {
     storeService = module.get(StoreService) as jest.Mocked<StoreService>;
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('create', () => {
     it('should create store', async () => {
       const mockUser = { user_id: 'user123' } as UserEntity;
       const mockRequest = { user: mockUser } as unknown as Request;
       const dto: CreateStoreInputDto = {
         store_name: 'Store',
-        id_code: 'id_code',
         id_name: 'id_name',
         phone: 'phone',
         province: '123',
