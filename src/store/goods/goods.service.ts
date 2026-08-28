@@ -225,6 +225,48 @@ export class GoodsService {
     return this.prisma.store_goods.findMany({ where: { category_id: id } });
   }
 
+  /** 门店商品管理列表：含在售与已下架，不含已物理删除 */
+  async listByStore(storeId: string) {
+    const goods = await this.prisma.store_goods.findMany({
+      where: { store_id: storeId },
+      orderBy: { rank: 'asc' },
+    });
+
+    if (goods.length === 0) {
+      return [];
+    }
+
+    const goodsIds = goods.map((g) => g.goods_id);
+    const versions = await this.prisma.store_goods_version.findMany({
+      where: { goods_id: { in: goodsIds } },
+      orderBy: { create_date: 'asc' },
+    });
+
+    return goods.map((g) => {
+      const gVersions = versions.filter((v) => v.goods_id === g.goods_id);
+      const first = gVersions[0];
+      const billingMode =
+        first?.unit_name === 'g' || first?.unit_name === '斤'
+          ? 'weight'
+          : 'piece';
+      return {
+        id: g.goods_id,
+        name: g.name,
+        categoryIds: (g.category_id || '').split(',').filter(Boolean),
+        price: (first?.price || 0) / 100,
+        billingMode,
+        status: g.status === E_GOODS_STATUS.active ? 'on' : 'off',
+        rank: g.rank ?? 0,
+        versions: gVersions.map((v) => ({
+          id: v.version_id,
+          name: v.version_number || v.unit_name,
+          price: v.price / 100,
+          barCode: v.bar_code,
+        })),
+      };
+    });
+  }
+
   async findOne(goods_id: string) {
     const goods = await this.prisma.store_goods.findUnique({
       where: { goods_id },
@@ -262,22 +304,20 @@ export class GoodsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // 1. 更新商品基本信息
+      // 1. 更新商品基本信息（未传 category_ids 时不覆盖分类）
       const updatedGoods = await tx.store_goods.update({
         where: { goods_id: id },
         data: {
           ...goodsData,
-          category_id: this.formatCategoryIds(category_ids),
+          ...(category_ids !== undefined
+            ? { category_id: this.formatCategoryIds(category_ids) }
+            : {}),
           status: status !== undefined ? status : undefined,
         },
       });
 
-      // 2. 如果提供了价格或单位，更新第一个版本的信息
-      if (
-        price !== undefined ||
-        unit_name !== undefined ||
-        status !== undefined
-      ) {
+      // 2. 价格/单位更新第一个版本；下架/上架同步全部版本状态
+      if (price !== undefined || unit_name !== undefined) {
         const firstVersion = await tx.store_goods_version.findFirst({
           where: { goods_id: id },
           orderBy: { create_date: 'asc' },
@@ -289,10 +329,16 @@ export class GoodsService {
             data: {
               price: price !== undefined ? Number(price) : undefined,
               unit_name: unit_name !== undefined ? unit_name : undefined,
-              status: status !== undefined ? status : undefined,
             },
           });
         }
+      }
+
+      if (status !== undefined) {
+        await tx.store_goods_version.updateMany({
+          where: { goods_id: id },
+          data: { status },
+        });
       }
 
       return updatedGoods;
@@ -301,15 +347,16 @@ export class GoodsService {
 
   async remove(id: string) {
     const goods = await this.prisma.store_goods.findFirst({
-      where: { goods_id: id, status: E_GOODS_STATUS.active },
+      where: { goods_id: id },
     });
     if (!goods) {
-      throw new BadRequestException('');
+      throw new BadRequestException('商品不存在');
     }
 
-    return this.prisma.store_goods.update({
-      where: { goods_id: id },
-      data: { status: E_GOODS_STATUS.inactive },
+    // 物理删除：与「下架」区分；订单明细已快照商品名，不影响历史订单
+    return this.prisma.$transaction(async (tx) => {
+      await tx.store_goods_version.deleteMany({ where: { goods_id: id } });
+      return tx.store_goods.delete({ where: { goods_id: id } });
     });
   }
 
