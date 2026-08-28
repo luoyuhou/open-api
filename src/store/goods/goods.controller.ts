@@ -77,6 +77,12 @@ export class GoodsController {
     return this.goodsService.findAll(id);
   }
 
+  @Get('store/:storeId')
+  @ApiProperty()
+  async listByStore(@Param('storeId') storeId: string) {
+    return this.goodsService.listByStore(storeId);
+  }
+
   @Get(':id')
   @ApiProperty()
   async findOne(@Param('id') id: string) {

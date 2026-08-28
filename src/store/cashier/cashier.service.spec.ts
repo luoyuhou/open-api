@@ -186,6 +186,7 @@ describe('CashierService', () => {
       expect(pendingPrisma.create).toHaveBeenCalled();
       expect(result.pendingId).toBeDefined();
       expect(result.qrText).toBe(`jyb:${result.pendingId}`);
+      expect(typeof result.qrDataUrl).toBe('string');
       expect(result.qrDataUrl).toMatch(/^data:image\/png;base64,/);
     });
   });

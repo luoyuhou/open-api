@@ -20,6 +20,7 @@ describe('GoodsController', () => {
       goodsVersions: jest.fn(),
       upsertGoodsVersion: jest.fn(),
       findAll: jest.fn(),
+      listByStore: jest.fn(),
       findOne: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),

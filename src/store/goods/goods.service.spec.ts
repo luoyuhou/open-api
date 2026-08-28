@@ -30,12 +30,15 @@ describe('GoodsService', () => {
               findUnique: jest.fn(),
               findMany: jest.fn(),
               count: jest.fn(),
+              delete: jest.fn(),
             },
             store_goods_version: {
               findFirst: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
+              updateMany: jest.fn(),
               findMany: jest.fn(),
+              deleteMany: jest.fn(),
             },
             category_goods: {
               findMany: jest.fn(),
@@ -150,6 +153,104 @@ describe('GoodsService', () => {
         data: expect.objectContaining({
           category_id: 'new-cat1,new-cat2',
         }),
+      });
+    });
+
+    it('仅下架时不应清空分类', async () => {
+      (prisma.store_goods.findFirst as jest.Mock).mockResolvedValue({
+        goods_id: 'g1',
+      });
+      (prisma.store_goods_version.updateMany as jest.Mock).mockResolvedValue({
+        count: 1,
+      });
+
+      await service.update('g1', { status: 0 } as any);
+
+      expect(prisma.store_goods.update).toHaveBeenCalledWith({
+        where: { goods_id: 'g1' },
+        data: expect.objectContaining({
+          status: 0,
+        }),
+      });
+      expect(prisma.store_goods.update).toHaveBeenCalledWith({
+        where: { goods_id: 'g1' },
+        data: expect.not.objectContaining({
+          category_id: expect.anything(),
+        }),
+      });
+      expect(prisma.store_goods_version.updateMany).toHaveBeenCalledWith({
+        where: { goods_id: 'g1' },
+        data: { status: 0 },
+      });
+    });
+  });
+
+  describe('listByStore', () => {
+    it('应返回含在售与下架商品的管理列表', async () => {
+      (prisma.store_goods.findMany as jest.Mock).mockResolvedValue([
+        {
+          goods_id: 'g1',
+          name: '在售',
+          category_id: 'c1',
+          status: 1,
+          rank: 0,
+        },
+        {
+          goods_id: 'g2',
+          name: '下架',
+          category_id: 'c1',
+          status: 0,
+          rank: 1,
+        },
+      ]);
+      (prisma.store_goods_version.findMany as jest.Mock).mockResolvedValue([
+        {
+          goods_id: 'g1',
+          version_id: 'v1',
+          price: 1000,
+          unit_name: '件',
+          version_number: 'v1',
+          bar_code: null,
+        },
+        {
+          goods_id: 'g2',
+          version_id: 'v2',
+          price: 500,
+          unit_name: '斤',
+          version_number: 'v1',
+          bar_code: null,
+        },
+      ]);
+
+      const result = await service.listByStore('s1');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].status).toBe('on');
+      expect(result[1].status).toBe('off');
+      expect(result[1].billingMode).toBe('weight');
+      expect(result[0].price).toBe(10);
+    });
+  });
+
+  describe('remove', () => {
+    it('应物理删除商品及其规格版本', async () => {
+      (prisma.store_goods.findFirst as jest.Mock).mockResolvedValue({
+        goods_id: 'g1',
+      });
+      (prisma.store_goods_version.deleteMany as jest.Mock).mockResolvedValue({
+        count: 1,
+      });
+      (prisma.store_goods.delete as jest.Mock).mockResolvedValue({
+        goods_id: 'g1',
+      });
+
+      await service.remove('g1');
+
+      expect(prisma.store_goods_version.deleteMany).toHaveBeenCalledWith({
+        where: { goods_id: 'g1' },
+      });
+      expect(prisma.store_goods.delete).toHaveBeenCalledWith({
+        where: { goods_id: 'g1' },
       });
     });
   });
