@@ -1,4 +1,4 @@
-﻿-- CreateTable
+-- CreateTable
 CREATE TABLE "user" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "user_id" TEXT NOT NULL,
@@ -165,6 +165,11 @@ CREATE TABLE "user_order" (
     "discount_amount" INTEGER DEFAULT 0,
     "points_used" INTEGER DEFAULT 0,
     "points_earn" INTEGER DEFAULT 0,
+    "refunded_amount" INTEGER NOT NULL DEFAULT 0,
+    "refund_clear_points" INTEGER NOT NULL DEFAULT 0,
+    "operator_type" TEXT,
+    "operator_staff_id" TEXT,
+    "operator_name" TEXT,
     "phone" TEXT NOT NULL,
     "province" TEXT NOT NULL,
     "city" TEXT NOT NULL,
@@ -174,6 +179,17 @@ CREATE TABLE "user_order" (
     "delivery_date" DATETIME NOT NULL,
     "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
     "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "store_order_refund" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "refund_id" TEXT NOT NULL,
+    "store_id" TEXT NOT NULL,
+    "order_id" TEXT NOT NULL,
+    "amount" INTEGER NOT NULL,
+    "payment_method" TEXT,
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -677,6 +693,25 @@ CREATE TABLE "store_staff" (
     "name" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
     "status" INTEGER NOT NULL DEFAULT 1,
+    "can_cashier" INTEGER NOT NULL DEFAULT 1,
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "store_attendance" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "attendance_id" TEXT NOT NULL,
+    "store_id" TEXT NOT NULL,
+    "staff_id" TEXT NOT NULL,
+    "work_date" TEXT NOT NULL,
+    "check_in_at" DATETIME,
+    "check_out_at" DATETIME,
+    "check_in_type" TEXT,
+    "check_out_type" TEXT,
+    "check_in_by" TEXT,
+    "check_out_by" TEXT,
+    "remark" TEXT,
     "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
     "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -692,6 +727,7 @@ CREATE TABLE "store_finance_record" (
     "alipay" INTEGER NOT NULL DEFAULT 0,
     "wechat" INTEGER NOT NULL DEFAULT 0,
     "cash" INTEGER NOT NULL DEFAULT 0,
+    "takeaway_amount" INTEGER NOT NULL DEFAULT 0,
     "amount" INTEGER NOT NULL DEFAULT 0,
     "rent_amount" INTEGER NOT NULL DEFAULT 0,
     "water_volume" REAL NOT NULL DEFAULT 0,
@@ -799,6 +835,15 @@ CREATE UNIQUE INDEX "store_goods_version_goods_id_unit_name_bar_code_key" ON "st
 
 -- CreateIndex
 CREATE UNIQUE INDEX "user_order_order_id_key" ON "user_order"("order_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "store_order_refund_refund_id_key" ON "store_order_refund"("refund_id");
+
+-- CreateIndex
+CREATE INDEX "store_order_refund_store_id_create_date_idx" ON "store_order_refund"("store_id", "create_date");
+
+-- CreateIndex
+CREATE INDEX "store_order_refund_order_id_idx" ON "store_order_refund"("order_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "user_order_info_order_info_id_key" ON "user_order_info"("order_info_id");
@@ -982,6 +1027,18 @@ CREATE UNIQUE INDEX "store_staff_staff_id_key" ON "store_staff"("staff_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "store_staff_store_id_phone_key" ON "store_staff"("store_id", "phone");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "store_attendance_attendance_id_key" ON "store_attendance"("attendance_id");
+
+-- CreateIndex
+CREATE INDEX "store_attendance_store_id_work_date_idx" ON "store_attendance"("store_id", "work_date");
+
+-- CreateIndex
+CREATE INDEX "store_attendance_staff_id_idx" ON "store_attendance"("staff_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "store_attendance_store_id_staff_id_work_date_key" ON "store_attendance"("store_id", "staff_id", "work_date");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "store_finance_record_record_id_key" ON "store_finance_record"("record_id");

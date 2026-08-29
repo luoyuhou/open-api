@@ -15,6 +15,7 @@ import {
   CreatePendingOrderDto,
   UpdatePendingOrderDto,
 } from './dto/pending-order.dto';
+import { RefundOrderDto } from './dto/refund-order.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
 import { UserEntity } from '../../users/entities/user.entity';
@@ -32,9 +33,13 @@ export class CashierController {
   }
 
   @Post('order')
-  @ApiOperation({ summary: '批量同步离线订单' })
-  async pushOrders(@Body() dto: CashierOrderDto) {
-    return await this.cashierService.pushOrder(dto);
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: '提交收银结算订单' })
+  async pushOrders(
+    @Body() dto: CashierOrderDto,
+    @Req() request: { user: UserEntity },
+  ) {
+    return await this.cashierService.pushOrder(dto, request.user);
   }
 
   @Post('pending-order')
@@ -129,6 +134,19 @@ export class CashierController {
       parseInt(pageSize, 10),
       { phone },
     );
+  }
+
+  @Post('order/:orderId/refund')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({
+    summary: '店主订单退款：会员退回余额，散客仅登记；积分清理可选',
+  })
+  async refundOrder(
+    @Param('orderId') orderId: string,
+    @Body() dto: RefundOrderDto,
+    @Req() request: { user: UserEntity },
+  ) {
+    return await this.cashierService.refundOrder(orderId, request.user, dto);
   }
 
   @Get('sales/today/:storeId')

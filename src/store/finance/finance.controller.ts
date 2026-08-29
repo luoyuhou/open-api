@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { FinanceService } from './finance.service';
 import { UpsertFinanceRecordDto } from './dto/upsert-finance-record.dto';
+import { GenerateDailyRevenueDto } from './dto/generate-daily-revenue.dto';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
 import { E_FINANCE_TYPE } from './const';
@@ -40,6 +41,24 @@ export class FinanceController {
     return this.financeService.getDayDetail(storeId, date);
   }
 
+  @Get(':storeId/generate-preview')
+  @ApiOperation({ summary: '按订单预览生成当日营业额' })
+  generatePreview(
+    @Param('storeId') storeId: string,
+    @Query('date') date: string,
+  ) {
+    return this.financeService.previewGenerateDailyRevenue(storeId, date);
+  }
+
+  @Post('generate')
+  @ApiOperation({ summary: '按订单一键写入当日营业额（保留外卖）' })
+  generate(@Body() dto: GenerateDailyRevenueDto) {
+    return this.financeService.applyGenerateDailyRevenue(
+      dto.store_id,
+      dto.record_date,
+    );
+  }
+
   @Get(':storeId/list')
   @ApiOperation({ summary: '获取店铺财务记录' })
   list(
@@ -51,7 +70,7 @@ export class FinanceController {
     if (!Object.values(E_FINANCE_TYPE).includes(type as any)) {
       return {
         items: [],
-        summary: { alipay: 0, wechat: 0, cash: 0, total: 0 },
+        summary: { alipay: 0, wechat: 0, cash: 0, takeaway: 0, total: 0 },
       };
     }
     return this.financeService.list(

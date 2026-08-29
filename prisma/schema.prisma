@@ -168,17 +168,35 @@ model user_order {
   original_amount Int?      @default(0) // 应收金额（商品原价合计）
   discount_rate   Int?      @default(100) // 折扣率（百分比×10，如85表示8.5折，100表示无折扣）
   discount_amount Int?      @default(0) // 总优惠金额（折扣+积分抵扣）
-  points_used     Int?      @default(0) // 使用积分数量
-  points_earn     Int?      @default(0) // 获得积分数量
-  phone           String
-  province        String
-  city            String
-  area            String
-  town            String
-  address         String
-  delivery_date   DateTime
-  create_date     DateTime? @default(now())
-  update_date     DateTime? @default(now())
+  points_used         Int?      @default(0) // 使用积分数量
+  points_earn         Int?      @default(0) // 获得积分数量
+  refunded_amount     Int       @default(0) // 累计已退回会员余额（分）
+  refund_clear_points Int       @default(0) // 是否已清理本单积分变动 0否 1是
+  operator_type       String?   // staff | owner | customer
+  operator_staff_id   String?   // 店员/店主员工ID，顾客为空
+  operator_name       String?   // 展示名
+  phone               String
+  province            String
+  city                String
+  area                String
+  town                String
+  address             String
+  delivery_date       DateTime
+  create_date         DateTime? @default(now())
+  update_date         DateTime? @default(now())
+}
+
+model store_order_refund {
+  id          Int       @id @default(autoincrement())
+  refund_id   String    @unique
+  store_id    String
+  order_id    String
+  amount      Int       // 本次退款金额（分）
+  payment_method String? // 原单支付方式，便于统计
+  create_date DateTime? @default(now())
+
+  @@index([store_id, create_date])
+  @@index([order_id])
 }
 
 model user_order_info {
@@ -726,10 +744,32 @@ model store_staff {
   name         String
   phone        String
   status       Int       @default(1) // 1: 正常, 0: 禁用
+  can_cashier  Int       @default(1) // 1: 可登录收银台, 0: 仅考勤
   create_date  DateTime? @default(now())
   update_date  DateTime? @default(now())
 
   @@unique([store_id, phone])
+}
+
+model store_attendance {
+  id              Int       @id @default(autoincrement())
+  attendance_id   String    @unique
+  store_id        String
+  staff_id        String
+  work_date       String    // YYYY-MM-DD
+  check_in_at     DateTime?
+  check_out_at    DateTime?
+  check_in_type   String?   // self | owner
+  check_out_type  String?   // self | owner
+  check_in_by     String?   // 操作人 user_id
+  check_out_by    String?
+  remark          String?
+  create_date     DateTime? @default(now())
+  update_date     DateTime? @default(now())
+
+  @@unique([store_id, staff_id, work_date])
+  @@index([store_id, work_date])
+  @@index([staff_id])
 }
 
 model store_finance_record {
@@ -742,6 +782,7 @@ model store_finance_record {
   alipay      Int       @default(0)
   wechat      Int       @default(0)
   cash        Int       @default(0)
+  takeaway_amount Int   @default(0) // 外卖到账（分）
   amount      Int       @default(0)
   rent_amount Int       @default(0)
   water_volume Float    @default(0)

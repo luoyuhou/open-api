@@ -4,6 +4,7 @@ import {
   IsString,
   IsOptional,
   IsInt,
+  IsIn,
   Matches,
 } from 'class-validator';
 
@@ -33,4 +34,13 @@ export class CreateStaffDto {
   @IsOptional()
   @IsInt()
   status?: number;
+
+  @ApiPropertyOptional({
+    description: '收银权限 (1: 可登录收银台, 0: 仅考勤)',
+    default: 0,
+  })
+  @IsOptional()
+  @IsInt()
+  @IsIn([0, 1])
+  can_cashier?: number;
 }

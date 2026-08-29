@@ -35,8 +35,9 @@ describe('CashierController', () => {
   describe('pushOrders', () => {
     it('should call service pushOrder', async () => {
       const dto = { store_id: 's1', order: {} };
-      await controller.pushOrders(dto as any);
-      expect(service.pushOrder).toHaveBeenCalledWith(dto);
+      const user = { user_id: 'u1', phone: '13800000000' };
+      await controller.pushOrders(dto as any, { user } as any);
+      expect(service.pushOrder).toHaveBeenCalledWith(dto, user);
     });
   });
 
