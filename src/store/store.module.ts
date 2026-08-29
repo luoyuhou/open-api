@@ -12,6 +12,7 @@ import { CashierService } from './cashier/cashier.service';
 import { MemberModule } from './member/member.module';
 import { StaffModule } from './staff/staff.module';
 import { FinanceModule } from './finance/finance.module';
+import { AttendanceModule } from './attendance/attendance.module';
 import { PlatformModule } from '../platform/platform.module';
 
 @Module({
@@ -26,6 +27,7 @@ import { PlatformModule } from '../platform/platform.module';
     MemberModule,
     StaffModule,
     FinanceModule,
+    AttendanceModule,
   ],
   controllers: [StoreController, CashierController],
   providers: [StoreService, CashierService],

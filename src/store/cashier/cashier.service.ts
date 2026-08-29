@@ -89,11 +89,29 @@ export class CashierService {
     };
   }
 
-  async pushOrder(dto: CashierOrderDto) {
+  async pushOrder(
+    dto: CashierOrderDto,
+    user?: { user_id: string; phone?: string },
+    operatorOverride?: {
+      operator_type: string;
+      operator_staff_id?: string | null;
+      operator_name: string;
+    },
+  ) {
     return await this.withLock(async () => {
       const results = [];
       const orderDto = dto.order;
       try {
+        const operator =
+          operatorOverride ||
+          (orderDto.operator_type
+            ? {
+                operator_type: orderDto.operator_type,
+                operator_staff_id: orderDto.operator_staff_id || null,
+                operator_name: orderDto.operator_name || '',
+              }
+            : await this.resolveOrderOperator(dto.store_id, user));
+
         // 开启事务处理单个订单
         const order = await this.prisma.$transaction(async (tx) => {
           // 强制在事务开始时获取写入锁，防止后续升级锁时发生死锁
@@ -112,8 +130,11 @@ export class CashierService {
             if (member) {
               const payableCents =
                 orderDto.payable_amount ?? orderDto.total_amount ?? 0;
+              const payMethod = orderDto.payment_method || '';
               const balanceDeduction =
-                orderDto.payment_method === 'balance' ? payableCents : 0;
+                payMethod === 'balance' || payMethod === 'member_scan'
+                  ? payableCents
+                  : 0;
               const pointsDeduction = orderDto.points_used || 0;
               const pointsAddition = orderDto.earn_points || 0;
 
@@ -151,6 +172,9 @@ export class CashierService {
               discount_amount: discountAmount > 0 ? discountAmount : 0,
               points_used: orderDto.points_used || 0,
               points_earn: orderDto.earn_points || 0,
+              operator_type: operator.operator_type,
+              operator_staff_id: operator.operator_staff_id || null,
+              operator_name: operator.operator_name || null,
               recipient: 'CASHIER',
               phone: '',
               province: '',
@@ -160,7 +184,7 @@ export class CashierService {
               address: '线下收银',
               delivery_date: new Date(orderDto.created_at),
               create_date: new Date(orderDto.created_at),
-            },
+            } as any,
           });
 
           if (orderDto.items && orderDto.items.length > 0) {
@@ -195,6 +219,58 @@ export class CashierService {
 
       return results;
     });
+  }
+
+  /** 根据当前登录用户解析订单操作人 */
+  private async resolveOrderOperator(
+    storeId: string,
+    user?: { user_id: string; phone?: string },
+  ) {
+    if (!user?.user_id) {
+      return {
+        operator_type: 'staff',
+        operator_staff_id: null,
+        operator_name: '店员',
+      };
+    }
+
+    const store = await this.prisma.store.findUnique({
+      where: { store_id: storeId },
+      select: { user_id: true },
+    });
+
+    const staff = await (this.prisma as any).store_staff.findFirst({
+      where: {
+        store_id: storeId,
+        status: 1,
+        OR: [
+          { user_id: user.user_id },
+          ...(user.phone ? [{ phone: String(user.phone).trim() }] : []),
+        ],
+      },
+    });
+
+    if (store?.user_id === user.user_id) {
+      return {
+        operator_type: 'owner',
+        operator_staff_id: staff?.staff_id || null,
+        operator_name: '店主',
+      };
+    }
+
+    if (staff) {
+      return {
+        operator_type: 'staff',
+        operator_staff_id: staff.staff_id,
+        operator_name: staff.name || '店员',
+      };
+    }
+
+    return {
+      operator_type: 'staff',
+      operator_staff_id: null,
+      operator_name: user.phone ? String(user.phone) : '店员',
+    };
   }
 
   async getTodayOrderCount(storeId: string): Promise<number> {
@@ -253,16 +329,19 @@ export class CashierService {
     const skip = (page - 1) * pageSize;
     const where: {
       store_id: string;
-      status: number;
+      status?: number | { in: number[] };
       create_date?: { gte: Date };
       user_id?: { in: string[] };
     } = {
       store_id: storeId,
-      status: 1,
+      // 1 已完成（可含部分退款），2 已全额退款
+      status: { in: [1, 2] },
     };
 
     if (options.fromDate) {
       where.create_date = { gte: options.fromDate };
+      // 今日成交/营收不计入已全额退款
+      where.status = 1;
     }
 
     const phone = options.phone?.trim();
@@ -354,6 +433,16 @@ export class CashierService {
         totalDiscountAmount - manualDiscountAmount,
       );
 
+      const refundedAmount = ((o as any).refunded_amount || 0) / 100;
+      const refundableAmount = Math.max(0, payableAmount - refundedAmount);
+      const clearPointsDone = ((o as any).refund_clear_points || 0) === 1;
+      let refundStatus: 'none' | 'partial' | 'full' = 'none';
+      if (o.status === 2 || refundableAmount <= 0) {
+        refundStatus = 'full';
+      } else if (refundedAmount > 0) {
+        refundStatus = 'partial';
+      }
+
       return {
         id: o.order_id,
         memberId: o.user_id,
@@ -361,6 +450,11 @@ export class CashierService {
         memberPhone: member ? member.phone : '',
         totalAmount: originalAmount.toFixed(2),
         payableAmount: payableAmount.toFixed(2),
+        refundedAmount: refundedAmount.toFixed(2),
+        refundableAmount: refundableAmount.toFixed(2),
+        refundStatus,
+        clearPointsDone,
+        canRefund: refundableAmount > 0 && o.status !== 2,
         discountAmount: totalDiscountAmount.toFixed(2),
         manualDiscountAmount: manualDiscountAmount.toFixed(2),
         pointsDiscountAmount: pointsDiscountAmount.toFixed(2),
@@ -369,9 +463,163 @@ export class CashierService {
         pointsUsed: o.points_used || 0,
         earnPoints: o.points_earn || 0,
         createdAt: o.create_date,
-        status: 'completed',
+        status:
+          refundStatus === 'full'
+            ? 'refunded'
+            : refundStatus === 'partial'
+            ? 'partial_refunded'
+            : 'completed',
         paymentMethod: o.payment_method,
+        operatorType: (o as any).operator_type || '',
+        operatorName: (o as any).operator_name || '',
+        operatorStaffId: (o as any).operator_staff_id || '',
         items,
+      };
+    });
+  }
+
+  /**
+   * 店主订单退款（支持部分退款）：
+   * - 会员单：退回账户余额；积分清理可选
+   * - 散客单：仅登记退款（不涉及余额/积分）
+   * amount 单位为元。
+   */
+  async refundOrder(
+    orderId: string,
+    user: { user_id: string },
+    { amount, clear_points }: { amount: number; clear_points?: boolean },
+  ) {
+    const amountCents = Math.round(Number(amount) * 100);
+    if (!Number.isFinite(amountCents) || amountCents <= 0) {
+      throw new BadRequestException('退款金额无效');
+    }
+
+    return this.withLock(async () => {
+      const order = await this.prisma.user_order.findUnique({
+        where: { order_id: orderId },
+      });
+      if (!order) {
+        throw new BadRequestException('订单不存在');
+      }
+      if (order.status !== 1 && order.status !== 2) {
+        throw new BadRequestException('订单状态不可退款');
+      }
+
+      const store = await this.prisma.store.findUnique({
+        where: { store_id: order.store_id },
+      });
+      if (!store || store.user_id !== user.user_id) {
+        throw new BadRequestException('仅门店所有者可操作退款');
+      }
+
+      const alreadyRefunded = (order as any).refunded_amount || 0;
+      const refundable = order.money - alreadyRefunded;
+      if (refundable <= 0 || order.status === 2) {
+        throw new BadRequestException('订单已全额退款');
+      }
+      if (amountCents > refundable) {
+        throw new BadRequestException(
+          `退款金额不能超过可退金额 ¥${(refundable / 100).toFixed(2)}`,
+        );
+      }
+
+      const isGuest = !order.user_id || order.user_id === 'CASHIER_GUEST';
+      let member: {
+        member_id: string;
+        store_id: string;
+        points: number;
+      } | null = null;
+
+      if (!isGuest) {
+        member = await (this.prisma as any).store_member.findUnique({
+          where: { member_id: order.user_id },
+        });
+        if (!member || member.store_id !== order.store_id) {
+          throw new BadRequestException('会员不存在，无法退回余额');
+        }
+      }
+
+      const shouldClearPoints =
+        !isGuest &&
+        !!clear_points &&
+        ((order as any).refund_clear_points || 0) !== 1;
+      const pointsUsed = order.points_used || 0;
+      const pointsEarn = order.points_earn || 0;
+
+      const newRefunded = alreadyRefunded + amountCents;
+      const fullyRefunded = newRefunded >= order.money;
+
+      await this.prisma.$transaction(async (tx) => {
+        if (!isGuest && member) {
+          await (tx as any).store_member.update({
+            where: { member_id: order.user_id },
+            data: {
+              balance: { increment: amountCents },
+              ...(shouldClearPoints
+                ? {
+                    points: {
+                      set: Math.max(
+                        0,
+                        (member.points || 0) + pointsUsed - pointsEarn,
+                      ),
+                    },
+                  }
+                : {}),
+            },
+          });
+
+          // 写入账户流水，供会员交易明细展示（含部分退款）
+          const refundYuan = (amountCents / 100).toFixed(2);
+          const remarkParts = [
+            fullyRefunded ? '订单退款' : '订单部分退款',
+            `¥${refundYuan}`,
+            `单号${orderId}`,
+          ];
+          if (shouldClearPoints) {
+            remarkParts.push('已清积分');
+          }
+          await (tx as any).store_recharge.create({
+            data: {
+              recharge_id: `order-refund-${uuidv4().substring(0, 8)}`,
+              member_id: order.user_id,
+              store_id: order.store_id,
+              amount: amountCents,
+              received_amount: amountCents,
+              cashier_name: '店主退款',
+              remark: remarkParts.join(' '),
+            },
+          });
+        }
+
+        await tx.user_order.update({
+          where: { order_id: orderId },
+          data: {
+            refunded_amount: newRefunded,
+            ...(shouldClearPoints ? { refund_clear_points: 1 } : {}),
+            ...(fullyRefunded ? { status: 2 } : {}),
+            update_date: new Date(),
+          } as any,
+        });
+
+        await (tx as any).store_order_refund.create({
+          data: {
+            refund_id: `refund-log-${uuidv4().substring(0, 8)}`,
+            store_id: order.store_id,
+            order_id: orderId,
+            amount: amountCents,
+            payment_method: order.payment_method || null,
+          },
+        });
+      });
+
+      return {
+        orderId,
+        refundAmount: amountCents / 100,
+        refundedAmount: newRefunded / 100,
+        refundableAmount: Math.max(0, order.money - newRefunded) / 100,
+        clearPoints: shouldClearPoints,
+        toBalance: !isGuest,
+        status: fullyRefunded ? 'refunded' : 'partial_refunded',
       };
     });
   }
@@ -613,17 +861,25 @@ export class CashierService {
       total_amount: payload.total_amount,
       payable_amount: calc.payableCents,
       discount_rate: calc.discountRate,
-      payment_method: 'balance',
+      payment_method: 'member_scan',
       points_used: calc.pointsUsed,
       earn_points: calc.earnPoints,
       created_at: payload.created_at,
       items: payload.items,
     };
 
-    const [result] = await this.pushOrder({
-      store_id: row.store_id,
-      order: orderDto,
-    });
+    const [result] = await this.pushOrder(
+      {
+        store_id: row.store_id,
+        order: orderDto,
+      },
+      undefined,
+      {
+        operator_type: 'customer',
+        operator_staff_id: null,
+        operator_name: '顾客',
+      },
+    );
 
     if (result.status !== 'success') {
       throw new BadRequestException(

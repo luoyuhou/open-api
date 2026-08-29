@@ -14,6 +14,7 @@ import { MemberService } from './member.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { CreateRechargeDto } from './dto/create-recharge.dto';
+import { RefundMemberBalanceDto } from './dto/refund-member-balance.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SessionAuthGuard } from '../../auth/guards/session-auth.guard';
 import { UserEntity } from '../../users/entities/user.entity';
@@ -43,6 +44,16 @@ export class MemberController {
   @ApiOperation({ summary: '会员充值' })
   recharge(@Body() createRechargeDto: CreateRechargeDto) {
     return this.memberService.recharge(createRechargeDto);
+  }
+
+  @Post(':id/refund')
+  @ApiOperation({ summary: '会员账户退费（扣减余额，积分可选清空）' })
+  refundBalance(
+    @Param('id') id: string,
+    @Body() dto: RefundMemberBalanceDto,
+    @Req() req: { user: UserEntity },
+  ) {
+    return this.memberService.refundBalance(id, req.user, dto);
   }
 
   @Get('recharges/:storeId')

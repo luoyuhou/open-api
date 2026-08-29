@@ -23,6 +23,13 @@ export class StaffService {
       throw new BadRequestException('请输入有效的11位手机号，不能使用临时账号');
     }
 
+    const store = await this.prisma.store.findUnique({
+      where: { store_id },
+    });
+    if (!store) {
+      throw new BadRequestException('门店不存在');
+    }
+
     // Check if staff already exists in this store
     const existingStaff = await this.prisma.store_staff.findUnique({
       where: {
@@ -37,11 +44,31 @@ export class StaffService {
       throw new ConflictException('该手机号已在该店铺注册为员工');
     }
 
+    // 若添加的是店主手机号，自动绑定店主 user_id，便于打卡识别
+    let userId = createStaffDto.user_id;
+    if (!userId && store.user_id) {
+      const owner = await this.prisma.user.findUnique({
+        where: { user_id: store.user_id },
+      });
+      const ownerPhone = String(owner?.phone || '').trim();
+      const storePhone = String(store.phone || '').trim();
+      if (
+        (ownerPhone && ownerPhone === normalizedPhone) ||
+        (storePhone && storePhone === normalizedPhone)
+      ) {
+        userId = store.user_id;
+      }
+    }
+
     return this.prisma.store_staff.create({
       data: {
         staff_id: uuidv4(),
-        ...createStaffDto,
+        store_id: createStaffDto.store_id,
+        name: createStaffDto.name,
         phone: normalizedPhone,
+        user_id: userId,
+        status: createStaffDto.status ?? 1,
+        can_cashier: createStaffDto.can_cashier ?? 0,
       },
     });
   }
@@ -70,14 +97,24 @@ export class StaffService {
   }
 
   async update(staffId: string, updateStaffDto: UpdateStaffDto) {
-    await this.findOne(staffId);
+    const staff = await this.findOne(staffId);
+
+    const data: Record<string, unknown> = {
+      update_date: new Date(),
+    };
+    if (updateStaffDto.name != null) data.name = updateStaffDto.name;
+    if (updateStaffDto.phone != null) {
+      data.phone = String(updateStaffDto.phone).trim();
+    }
+    if (updateStaffDto.user_id != null) data.user_id = updateStaffDto.user_id;
+    if (updateStaffDto.status != null) data.status = updateStaffDto.status;
+    if (updateStaffDto.can_cashier != null) {
+      data.can_cashier = updateStaffDto.can_cashier;
+    }
 
     return this.prisma.store_staff.update({
       where: { staff_id: staffId },
-      data: {
-        ...updateStaffDto,
-        update_date: new Date(),
-      },
+      data,
     });
   }
 

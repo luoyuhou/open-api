@@ -6,10 +6,12 @@ import {
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { CreateRechargeDto } from './dto/create-recharge.dto';
+import { RefundMemberBalanceDto } from './dto/refund-member-balance.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { v4 } from 'uuid';
 import Utils from '../../common/utils';
 import { PlatformService } from '../../platform/platform.service';
+import { UserEntity } from '../../users/entities/user.entity';
 
 @Injectable()
 export class MemberService {
@@ -141,6 +143,79 @@ export class MemberService {
           ...dto,
         },
       });
+    });
+  }
+
+  /**
+   * 会员账户退费：扣减余额退还给顾客；积分可清空。
+   * 仅门店所有者可操作。amount 单位为元。
+   */
+  async refundBalance(
+    memberId: string,
+    user: UserEntity,
+    { amount, clear_points }: RefundMemberBalanceDto,
+  ) {
+    const amountCents = Math.round(Number(amount) * 100);
+    if (!Number.isFinite(amountCents) || amountCents <= 0) {
+      throw new BadRequestException('退费金额无效');
+    }
+
+    const member = await (this.prisma as any).store_member.findUnique({
+      where: { member_id: memberId },
+    });
+    if (!member || member.status !== 1) {
+      throw new BadRequestException('会员不存在');
+    }
+
+    const store = await this.prisma.store.findUnique({
+      where: { store_id: member.store_id },
+    });
+    if (!store || store.user_id !== user.user_id) {
+      throw new ForbiddenException('仅门店所有者可操作会员退费');
+    }
+
+    if ((member.balance || 0) < amountCents) {
+      throw new BadRequestException(
+        `退费金额不能超过账户余额 ¥${((member.balance || 0) / 100).toFixed(2)}`,
+      );
+    }
+
+    const shouldClearPoints = !!clear_points;
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await (tx as any).store_member.update({
+        where: { id: member.id },
+        data: {
+          balance: { decrement: amountCents },
+          ...(shouldClearPoints ? { points: 0 } : {}),
+          update_date: new Date(),
+        },
+      });
+
+      const record = await (tx as any).store_recharge.create({
+        data: {
+          recharge_id: `refund-${v4()}`,
+          member_id: memberId,
+          store_id: member.store_id,
+          amount: -amountCents,
+          received_amount: -amountCents,
+          cashier_name: user.first_name
+            ? `${user.first_name}${user.last_name || ''}`
+            : '店主',
+          remark: shouldClearPoints
+            ? `账户退费￥${(amountCents / 100).toFixed(2)}（已清积分）`
+            : `账户退费￥${(amountCents / 100).toFixed(2)}`,
+        },
+      });
+
+      return {
+        memberId,
+        refundAmount: amountCents / 100,
+        balance: updated.balance / 100,
+        points: updated.points,
+        clearPoints: shouldClearPoints,
+        recordId: record.recharge_id,
+      };
     });
   }
 

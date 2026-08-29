@@ -44,6 +44,11 @@ export class UpsertFinanceRecordDto {
 
   @IsOptional()
   @IsNumber()
+  @ApiProperty({ required: false, description: '外卖到账（元）' })
+  takeaway_amount?: number;
+
+  @IsOptional()
+  @IsNumber()
   @ApiProperty({ required: false })
   amount?: number;
 

@@ -77,6 +77,24 @@ class SyncOrderDto {
   })
   discount_rate?: number;
 
+  @IsString()
+  @IsOptional()
+  @ApiProperty({
+    description: '操作人类型 staff|owner|customer',
+    required: false,
+  })
+  operator_type?: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: '操作人员工ID', required: false })
+  operator_staff_id?: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: '操作人展示名', required: false })
+  operator_name?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => StoreOrderItemDetailDto)

@@ -13,6 +13,7 @@ type RawRecord = {
   alipay: number;
   wechat: number;
   cash: number;
+  takeaway_amount?: number;
   amount: number;
   rent_amount: number;
   water_volume: number;
@@ -42,9 +43,10 @@ export class FinanceService {
   }
 
   private formatRecord(record: RawRecord) {
+    const takeaway = record.takeaway_amount || 0;
     const totalRevenue =
       record.type === E_FINANCE_TYPE.daily_revenue
-        ? record.alipay + record.wechat + record.cash
+        ? record.alipay + record.wechat + record.cash + takeaway
         : 0;
 
     const isOverhead = record.type === E_FINANCE_TYPE.monthly_overhead;
@@ -59,6 +61,7 @@ export class FinanceService {
       alipay: this.toYuan(record.alipay),
       wechat: this.toYuan(record.wechat),
       cash: this.toYuan(record.cash),
+      takeaway_amount: this.toYuan(takeaway),
       amount: this.toYuan(record.amount),
       rent_amount: this.toYuan(record.rent_amount),
       water_volume: Number(record.water_volume || 0),
@@ -153,6 +156,7 @@ export class FinanceService {
           acc.alipay += item.alipay;
           acc.wechat += item.wechat;
           acc.cash += item.cash;
+          acc.takeaway += item.takeaway_amount || 0;
           acc.total += item.total;
         } else if (type === E_FINANCE_TYPE.monthly_overhead) {
           acc.rent += item.rent_amount;
@@ -170,6 +174,7 @@ export class FinanceService {
         alipay: 0,
         wechat: 0,
         cash: 0,
+        takeaway: 0,
         rent: 0,
         water: 0,
         electricity: 0,
@@ -189,6 +194,7 @@ export class FinanceService {
         alipay: Number(summary.alipay.toFixed(2)),
         wechat: Number(summary.wechat.toFixed(2)),
         cash: Number(summary.cash.toFixed(2)),
+        takeaway: Number(summary.takeaway.toFixed(2)),
         rent: Number(summary.rent.toFixed(2)),
         water: Number(summary.water.toFixed(2)),
         electricity: Number(summary.electricity.toFixed(2)),
@@ -311,7 +317,8 @@ export class FinanceService {
       const hasValue =
         dto.alipay !== undefined ||
         dto.wechat !== undefined ||
-        dto.cash !== undefined;
+        dto.cash !== undefined ||
+        dto.takeaway_amount !== undefined;
       if (!hasValue) {
         throw new BadRequestException('请填写至少一项营业额');
       }
@@ -347,6 +354,7 @@ export class FinanceService {
       alipay: this.toCents(dto.alipay),
       wechat: this.toCents(dto.wechat),
       cash: this.toCents(dto.cash),
+      takeaway_amount: this.toCents(dto.takeaway_amount),
       amount: totalCents,
       rent_amount: rentCents,
       water_volume: Number(dto.water_volume || 0),
@@ -378,16 +386,22 @@ export class FinanceService {
         }
       }
 
+      const updateData = {
+        ...data,
+        takeaway_amount:
+          dto.takeaway_amount !== undefined
+            ? this.toCents(dto.takeaway_amount)
+            : (existingById as any).takeaway_amount || 0,
+        record_date,
+        type:
+          type === E_FINANCE_TYPE.monthly_overhead
+            ? E_FINANCE_TYPE.monthly_overhead
+            : type,
+      };
+
       const updated = await this.prisma.store_finance_record.update({
         where: { record_id },
-        data: {
-          ...data,
-          record_date,
-          type:
-            type === E_FINANCE_TYPE.monthly_overhead
-              ? E_FINANCE_TYPE.monthly_overhead
-              : type,
-        },
+        data: updateData as any,
       });
       await this.afterFinanceMutation(store_id, [
         record_date,
@@ -411,7 +425,13 @@ export class FinanceService {
     if (existing) {
       const updated = await this.prisma.store_finance_record.update({
         where: { record_id: existing.record_id },
-        data,
+        data: {
+          ...data,
+          takeaway_amount:
+            dto.takeaway_amount !== undefined
+              ? this.toCents(dto.takeaway_amount)
+              : (existing as any).takeaway_amount || 0,
+        } as any,
       });
       await this.afterFinanceMutation(store_id, [record_date]);
       return this.formatRecord(updated as unknown as RawRecord);
@@ -585,7 +605,8 @@ export class FinanceService {
   ) {
     switch (raw.type) {
       case E_FINANCE_TYPE.daily_revenue:
-        bucket.revenue += raw.alipay + raw.wechat + raw.cash;
+        bucket.revenue +=
+          raw.alipay + raw.wechat + raw.cash + (raw.takeaway_amount || 0);
         break;
       case E_FINANCE_TYPE.ingredient_cost:
         bucket.ingredient_cost += raw.amount;
@@ -758,6 +779,158 @@ export class FinanceService {
     };
   }
 
+  /**
+   * 按订单一键生成当日营业额预览：
+   * - 应收=当日订单实付合计；退款按发生日；渠道：cash→现金，member_scan→微信，balance→不计入
+   * - 充值实收计入当日营收（并入微信，避免与余额核销重复）；外卖不参与生成（保留原值）
+   */
+  async previewGenerateDailyRevenue(storeId: string, recordDate: string) {
+    const date = this.normalizeFinanceDate(recordDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new BadRequestException('日期格式无效');
+    }
+
+    const dayStart = new Date(`${date}T00:00:00.000`);
+    const dayEnd = new Date(`${date}T23:59:59.999`);
+
+    const orders = await this.prisma.user_order.findMany({
+      where: {
+        store_id: storeId,
+        status: { in: [1, 2] },
+        create_date: { gte: dayStart, lte: dayEnd },
+        address: '线下收银',
+      },
+      select: {
+        money: true,
+        payment_method: true,
+      },
+    });
+
+    const refunds = await (this.prisma as any).store_order_refund.findMany({
+      where: {
+        store_id: storeId,
+        create_date: { gte: dayStart, lte: dayEnd },
+      },
+      select: {
+        amount: true,
+        payment_method: true,
+      },
+    });
+
+    const recharges = await (this.prisma as any).store_recharge.findMany({
+      where: {
+        store_id: storeId,
+        create_date: { gte: dayStart, lte: dayEnd },
+        amount: { gt: 0 },
+        recharge_id: { startsWith: 'recharge-' },
+      },
+      select: { amount: true },
+    });
+
+    let receivableCents = 0;
+    let cashCents = 0;
+    let wechatCents = 0;
+    let balanceCents = 0;
+
+    orders.forEach((o) => {
+      const money = o.money || 0;
+      receivableCents += money;
+      const method = o.payment_method || '';
+      if (method === 'cash' || method === 'CASHIER_OFFLINE') cashCents += money;
+      else if (method === 'member_scan') wechatCents += money;
+      else if (method === 'balance') balanceCents += money;
+      else cashCents += money; // 未知渠道默认归现金
+    });
+
+    let refundCents = 0;
+    let refundCash = 0;
+    let refundWechat = 0;
+    let refundBalance = 0;
+
+    (refunds || []).forEach(
+      (r: { amount: number; payment_method?: string }) => {
+        const amt = r.amount || 0;
+        refundCents += amt;
+        const method = r.payment_method || '';
+        if (method === 'cash' || method === 'CASHIER_OFFLINE')
+          refundCash += amt;
+        else if (method === 'member_scan') refundWechat += amt;
+        else if (method === 'balance') refundBalance += amt;
+        else refundCash += amt;
+      },
+    );
+
+    const orderCash = Math.max(0, cashCents - refundCash);
+    const orderWechat = Math.max(0, wechatCents - refundWechat);
+    const balanceNet = Math.max(0, balanceCents - refundBalance);
+    const rechargeCents = (recharges || []).reduce(
+      (s: number, r: { amount: number }) => s + (r.amount || 0),
+      0,
+    );
+
+    // 方案一：充值实收计入营收；无渠道字段时默认并入微信（小程序收款场景）
+    const fillCash = orderCash;
+    const fillWechat = orderWechat + rechargeCents;
+    const fillAlipay = 0;
+
+    const existing = await this.prisma.store_finance_record.findFirst({
+      where: {
+        store_id: storeId,
+        type: E_FINANCE_TYPE.daily_revenue,
+        record_date: date,
+        item_name: '',
+      },
+    });
+
+    const existingTakeaway = existing
+      ? this.toYuan((existing as any).takeaway_amount || 0)
+      : 0;
+
+    const netReceivable = Math.max(0, receivableCents - refundCents);
+
+    return {
+      record_date: date,
+      order_count: orders.length,
+      refund_count: (refunds || []).length,
+      receivable: this.toYuan(receivableCents),
+      refund: this.toYuan(refundCents),
+      net: this.toYuan(netReceivable),
+      channels: {
+        alipay: this.toYuan(fillAlipay),
+        wechat: this.toYuan(fillWechat),
+        cash: this.toYuan(fillCash),
+      },
+      channel_detail: {
+        order_wechat: this.toYuan(orderWechat),
+        recharge_to_wechat: this.toYuan(rechargeCents),
+        order_cash: this.toYuan(orderCash),
+      },
+      preview_only: {
+        balance_redeem: this.toYuan(balanceNet),
+      },
+      recharge_received: this.toYuan(rechargeCents),
+      takeaway_amount: existingTakeaway,
+      existing_record_id: existing?.record_id || null,
+      has_existing: !!existing,
+    };
+  }
+
+  /** 确认一键生成：覆盖系统三栏，保留外卖 */
+  async applyGenerateDailyRevenue(storeId: string, recordDate: string) {
+    const preview = await this.previewGenerateDailyRevenue(storeId, recordDate);
+    return this.upsert({
+      store_id: storeId,
+      type: E_FINANCE_TYPE.daily_revenue,
+      record_date: preview.record_date,
+      record_id: preview.existing_record_id || undefined,
+      alipay: preview.channels.alipay,
+      wechat: preview.channels.wechat,
+      cash: preview.channels.cash,
+      takeaway_amount: preview.takeaway_amount,
+      remark: `一键生成：应收¥${preview.receivable} 退款¥${preview.refund} 充值¥${preview.recharge_received}`,
+    });
+  }
+
   /** 某日财务明细（盈亏日历弹窗） */
   async getDayDetail(storeId: string, recordDate: string) {
     const date = this.normalizeFinanceDate(recordDate);
@@ -788,6 +961,9 @@ export class FinanceService {
           if (item.alipay) parts.push(`支付宝 ￥${item.alipay}`);
           if (item.wechat) parts.push(`微信 ￥${item.wechat}`);
           if (item.cash) parts.push(`现金 ￥${item.cash}`);
+          if (item.takeaway_amount) {
+            parts.push(`外卖 ￥${item.takeaway_amount}`);
+          }
           items.push({
             record_id: item.record_id,
             type: item.type,

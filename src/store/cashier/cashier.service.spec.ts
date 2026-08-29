@@ -26,7 +26,9 @@ describe('CashierService', () => {
             },
             user_order: {
               findMany: jest.fn(),
+              findUnique: jest.fn(),
               create: jest.fn(),
+              update: jest.fn(),
             },
             user_order_info: {
               create: jest.fn(),
@@ -36,6 +38,18 @@ describe('CashierService', () => {
               findUnique: jest.fn(),
               findMany: jest.fn(),
               update: jest.fn(),
+            },
+            store_recharge: {
+              create: jest.fn(),
+            },
+            store_order_refund: {
+              create: jest.fn(),
+            },
+            store_staff: {
+              findFirst: jest.fn(),
+            },
+            store: {
+              findUnique: jest.fn(),
             },
             $transaction: jest.fn((callback) => callback(prisma)),
             $executeRawUnsafe: jest.fn(),
@@ -49,6 +63,181 @@ describe('CashierService', () => {
 
     service = module.get<CashierService>(CashierService);
     prisma = module.get<PrismaService>(PrismaService);
+  });
+
+  describe('refundOrder', () => {
+    const owner = { user_id: 'owner-1' };
+    const order = {
+      order_id: 'o1',
+      store_id: 's1',
+      user_id: 'm1',
+      status: 1,
+      money: 1000,
+      points_used: 50,
+      points_earn: 10,
+      refunded_amount: 0,
+      refund_clear_points: 0,
+    };
+
+    it('店主可将部分金额退回会员余额', async () => {
+      (prisma.user_order.findUnique as jest.Mock).mockResolvedValue(order);
+      (prisma.store.findUnique as jest.Mock).mockResolvedValue({
+        store_id: 's1',
+        user_id: 'owner-1',
+      });
+      (prisma as any).store_member.findUnique.mockResolvedValue({
+        member_id: 'm1',
+        store_id: 's1',
+        points: 100,
+        balance: 500,
+      });
+      (prisma as any).store_member.update.mockResolvedValue({});
+      (prisma as any).store_recharge.create.mockResolvedValue({});
+      (prisma as any).store_order_refund.create.mockResolvedValue({});
+      (prisma.user_order.update as jest.Mock).mockResolvedValue({});
+
+      const result = await service.refundOrder('o1', owner, {
+        amount: 3,
+        clear_points: false,
+      });
+
+      expect((prisma as any).store_member.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            balance: { increment: 300 },
+          }),
+        }),
+      );
+      expect((prisma as any).store_recharge.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            member_id: 'm1',
+            store_id: 's1',
+            amount: 300,
+            received_amount: 300,
+            remark: expect.stringContaining('订单部分退款'),
+          }),
+        }),
+      );
+      expect((prisma as any).store_order_refund.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            store_id: 's1',
+            order_id: 'o1',
+            amount: 300,
+          }),
+        }),
+      );
+      expect(prisma.user_order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            refunded_amount: 300,
+          }),
+        }),
+      );
+      expect(result.status).toBe('partial_refunded');
+      expect(result.refundableAmount).toBe(7);
+    });
+
+    it('勾选清理积分时应回退已用并扣回已获', async () => {
+      (prisma.user_order.findUnique as jest.Mock).mockResolvedValue(order);
+      (prisma.store.findUnique as jest.Mock).mockResolvedValue({
+        store_id: 's1',
+        user_id: 'owner-1',
+      });
+      (prisma as any).store_member.findUnique.mockResolvedValue({
+        member_id: 'm1',
+        store_id: 's1',
+        points: 100,
+        balance: 500,
+      });
+      (prisma as any).store_member.update.mockResolvedValue({});
+      (prisma as any).store_recharge.create.mockResolvedValue({});
+      (prisma as any).store_order_refund.create.mockResolvedValue({});
+      (prisma.user_order.update as jest.Mock).mockResolvedValue({});
+
+      await service.refundOrder('o1', owner, {
+        amount: 10,
+        clear_points: true,
+      });
+
+      expect((prisma as any).store_member.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            balance: { increment: 1000 },
+            points: { set: 140 }, // 100 + 50 - 10
+          }),
+        }),
+      );
+      expect((prisma as any).store_recharge.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            amount: 1000,
+            remark: expect.stringMatching(/订单退款.*已清积分/),
+          }),
+        }),
+      );
+      expect(prisma.user_order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            refunded_amount: 1000,
+            refund_clear_points: 1,
+            status: 2,
+          }),
+        }),
+      );
+    });
+
+    it('非店主不可退款', async () => {
+      (prisma.user_order.findUnique as jest.Mock).mockResolvedValue(order);
+      (prisma.store.findUnique as jest.Mock).mockResolvedValue({
+        store_id: 's1',
+        user_id: 'owner-1',
+      });
+
+      await expect(
+        service.refundOrder('o1', { user_id: 'other' }, { amount: 1 }),
+      ).rejects.toThrow('仅门店所有者可操作退款');
+    });
+
+    it('散客订单可部分退款且不涉及余额', async () => {
+      (prisma.user_order.findUnique as jest.Mock).mockResolvedValue({
+        ...order,
+        user_id: 'CASHIER_GUEST',
+      });
+      (prisma.store.findUnique as jest.Mock).mockResolvedValue({
+        store_id: 's1',
+        user_id: 'owner-1',
+      });
+      (prisma.user_order.update as jest.Mock).mockResolvedValue({});
+      (prisma as any).store_order_refund.create.mockResolvedValue({});
+
+      const result = await service.refundOrder('o1', owner, {
+        amount: 4,
+        clear_points: true,
+      });
+
+      expect((prisma as any).store_member.update).not.toHaveBeenCalled();
+      expect((prisma as any).store_recharge.create).not.toHaveBeenCalled();
+      expect((prisma as any).store_order_refund.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            order_id: 'o1',
+            amount: 400,
+          }),
+        }),
+      );
+      expect(prisma.user_order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            refunded_amount: 400,
+          }),
+        }),
+      );
+      expect(result.toBalance).toBe(false);
+      expect(result.clearPoints).toBe(false);
+      expect(result.status).toBe('partial_refunded');
+    });
   });
 
   describe('getSyncData', () => {

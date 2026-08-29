@@ -150,4 +150,103 @@ describe('MemberService', () => {
       expect(result.list[0].balance).toBe(100);
     });
   });
+
+  describe('refundBalance', () => {
+    const owner = {
+      user_id: 'owner-1',
+      first_name: '店',
+      last_name: '主',
+    } as any;
+
+    it('应从会员余额扣减退费金额', async () => {
+      (prisma.store_member.findUnique as jest.Mock).mockResolvedValue({
+        id: 1,
+        member_id: 'm1',
+        store_id: 's1',
+        status: 1,
+        balance: 5000,
+        points: 80,
+      });
+      (prisma.store.findUnique as jest.Mock).mockResolvedValue({
+        store_id: 's1',
+        user_id: 'owner-1',
+      });
+      (prisma.store_member.update as jest.Mock).mockResolvedValue({
+        balance: 2000,
+        points: 80,
+      });
+      (prisma.store_recharge.create as jest.Mock).mockResolvedValue({
+        recharge_id: 'refund-1',
+      });
+
+      const result = await service.refundBalance('m1', owner, {
+        amount: 30,
+        clear_points: false,
+      });
+
+      expect(prisma.store_member.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            balance: { decrement: 3000 },
+          }),
+        }),
+      );
+      expect(result.refundAmount).toBe(30);
+      expect(result.clearPoints).toBe(false);
+    });
+
+    it('勾选清理积分时应将积分清零', async () => {
+      (prisma.store_member.findUnique as jest.Mock).mockResolvedValue({
+        id: 1,
+        member_id: 'm1',
+        store_id: 's1',
+        status: 1,
+        balance: 1000,
+        points: 80,
+      });
+      (prisma.store.findUnique as jest.Mock).mockResolvedValue({
+        store_id: 's1',
+        user_id: 'owner-1',
+      });
+      (prisma.store_member.update as jest.Mock).mockResolvedValue({
+        balance: 0,
+        points: 0,
+      });
+      (prisma.store_recharge.create as jest.Mock).mockResolvedValue({
+        recharge_id: 'refund-2',
+      });
+
+      await service.refundBalance('m1', owner, {
+        amount: 10,
+        clear_points: true,
+      });
+
+      expect(prisma.store_member.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            balance: { decrement: 1000 },
+            points: 0,
+          }),
+        }),
+      );
+    });
+
+    it('非店主不可退费', async () => {
+      (prisma.store_member.findUnique as jest.Mock).mockResolvedValue({
+        id: 1,
+        member_id: 'm1',
+        store_id: 's1',
+        status: 1,
+        balance: 1000,
+      });
+      (prisma.store.findUnique as jest.Mock).mockResolvedValue({
+        store_id: 's1',
+        user_id: 'owner-1',
+      });
+
+      await expect(
+        service.refundBalance('m1', { user_id: 'other' } as any, { amount: 1 }),
+      ).rejects.toThrow('仅门店所有者可操作会员退费');
+    });
+  });
 });

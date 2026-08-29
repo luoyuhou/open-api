@@ -640,6 +640,17 @@ export class StoreService {
       },
     });
 
+    // 绑定尚未关联的 user_id，便于后续考勤识别
+    for (const staff of staffRecords) {
+      if (!staff.user_id && user.user_id) {
+        await (this.prisma as any).store_staff.update({
+          where: { staff_id: staff.staff_id },
+          data: { user_id: user.user_id, update_date: new Date() },
+        });
+        staff.user_id = user.user_id;
+      }
+    }
+
     const staffStoreIds = staffRecords.map((r) => r.store_id);
     const ownedStoreIds = ownedStores.map((s) => s.store_id);
 
@@ -658,15 +669,27 @@ export class StoreService {
       });
     }
 
+    const staffByStore = new Map(
+      staffRecords.map((r) => [r.store_id, r] as const),
+    );
+
     const allStores = [
       ...ownedStores.map((s) => ({
         ...(s instanceof Object ? s : {}),
         role: 'OWNER',
       })),
-      ...otherStores.map((s) => ({
-        ...(s instanceof Object ? s : {}),
-        role: 'STAFF',
-      })),
+      ...otherStores.map((s) => {
+        const staff = staffByStore.get(s.store_id) as
+          | { can_cashier?: number; staff_id?: string }
+          | undefined;
+        const canCashier = (staff?.can_cashier ?? 1) === 1;
+        return {
+          ...(s instanceof Object ? s : {}),
+          role: canCashier ? 'STAFF' : 'EMPLOYEE',
+          staff_id: staff?.staff_id,
+          can_cashier: canCashier ? 1 : 0,
+        };
+      }),
     ];
 
     const ids = allStores.map(({ store_id }) => store_id);
