@@ -258,6 +258,13 @@ export class AuthService {
     const { userAuth, resources } = await this.setCacheResources(
       (user as UserEntity).user_id,
     );
+    // 登记 session，便于在线列表与踢人下线
+    if (request.sessionID) {
+      await this.cacheService.bindOnlineSession(
+        (user as UserEntity).user_id,
+        request.sessionID,
+      );
+    }
     return {
       message: 'ok',
       data: user,
@@ -267,6 +274,17 @@ export class AuthService {
           )
         : resources,
     };
+  }
+
+  /** 小程序等登录后写入在线缓存 + session 映射 */
+  public async establishOnlinePresence(
+    user_id: string,
+    sessionID?: string,
+  ): Promise<void> {
+    await this.setCacheResources(user_id);
+    if (sessionID) {
+      await this.cacheService.bindOnlineSession(user_id, sessionID);
+    }
   }
 
   public async loginUserForWebByPassword(request: Request) {

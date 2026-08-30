@@ -12,7 +12,7 @@ export class SettlementCronService {
   ) {}
 
   // 每月1号凌晨3点生成上个月的商家结算
-  @Cron('0 3 1 * *')
+  @Cron('0 3 1 * *', { name: 'store-monthly-settlement' })
   async generateStoreMonthlySettlement() {
     customLogger.log({ message: '开始生成商家月度结算' });
 
@@ -29,7 +29,7 @@ export class SettlementCronService {
   }
 
   // 每月1号凌晨4点生成上个月的平台结算
-  @Cron('0 4 1 * *')
+  @Cron('0 4 1 * *', { name: 'platform-monthly-settlement' })
   async generatePlatformMonthlySettlement() {
     customLogger.log({ message: '开始生成平台月度结算' });
 

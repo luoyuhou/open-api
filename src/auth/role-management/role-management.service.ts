@@ -478,10 +478,10 @@ export class RoleManagementService {
   public async getOnlineUsersPagination(pagination: Pagination) {
     const { pageNum, pageSize } = pagination;
 
-    // 1. 从 Redis 获取所有在线用户的 user_id
-    const allOnlineUserIds = await this.cacheService.getAllOnlineUserIds();
+    // 1. Redis 中仍有有效 session 的 user_id
+    const sessionOnlineIds = await this.cacheService.getAllOnlineUserIds();
 
-    if (!allOnlineUserIds.length) {
+    if (!sessionOnlineIds.length) {
       return {
         data: [],
         rows: 0,
@@ -489,45 +489,84 @@ export class RoleManagementService {
       };
     }
 
-    // 2. 计算分页
-    const total = allOnlineUserIds.length;
-    const startIndex = pageNum * pageSize;
-    const endIndex = startIndex + pageSize;
-    const paginatedUserIds = allOnlineUserIds.slice(startIndex, endIndex);
-
-    // 3. 从数据库查询用户信息
-    const users = await this.prisma.user.findMany({
-      where: {
-        user_id: { in: paginatedUserIds },
-      },
+    // 2. 只保留库中真实存在的用户；清理幽灵 ID，保证 rows 与 data 一致
+    const existingUsers = await this.prisma.user.findMany({
+      where: { user_id: { in: sessionOnlineIds } },
       select: {
+        id: true,
         user_id: true,
         first_name: true,
         last_name: true,
         phone: true,
         email: true,
+        avatar: true,
       },
     });
+    const existingIdSet = new Set(existingUsers.map((u) => u.user_id));
+    const validOnlineIds = sessionOnlineIds.filter((id) =>
+      existingIdSet.has(id),
+    );
 
-    // 4. 获取每个用户的 session_id
+    for (const ghostId of sessionOnlineIds) {
+      if (!existingIdSet.has(ghostId)) {
+        await this.cacheService.delSessionIdByUserId(ghostId);
+      }
+    }
+
+    if (!validOnlineIds.length) {
+      return {
+        data: [],
+        rows: 0,
+        pages: 0,
+      };
+    }
+
+    // 3. 分页（基于校验后的列表）
+    const total = validOnlineIds.length;
+    const startIndex = pageNum * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedUserIds = validOnlineIds.slice(startIndex, endIndex);
+    const userById = new Map(existingUsers.map((u) => [u.user_id, u]));
+
+    // 4. 最近登录历史（IP / 时间）
+    const histories = await this.prisma.user_signin_history.findMany({
+      where: { user_id: { in: paginatedUserIds } },
+      orderBy: { create_date: 'desc' },
+    });
+    const latestByUser = new Map<string, typeof histories[0]>();
+    for (const h of histories) {
+      if (!latestByUser.has(h.user_id)) {
+        latestByUser.set(h.user_id, h);
+      }
+    }
+
+    // 5. 按分页 ID 顺序组装
     const onlineUsers = await Promise.all(
-      users.map(async (user) => {
+      paginatedUserIds.map(async (userId) => {
+        const user = userById.get(userId);
+        if (!user) return null;
         const sessionId = await this.cacheService.getSessionIdByUserId(
           user.user_id,
         );
+        const hist = latestByUser.get(user.user_id);
         return {
+          id: user.user_id,
           user_id: user.user_id,
           first_name: user.first_name,
           last_name: user.last_name,
           phone: user.phone,
           email: user.email,
+          avatar: user.avatar || null,
           session_id: sessionId || '',
+          ip: hist?.ip || '',
+          login_time: hist?.create_date || null,
+          last_activity: hist?.update_date || hist?.create_date || null,
         };
       }),
     );
 
     return {
-      data: onlineUsers,
+      data: onlineUsers.filter((u): u is NonNullable<typeof u> => u != null),
       rows: total,
       pages: Math.ceil(total / pageSize),
     };

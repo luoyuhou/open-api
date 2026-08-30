@@ -103,13 +103,17 @@ export class AuthController {
     const { user, openid } = await this.authService.loginByWx(wxLoginDto);
 
     if (user) {
-      // 🔑 Guard 已经处理了 request.login() 和 session 保存，这里只记录登录历史
+      // Guard 已 login + 保存 session；这里补登录历史与在线登记
       const ip = (request.headers['x-forwarded-host'] as string) || request.ip;
       const useragent = request.headers['user-agent'];
       this.authService.addLoginHistory(
         (user as UserEntity).user_id,
         Login_SOURCE_TYPES.wechat,
         { ip: Utils.formatIp(ip), useragent },
+      );
+      await this.authService.establishOnlinePresence(
+        (user as UserEntity).user_id,
+        request.sessionID,
       );
     }
 
@@ -132,7 +136,10 @@ export class AuthController {
     await new Promise<void>((resolve, reject) => {
       request.logIn(user, (err) => {
         if (err) return reject(err);
-        resolve();
+        request.session.save((saveErr: Error) => {
+          if (saveErr) return reject(saveErr);
+          resolve();
+        });
       });
     });
 
@@ -142,6 +149,10 @@ export class AuthController {
       (user as UserEntity).user_id,
       Login_SOURCE_TYPES.wechat,
       { ip: Utils.formatIp(ip), useragent },
+    );
+    await this.authService.establishOnlinePresence(
+      (user as UserEntity).user_id,
+      request.sessionID,
     );
 
     return { message: 'ok', data: user, openid };
@@ -212,6 +223,9 @@ export class AuthController {
         });
       });
     }
+
+    // 刷新在线登记（小程序每次进首页会打此接口，避免只登录一次后从在线列表消失）
+    await this.authService.establishOnlinePresence(user_id, request.sessionID);
 
     const { userAuth, resources } = await this.authService.getCacheResources(
       user_id,

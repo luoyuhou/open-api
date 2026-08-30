@@ -14,6 +14,7 @@ import { RoleManagementModule } from './role-management/role-management.module';
 import { WxLocalStrategy } from './strategies/wx-local.strategy';
 import { CacheModule } from '../common/cache-manager/cache.module';
 import { LocalScanStrategy } from './strategies/local-scan.strategy';
+import { SessionAuthGuard } from './guards/session-auth.guard';
 
 @Module({
   imports: [
@@ -35,6 +36,8 @@ import { LocalScanStrategy } from './strategies/local-scan.strategy';
     SessionSerializer,
     WxLocalStrategy,
     LocalScanStrategy,
+    SessionAuthGuard,
   ],
+  exports: [AuthService, SessionAuthGuard],
 })
 export class AuthModule {}

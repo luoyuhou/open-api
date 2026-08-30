@@ -7,8 +7,9 @@ import customLogger from '../common/logger';
 export class StoreServiceBillingCronService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // 每天凌晨 2 点检查，为所有生效中的订阅生成当月账单
-  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  @Cron(CronExpression.EVERY_DAY_AT_2AM, {
+    name: 'store-service-monthly-invoice',
+  })
   async generateMonthlyInvoices() {
     const now = new Date();
     const year = now.getFullYear();

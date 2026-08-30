@@ -34,17 +34,23 @@ export class UsersController {
     return users.map((user: Partial<UserEntity>) => new UserEntity(user));
   }
 
+  @Get('stats/retention-rate')
+  @ApiOkResponse({ description: '获取用户留存率统计' })
+  async getRetentionRate() {
+    return this.usersService.getRetentionRate();
+  }
+
+  @Get('stats/online-count')
+  @ApiOkResponse({ description: '获取近24小时在线人数统计' })
+  async getOnlineCountStats() {
+    return this.usersService.getOnlineCountStats();
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @ApiOkResponse({ type: UserEntity })
   async findOne(@Param('id') id: string) {
     return new UserEntity(await this.usersService.findOne(id));
-  }
-
-  @Get('stats/retention-rate')
-  @ApiOkResponse({ description: '获取用户留存率统计' })
-  async getRetentionRate() {
-    return this.usersService.getRetentionRate();
   }
 
   @Post('pagination')
