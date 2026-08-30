@@ -322,6 +322,16 @@ model report_daily_user_fetch {
   update_date DateTime? @default(now())
 }
 
+/// 平台在线人数采样（每 5 分钟）
+model report_online_user_snapshot {
+  id          Int       @id @default(autoincrement())
+  count       Int
+  sampled_at  DateTime  @unique
+  create_date DateTime? @default(now())
+
+  @@index([sampled_at])
+}
+
 model report_store_daily_order {
   id           Int       @id @default(autoincrement())
   store_id     String

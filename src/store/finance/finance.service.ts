@@ -781,7 +781,7 @@ export class FinanceService {
 
   /**
    * 按订单一键生成当日营业额预览：
-   * - 应收=当日订单实付合计；退款按发生日；渠道：cash→现金，member_scan→微信，balance→不计入
+   * - 应收=当日订单实付合计；退款按发生日；渠道：cash/alipay/wechat/member_scan/balance
    * - 充值实收计入当日营收（并入微信，避免与余额核销重复）；外卖不参与生成（保留原值）
    */
   async previewGenerateDailyRevenue(storeId: string, recordDate: string) {
@@ -829,6 +829,7 @@ export class FinanceService {
 
     let receivableCents = 0;
     let cashCents = 0;
+    let alipayCents = 0;
     let wechatCents = 0;
     let balanceCents = 0;
 
@@ -837,13 +838,16 @@ export class FinanceService {
       receivableCents += money;
       const method = o.payment_method || '';
       if (method === 'cash' || method === 'CASHIER_OFFLINE') cashCents += money;
-      else if (method === 'member_scan') wechatCents += money;
+      else if (method === 'alipay') alipayCents += money;
+      else if (method === 'wechat' || method === 'member_scan')
+        wechatCents += money;
       else if (method === 'balance') balanceCents += money;
-      else cashCents += money; // 未知渠道默认归现金
+      else cashCents += money;
     });
 
     let refundCents = 0;
     let refundCash = 0;
+    let refundAlipay = 0;
     let refundWechat = 0;
     let refundBalance = 0;
 
@@ -854,13 +858,16 @@ export class FinanceService {
         const method = r.payment_method || '';
         if (method === 'cash' || method === 'CASHIER_OFFLINE')
           refundCash += amt;
-        else if (method === 'member_scan') refundWechat += amt;
+        else if (method === 'alipay') refundAlipay += amt;
+        else if (method === 'wechat' || method === 'member_scan')
+          refundWechat += amt;
         else if (method === 'balance') refundBalance += amt;
         else refundCash += amt;
       },
     );
 
     const orderCash = Math.max(0, cashCents - refundCash);
+    const orderAlipay = Math.max(0, alipayCents - refundAlipay);
     const orderWechat = Math.max(0, wechatCents - refundWechat);
     const balanceNet = Math.max(0, balanceCents - refundBalance);
     const rechargeCents = (recharges || []).reduce(
@@ -868,10 +875,9 @@ export class FinanceService {
       0,
     );
 
-    // 方案一：充值实收计入营收；无渠道字段时默认并入微信（小程序收款场景）
     const fillCash = orderCash;
+    const fillAlipay = orderAlipay;
     const fillWechat = orderWechat + rechargeCents;
-    const fillAlipay = 0;
 
     const existing = await this.prisma.store_finance_record.findFirst({
       where: {
@@ -902,6 +908,7 @@ export class FinanceService {
       },
       channel_detail: {
         order_wechat: this.toYuan(orderWechat),
+        order_alipay: this.toYuan(orderAlipay),
         recharge_to_wechat: this.toYuan(rechargeCents),
         order_cash: this.toYuan(orderCash),
       },

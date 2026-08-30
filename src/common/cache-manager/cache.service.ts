@@ -81,11 +81,37 @@ export class CacheService implements OnModuleDestroy {
     }
   }
 
+  public isReady(): boolean {
+    return this.client.status === 'ready';
+  }
+
+  /** 等待 Redis ready；超时返回 false（不抛错） */
+  public async waitUntilReady(timeoutMs = 15000): Promise<boolean> {
+    if (this.isReady()) return true;
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this.client.off('ready', onReady);
+        resolve(ok);
+      };
+      const onReady = () => finish(true);
+      const timer = setTimeout(() => finish(false), timeoutMs);
+      this.client.once('ready', onReady);
+      // 注册监听后再次检查，避免竞态漏掉 ready
+      if (this.isReady()) finish(true);
+    });
+  }
+
   /**
    * 检查 Redis 连接健康状态
    */
   async isHealthy(): Promise<boolean> {
     try {
+      if (!this.isReady()) return false;
       const result = await this.client.ping();
       return result === 'PONG';
     } catch (error) {
@@ -105,6 +131,44 @@ export class CacheService implements OnModuleDestroy {
   public async delSessionIdByUserId(user_id: string) {
     await this.client.hdel(this.USER_SESSION_MAP, user_id);
     await this.delResourceForUser(user_id);
+    await this.clearUserKicked(user_id);
+  }
+
+  /**
+   * 登录成功后登记在线：user-session-map + 踢旧 session
+   * @param sessionID express-session 的 sessionID（不含 sess: 前缀）
+   */
+  public async bindOnlineSession(
+    user_id: string,
+    sessionID: string,
+  ): Promise<void> {
+    if (!user_id || !sessionID) return;
+    const sid = sessionID.startsWith('sess:') ? sessionID : `sess:${sessionID}`;
+
+    const oldSid = await this.getSessionIdByUserId(user_id);
+    if (oldSid && oldSid !== sid) {
+      await this.client.del(oldSid);
+    }
+
+    await this.setSessionId(user_id, sid);
+    await this.clearUserKicked(user_id);
+  }
+
+  private kickedKey(user_id: string) {
+    return `kicked:${user_id}`;
+  }
+
+  public async markUserKicked(user_id: string) {
+    await this.client.set(this.kickedKey(user_id), '1', 'EX', 86400);
+  }
+
+  public async isUserKicked(user_id: string): Promise<boolean> {
+    const v = await this.client.get(this.kickedKey(user_id));
+    return v === '1';
+  }
+
+  public async clearUserKicked(user_id: string) {
+    await this.client.del(this.kickedKey(user_id));
   }
 
   private generateResourceKey(user_id: string) {
@@ -150,36 +214,45 @@ export class CacheService implements OnModuleDestroy {
   }
 
   /**
-   * 获取所有在线用户的 user_id 列表
-   * 通过扫描 auth:* 的 key 来获取
+   * 获取真实在线用户 ID：仅 user-session-map 中且 sess:* 仍存在的用户。
+   * 不把 auth:* 资源缓存算作在线（登出/过期后常残留，会导致人数虚高）。
+   * 顺带清理已失效的 map / auth 缓存。
    */
   public async getAllOnlineUserIds(): Promise<string[]> {
-    const pattern = 'auth:*';
-    const userIds: string[] = [];
-
     try {
-      // 使用 SCAN 命令遍历所有匹配的 key
-      let cursor = '0';
-      do {
-        const [nextCursor, keys] = await this.client.scan(
-          cursor,
-          'MATCH',
-          pattern,
-          'COUNT',
-          100,
-        );
-        cursor = nextCursor;
+      if (!this.isReady()) {
+        this.logger.warn('Redis not ready, skip online user scan');
+        return [];
+      }
 
-        // 从 key 中提取 user_id (auth:xxx -> xxx)
-        for (const key of keys) {
-          const userId = key.replace('auth:', '');
-          if (userId) {
-            userIds.push(userId);
-          }
+      const mappedIds = await this.client.hkeys(this.USER_SESSION_MAP);
+      if (!mappedIds.length) {
+        return [];
+      }
+
+      const online: string[] = [];
+      for (const userId of mappedIds) {
+        if (!userId) continue;
+
+        const sid = await this.getSessionIdByUserId(userId);
+        if (!sid) {
+          await this.client.hdel(this.USER_SESSION_MAP, userId);
+          await this.delResourceForUser(userId);
+          continue;
         }
-      } while (cursor !== '0');
 
-      return userIds;
+        const sessionKey = sid.startsWith('sess:') ? sid : `sess:${sid}`;
+        const alive = await this.client.exists(sessionKey);
+        if (alive === 1) {
+          online.push(userId);
+        } else {
+          // session 已过期，清理残留登记
+          await this.client.hdel(this.USER_SESSION_MAP, userId);
+          await this.delResourceForUser(userId);
+        }
+      }
+
+      return online;
     } catch (error) {
       this.logger.error('Failed to get online user ids:', error);
       return [];
@@ -188,26 +261,21 @@ export class CacheService implements OnModuleDestroy {
 
   /**
    * 踢用户下线
-   * 1. 从 user-session-map 获取 sessionId
-   * 2. 删除 sess:{sessionId}
-   * 3. 从 user-session-map 删除该用户
-   * 4. 删除 auth:{user_id}
+   * 1. 删除 sess:* session
+   * 2. 标记 kicked（防残留/多端漏删）
+   * 3. 清理 user-session-map、auth:*
    */
   public async kickUserOffline(user_id: string): Promise<boolean> {
     try {
-      // 1. 获取 sessionId
       const sessionId = await this.getSessionIdByUserId(user_id);
 
       if (sessionId) {
-        // 2. 删除 session 数据
         await this.client.del(sessionId);
         this.logger.log(`Deleted session: ${sessionId} for user: ${user_id}`);
       }
 
-      // 3. 从 user-session-map 中删除
+      await this.markUserKicked(user_id);
       await this.client.hdel(this.USER_SESSION_MAP, user_id);
-
-      // 4. 删除 auth 信息
       await this.delResourceForUser(user_id);
 
       this.logger.log(`Successfully kicked user offline: ${user_id}`);

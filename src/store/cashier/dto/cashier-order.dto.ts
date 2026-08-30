@@ -51,7 +51,10 @@ class SyncOrderDto {
 
   @IsString()
   @IsOptional()
-  @ApiProperty({ description: '支付方式 (cash, balance)', required: false })
+  @ApiProperty({
+    description: '支付方式 cash|alipay|wechat|balance|member_scan',
+    required: false,
+  })
   payment_method?: string;
 
   @IsNumber()

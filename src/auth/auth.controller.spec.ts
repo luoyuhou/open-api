@@ -44,6 +44,7 @@ describe('AuthController', () => {
       getUserById: jest.fn(),
       bindPhoneForUser: jest.fn(),
       loginByWxPhone: jest.fn(),
+      establishOnlinePresence: jest.fn().mockResolvedValue(undefined),
     };
 
     const mockCacheService = {
@@ -146,6 +147,10 @@ describe('AuthController', () => {
         Login_SOURCE_TYPES.wechat,
         { ip: '127.0.0.1', useragent: 'test' },
       );
+      expect(authService.establishOnlinePresence).toHaveBeenCalledWith(
+        'user123',
+        undefined,
+      );
       expect(result).toEqual({
         message: 'ok',
         data: { ...mockResult.user },
@@ -175,6 +180,10 @@ describe('AuthController', () => {
       const result = await controller.getSignedUser(mockRequest);
 
       expect(authService.getUserById).toHaveBeenCalledWith('user123');
+      expect(authService.establishOnlinePresence).toHaveBeenCalledWith(
+        'user123',
+        undefined,
+      );
       expect(authService.getCacheResources).toHaveBeenCalledWith('user123');
       expect(result).toEqual({
         message: 'ok',

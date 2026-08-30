@@ -8,8 +8,9 @@ import { E_USER_ORDER_STATUS } from '../order/const';
 export class StoreOrderDailyReportCronService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // 每天凌晨 1 点统计前一天各门店订单与商品消耗
-  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  @Cron(CronExpression.EVERY_DAY_AT_1AM, {
+    name: 'store-daily-order-report',
+  })
   async generateStoreDailyReports() {
     const now = new Date();
 

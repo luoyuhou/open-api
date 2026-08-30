@@ -15,6 +15,8 @@ describe('UsersController', () => {
       findOne: jest.fn(),
       usersPagination: jest.fn(),
       update: jest.fn(),
+      getRetentionRate: jest.fn(),
+      getOnlineCountStats: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -72,6 +74,21 @@ describe('UsersController', () => {
 
       expect(usersService.usersPagination).toHaveBeenCalledWith(pagination);
       expect(result).toEqual({ message: 'ok', data: mockResult });
+    });
+  });
+
+  describe('getOnlineCountStats', () => {
+    it('should return online count series', async () => {
+      const mockStats = {
+        current: 3,
+        series: [{ time: '08-30 12:00', count: 2 }],
+      };
+      usersService.getOnlineCountStats.mockResolvedValue(mockStats as any);
+
+      const result = await controller.getOnlineCountStats();
+
+      expect(usersService.getOnlineCountStats).toHaveBeenCalled();
+      expect(result).toEqual(mockStats);
     });
   });
 

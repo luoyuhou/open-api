@@ -321,6 +321,14 @@ CREATE TABLE "report_daily_user_fetch" (
 );
 
 -- CreateTable
+CREATE TABLE "report_online_user_snapshot" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "count" INTEGER NOT NULL,
+    "sampled_at" DATETIME NOT NULL,
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
 CREATE TABLE "report_store_daily_order" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "store_id" TEXT NOT NULL,
@@ -871,6 +879,12 @@ CREATE UNIQUE INDEX "user_role_user_id_role_id_key" ON "user_role"("user_id", "r
 
 -- CreateIndex
 CREATE UNIQUE INDEX "auth_role_role_id_auth_id_key" ON "auth_role"("role_id", "auth_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "report_online_user_snapshot_sampled_at_key" ON "report_online_user_snapshot"("sampled_at");
+
+-- CreateIndex
+CREATE INDEX "report_online_user_snapshot_sampled_at_idx" ON "report_online_user_snapshot"("sampled_at");
 
 -- CreateIndex
 CREATE INDEX "report_store_daily_order_record_date_idx" ON "report_store_daily_order"("record_date");

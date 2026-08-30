@@ -12,10 +12,14 @@ import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { UserEntity } from './entities/user.entity';
 import * as moment from 'moment';
 import Utils from '../common/utils';
+import { CacheService } from '../common/cache-manager/cache.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cacheService: CacheService,
+  ) {}
 
   private get user_id(): string {
     return 'user-' + v4();
@@ -208,6 +212,39 @@ export class UsersService {
     }
 
     return results;
+  }
+
+  /**
+   * 近 24 小时在线人数折线数据（5 分钟采样）
+   */
+  async getOnlineCountStats() {
+    const since = moment().subtract(24, 'hours').toDate();
+    const [rows, liveIds] = await Promise.all([
+      this.prisma.report_online_user_snapshot.findMany({
+        where: { sampled_at: { gte: since } },
+        orderBy: { sampled_at: 'asc' },
+      }),
+      this.cacheService.getAllOnlineUserIds(),
+    ]);
+
+    // 与在线列表一致：仅统计库中存在的用户
+    let current = liveIds.length;
+    if (liveIds.length) {
+      const existing = await this.prisma.user.count({
+        where: { user_id: { in: liveIds } },
+      });
+      current = existing;
+    }
+
+    return {
+      current,
+      series: rows.map((row) => ({
+        // 跨日用 MM-DD HH:mm，避免仅 HH:mm 在 24h 窗口内重复
+        time: moment(row.sampled_at).format('MM-DD HH:mm'),
+        count: row.count,
+        sampled_at: row.sampled_at,
+      })),
+    };
   }
 
   /**
