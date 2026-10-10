@@ -49,6 +49,15 @@ export class CreateFeedbackDto {
   category?: string;
 
   @ApiProperty({
+    description: '来源应用：user=主站 | cashier=经营吧 | publisher=一键发文',
+    required: false,
+    enum: ['user', 'cashier', 'publisher'],
+  })
+  @IsOptional()
+  @IsIn(['user', 'cashier', 'publisher'])
+  appType?: 'user' | 'cashier' | 'publisher';
+
+  @ApiProperty({
     description: '附件列表（图片或视频链接）',
     type: FeedbackAttachmentDto,
     isArray: true,

@@ -82,6 +82,7 @@ export class FeedbackService {
         title: dto.title,
         content: dto.content,
         category: dto.category ?? null,
+        app_type: dto.appType ?? 'user',
         status: 0,
       },
     });
@@ -138,9 +139,12 @@ export class FeedbackService {
     });
   }
 
-  async listMine(user: UserEntity) {
+  async listMine(user: UserEntity, appType?: 'user' | 'cashier' | 'publisher') {
     const data = await this.prisma.user_feedback.findMany({
-      where: { user_id: user.user_id },
+      where: {
+        user_id: user.user_id,
+        ...(appType ? { app_type: appType } : {}),
+      },
       orderBy: { create_date: 'desc' },
       take: 50,
     });

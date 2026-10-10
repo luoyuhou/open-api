@@ -28,6 +28,7 @@ import { FeedbackModule } from './feedback/feedback.module';
 import { StoreSubscriptionModule } from './store/store-subscription/store-subscription.module';
 import { StoreResourceModule } from './store/store-resource/store-resource.module';
 import { PlatformModule } from './platform/platform.module';
+import { PublisherModule } from './publisher/publisher.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { PlatformModule } from './platform/platform.module';
     StoreSubscriptionModule,
     StoreResourceModule,
     PlatformModule,
+    PublisherModule,
     TerminusModule,
     UsersFetchModule,
     ScheduleModule.forRoot(),

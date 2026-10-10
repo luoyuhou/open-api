@@ -33,7 +33,7 @@ export class VerifyCodeDot {
   @IsString()
   @IsOptional()
   @ApiProperty({ required: false })
-  appType?: 'user' | 'cashier';
+  appType?: 'user' | 'cashier' | 'publisher';
 }
 
 export class WxLoginDto {
@@ -55,7 +55,7 @@ export class WxLoginDto {
   @IsString()
   @IsOptional()
   @ApiProperty({ required: false })
-  appType?: 'user' | 'cashier';
+  appType?: 'user' | 'cashier' | 'publisher';
 }
 
 export class WxPhoneLoginDto {
@@ -86,7 +86,7 @@ export class WxPhoneLoginDto {
   @IsString()
   @IsOptional()
   @ApiProperty({ required: false })
-  appType?: 'user' | 'cashier';
+  appType?: 'user' | 'cashier' | 'publisher';
 }
 
 export class BindPhoneDto {

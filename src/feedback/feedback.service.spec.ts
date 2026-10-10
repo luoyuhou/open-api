@@ -59,17 +59,34 @@ describe('FeedbackService', () => {
         title: '问题',
         content: '需要帮助',
         category: 'support',
+        appType: 'publisher',
       });
 
       expect(prisma.user_feedback.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             category: 'support',
+            app_type: 'publisher',
             user_id: user.user_id,
           }),
         }),
       );
       expect(result.feedback_id).toBe('fb-1');
+    });
+
+    it('未传 appType 时默认 user', async () => {
+      (prisma.user_feedback.count as jest.Mock).mockResolvedValue(0);
+      (prisma.user_feedback.create as jest.Mock).mockResolvedValue({
+        feedback_id: 'fb-2',
+      });
+
+      await service.create(user, { title: 't', content: 'c' });
+
+      expect(prisma.user_feedback.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ app_type: 'user' }),
+        }),
+      );
     });
 
     it('超过每日上限时应拒绝', async () => {
@@ -78,6 +95,20 @@ describe('FeedbackService', () => {
       await expect(
         service.create(user, { title: 't', content: 'c' }),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('listMine', () => {
+    it('可按 appType 过滤', async () => {
+      (prisma.user_feedback.findMany as jest.Mock).mockResolvedValue([]);
+
+      await service.listMine(user, 'cashier');
+
+      expect(prisma.user_feedback.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { user_id: user.user_id, app_type: 'cashier' },
+        }),
+      );
     });
   });
 
