@@ -36,6 +36,8 @@ import { Request } from 'express';
 import Utils from '../common/utils';
 import { SmsService } from '../common/sms/sms.service';
 
+type AppType = 'user' | 'cashier' | 'publisher';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -127,31 +129,22 @@ export class AuthService {
     return this.jwtService.sign(user);
   }
 
-  private getAppIdAndSecretByAppType(appType: 'user' | 'cashier' = 'user') {
-    const appId = appType === 'cashier' ? env.CASHIER_WX_APP_ID : env.WX_APP_ID;
-    const secret =
-      appType === 'cashier' ? env.CASHIER_WX_SECRET : env.WX_SECRET;
-
-    return { appId, secret };
-  }
-
-  /** 通过 wx.login code 解析 openid */
-  public async getOpenidFromCode(
-    code: string,
-    appType: 'user' | 'cashier' = 'user',
-  ): Promise<string> {
-    const { appId, secret } = this.getAppIdAndSecretByAppType(appType);
-    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
-    const response = await fetchClient.get<any>(url);
-    if (response.errcode) {
-      throw new BadRequestException(
-        `WeChat API error: ${response.errmsg} (code: ${response.errcode})`,
-      );
+  private getAppIdAndSecretByAppType(appType: AppType = 'user') {
+    if (appType === 'cashier') {
+      return {
+        appId: env.CASHIER_WX_APP_ID,
+        secret: env.CASHIER_WX_SECRET,
+      };
     }
-    if (!response.openid) {
-      throw new BadRequestException('无法获取微信身份');
+
+    if (appType === 'publisher') {
+      return {
+        appId: env.PUBLISHER_WX_APP_ID,
+        secret: env.PUBLISHER_WX_SECRET,
+      };
     }
-    return response.openid as string;
+
+    return { appId: env.WX_APP_ID, secret: env.WX_SECRET };
   }
 
   /**
@@ -296,7 +289,7 @@ export class AuthService {
     return this.loginUserForWeb(request, user, Login_SOURCE_TYPES.wechat);
   }
 
-  public async verifyCode(code: string, appType: 'user' | 'cashier' = 'user') {
+  public async verifyCode(code: string, appType: AppType = 'user') {
     const { appId, secret } = this.getAppIdAndSecretByAppType(appType);
 
     const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;

@@ -34,6 +34,35 @@ describe('FeedbackController', () => {
     ) as jest.Mocked<FeedbackService>;
   });
 
+  describe('listMine', () => {
+    it('应转发合法 appType', async () => {
+      const mockUser = { user_id: 'user-1' } as UserEntity;
+      const mockRequest = { user: mockUser } as unknown as Request;
+      feedbackService.listMine.mockResolvedValue([]);
+
+      const result = await controller.listMine(mockRequest, 'publisher');
+
+      expect(feedbackService.listMine).toHaveBeenCalledWith(
+        mockUser,
+        'publisher',
+      );
+      expect(result).toEqual({ message: 'ok', data: [] });
+    });
+
+    it('非法 appType 应忽略', async () => {
+      const mockUser = { user_id: 'user-1' } as UserEntity;
+      const mockRequest = { user: mockUser } as unknown as Request;
+      feedbackService.listMine.mockResolvedValue([]);
+
+      await controller.listMine(mockRequest, 'unknown');
+
+      expect(feedbackService.listMine).toHaveBeenCalledWith(
+        mockUser,
+        undefined,
+      );
+    });
+  });
+
   describe('supportPendingCount', () => {
     it('应返回值班管理员的待处理留言数', async () => {
       const mockUser = { user_id: 'admin-1' } as UserEntity;

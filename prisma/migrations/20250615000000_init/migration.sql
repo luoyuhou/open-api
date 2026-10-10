@@ -399,6 +399,8 @@ CREATE TABLE "file" (
     "hash" TEXT NOT NULL,
     "size" INTEGER NOT NULL DEFAULT 0,
     "url" TEXT NOT NULL,
+    "owner_user_id" TEXT NOT NULL DEFAULT '',
+    "source" TEXT NOT NULL DEFAULT '',
     "create_date" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "update_date" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -462,6 +464,7 @@ CREATE TABLE "user_feedback" (
     "title" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "category" TEXT,
+    "app_type" TEXT,
     "status" INTEGER NOT NULL DEFAULT 0,
     "create_date" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "update_date" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -802,6 +805,95 @@ CREATE TABLE "platform_setting" (
     "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- CreateTable
+CREATE TABLE "content_article" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "article_id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "title" TEXT NOT NULL DEFAULT '',
+    "content" TEXT NOT NULL DEFAULT '',
+    "digest" TEXT NOT NULL DEFAULT '',
+    "cover" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'draft',
+    "platforms" TEXT NOT NULL DEFAULT '[]',
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "content_article_asset" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "article_id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "file_hash" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "content_publish_platform" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "platform_id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "color" TEXT NOT NULL DEFAULT '#8A847A',
+    "login_url" TEXT NOT NULL DEFAULT '',
+    "hint" TEXT NOT NULL DEFAULT '',
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "sort" INTEGER NOT NULL DEFAULT 100,
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "content_platform_account" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "account_id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "platform_id" TEXT NOT NULL,
+    "account_name" TEXT NOT NULL,
+    "bound" BOOLEAN NOT NULL DEFAULT false,
+    "alqq_credential_id" TEXT NOT NULL DEFAULT '',
+    "external_id" TEXT,
+    "bind_status" TEXT NOT NULL DEFAULT 'unbound',
+    "last_sync_at" DATETIME,
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "user_alqq_credential" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "credential_id" TEXT NOT NULL DEFAULT '',
+    "user_id" TEXT NOT NULL,
+    "name" TEXT NOT NULL DEFAULT '默认账号',
+    "is_default" BOOLEAN NOT NULL DEFAULT false,
+    "api_key_cipher" TEXT NOT NULL,
+    "api_key_iv" TEXT NOT NULL,
+    "api_key_tag" TEXT NOT NULL,
+    "api_key_hint" TEXT NOT NULL DEFAULT '',
+    "last_verified_at" DATETIME,
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "content_publish_job" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "job_id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "article_id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "mode" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'running',
+    "targets" TEXT NOT NULL,
+    "credential_id" TEXT NOT NULL DEFAULT '',
+    "scheduled_at" DATETIME,
+    "finished_at" DATETIME,
+    "create_date" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "update_date" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "user_user_id_key" ON "user"("user_id");
 
@@ -920,6 +1012,9 @@ CREATE INDEX "home_banner_status_sort_idx" ON "home_banner"("status", "sort");
 CREATE UNIQUE INDEX "file_hash_key" ON "file"("hash");
 
 -- CreateIndex
+CREATE INDEX "file_owner_user_id_source_idx" ON "file"("owner_user_id", "source");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "chat_group_group_id_key" ON "chat_group"("group_id");
 
 -- CreateIndex
@@ -936,6 +1031,9 @@ CREATE UNIQUE INDEX "user_store_browse_history_user_id_store_id_key" ON "user_st
 
 -- CreateIndex
 CREATE UNIQUE INDEX "user_feedback_feedback_id_key" ON "user_feedback"("feedback_id");
+
+-- CreateIndex
+CREATE INDEX "user_feedback_app_type_idx" ON "user_feedback"("app_type");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "store_service_plan_plan_id_key" ON "store_service_plan"("plan_id");
@@ -1092,4 +1190,61 @@ CREATE INDEX "platform_activation_code_status_idx" ON "platform_activation_code"
 
 -- CreateIndex
 CREATE UNIQUE INDEX "platform_setting_setting_key_key" ON "platform_setting"("setting_key");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "content_article_article_id_key" ON "content_article"("article_id");
+
+-- CreateIndex
+CREATE INDEX "content_article_user_id_status_idx" ON "content_article"("user_id", "status");
+
+-- CreateIndex
+CREATE INDEX "content_article_status_update_date_idx" ON "content_article"("status", "update_date");
+
+-- CreateIndex
+CREATE INDEX "content_article_asset_user_id_idx" ON "content_article_asset"("user_id");
+
+-- CreateIndex
+CREATE INDEX "content_article_asset_file_hash_idx" ON "content_article_asset"("file_hash");
+
+-- CreateIndex
+CREATE INDEX "content_article_asset_article_id_idx" ON "content_article_asset"("article_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "content_article_asset_article_id_file_hash_key" ON "content_article_asset"("article_id", "file_hash");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "content_publish_platform_platform_id_key" ON "content_publish_platform"("platform_id");
+
+-- CreateIndex
+CREATE INDEX "content_publish_platform_enabled_sort_idx" ON "content_publish_platform"("enabled", "sort");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "content_platform_account_account_id_key" ON "content_platform_account"("account_id");
+
+-- CreateIndex
+CREATE INDEX "content_platform_account_user_id_idx" ON "content_platform_account"("user_id");
+
+-- CreateIndex
+CREATE INDEX "content_platform_account_alqq_credential_id_idx" ON "content_platform_account"("alqq_credential_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "content_platform_account_user_id_alqq_credential_id_platform_id_key" ON "content_platform_account"("user_id", "alqq_credential_id", "platform_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_alqq_credential_credential_id_key" ON "user_alqq_credential"("credential_id");
+
+-- CreateIndex
+CREATE INDEX "user_alqq_credential_user_id_idx" ON "user_alqq_credential"("user_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_alqq_credential_user_id_name_key" ON "user_alqq_credential"("user_id", "name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "content_publish_job_job_id_key" ON "content_publish_job"("job_id");
+
+-- CreateIndex
+CREATE INDEX "content_publish_job_user_id_idx" ON "content_publish_job"("user_id");
+
+-- CreateIndex
+CREATE INDEX "content_publish_job_status_scheduled_at_idx" ON "content_publish_job"("status", "scheduled_at");
 

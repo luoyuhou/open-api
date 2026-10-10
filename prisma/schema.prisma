@@ -406,13 +406,17 @@ model home_banner {
 }
 
 model file {
-  id          Int      @id @default(autoincrement())
-  file_name   String
-  hash        String   @unique
-  size        Int      @default(0)
-  url         String
-  create_date DateTime @default(now())
-  update_date DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  file_name     String
+  hash          String   @unique
+  size          Int      @default(0)
+  url           String
+  owner_user_id String   @default("")
+  source        String   @default("")
+  create_date   DateTime @default(now())
+  update_date   DateTime @default(now())
+
+  @@index([owner_user_id, source])
 }
 
 model chat_group {
@@ -474,9 +478,13 @@ model user_feedback {
   title       String
   content     String
   category    String?
+  /// 来源应用：user=主站 | cashier=经营吧 | publisher=一键发文
+  app_type    String?
   status      Int      @default(0)
   create_date DateTime @default(now())
   update_date DateTime @default(now())
+
+  @@index([app_type])
 }
 
 model user_feedback_attachment {
@@ -865,4 +873,113 @@ model platform_setting {
   setting_key   String    @unique
   setting_value String
   update_date   DateTime? @default(now())
+}
+
+// 一键发文：图文稿件
+model content_article {
+  id          Int       @id @default(autoincrement())
+  article_id  String    @unique
+  user_id     String
+  title       String    @default("")
+  content     String    @default("")
+  digest      String    @default("")
+  cover       String?
+  status      String    @default("draft")
+  platforms   String    @default("[]")
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@index([user_id, status])
+  @@index([status, update_date])
+}
+
+// 一键发文：文章引用的图片（用于配额与回收）
+model content_article_asset {
+  id          Int       @id @default(autoincrement())
+  article_id  String
+  user_id     String
+  file_hash   String
+  url         String
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@unique([article_id, file_hash])
+  @@index([user_id])
+  @@index([file_hash])
+  @@index([article_id])
+}
+
+// 一键发文：系统支持的发布平台目录（管理端可上下线）
+model content_publish_platform {
+  id          Int       @id @default(autoincrement())
+  platform_id String    @unique
+  name        String
+  color       String    @default("#8A847A")
+  login_url   String    @default("")
+  hint        String    @default("")
+  enabled     Boolean   @default(true)
+  sort        Int       @default(100)
+  create_date DateTime? @default(now())
+  update_date DateTime? @default(now())
+
+  @@index([enabled, sort])
+}
+
+// 一键发文：平台账号绑定
+model content_platform_account {
+  id            Int       @id @default(autoincrement())
+  account_id    String    @unique
+  user_id       String
+  platform_id   String
+  account_name  String
+  bound         Boolean   @default(false)
+  alqq_credential_id String @default("")
+  external_id   String?
+  bind_status   String    @default("unbound")
+  last_sync_at  DateTime?
+  create_date   DateTime? @default(now())
+  update_date   DateTime? @default(now())
+
+  @@unique([user_id, alqq_credential_id, platform_id])
+  @@index([user_id])
+  @@index([alqq_credential_id])
+}
+
+// 一键发文：用户的 ALQQ 账号（可多条，Key 密文存储）
+model user_alqq_credential {
+  id               Int       @id @default(autoincrement())
+  credential_id    String    @unique @default("")
+  user_id          String
+  name             String    @default("默认账号")
+  is_default       Boolean   @default(false)
+  api_key_cipher   String
+  api_key_iv       String
+  api_key_tag      String
+  api_key_hint     String    @default("")
+  last_verified_at DateTime?
+  create_date      DateTime? @default(now())
+  update_date      DateTime? @default(now())
+
+  @@unique([user_id, name])
+  @@index([user_id])
+}
+
+// 一键发文：发布任务
+model content_publish_job {
+  id            Int       @id @default(autoincrement())
+  job_id        String    @unique
+  user_id       String
+  article_id    String
+  title         String
+  mode          String
+  status        String    @default("running")
+  targets       String
+  credential_id String    @default("")
+  scheduled_at  DateTime?
+  finished_at   DateTime?
+  create_date   DateTime? @default(now())
+  update_date   DateTime? @default(now())
+
+  @@index([user_id])
+  @@index([status, scheduled_at])
 }

@@ -26,6 +26,8 @@ export class PrismaService
       await this.$connect();
       // 禁用 WAL 模式，改回传统的单文件模式（DELETE），避免生成 -shm 和 -wal 临时文件
       await this.$queryRawUnsafe('PRAGMA journal_mode=DELETE;');
+      // 写锁被占用时等待，避免立刻抛 Timed out during query execution
+      await this.$queryRawUnsafe('PRAGMA busy_timeout=60000;');
       this.logger.log(
         'Successfully connected to database and set journal_mode=DELETE',
       );

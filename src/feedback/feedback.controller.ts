@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
   UseInterceptors,
@@ -20,6 +21,16 @@ import { Pagination } from '../common/dto/pagination';
 import { Request } from 'express';
 import { UserEntity } from '../users/entities/user.entity';
 import { CreateFeedbackCommentDto } from './dto/create-feedback-comment.dto';
+
+const FEEDBACK_APP_TYPES = ['user', 'cashier', 'publisher'] as const;
+type FeedbackAppType = typeof FEEDBACK_APP_TYPES[number];
+
+function parseAppType(value?: string): FeedbackAppType | undefined {
+  if (!value) return undefined;
+  return FEEDBACK_APP_TYPES.includes(value as FeedbackAppType)
+    ? (value as FeedbackAppType)
+    : undefined;
+}
 
 @UseGuards(SessionAuthGuard)
 @Controller('feedback')
@@ -46,9 +57,12 @@ export class FeedbackController {
   }
 
   @Get('mine')
-  async listMine(@Req() req: Request) {
+  async listMine(@Req() req: Request, @Query('appType') appType?: string) {
     const user = req.user as UserEntity;
-    const data = await this.feedbackService.listMine(user);
+    const data = await this.feedbackService.listMine(
+      user,
+      parseAppType(appType),
+    );
     return { message: 'ok', data };
   }
 

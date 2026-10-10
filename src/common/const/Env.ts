@@ -70,11 +70,11 @@ class Env {
   }
 
   static get CASHIER_WX_APP_ID(): string {
-    return env.CASHIER_WX_APP_ID || env.WX_APP_ID;
+    return env.CASHIER_WX_APP_ID!;
   }
 
   static get CASHIER_WX_SECRET(): string {
-    return env.CASHIER_WX_SECRET || env.WX_SECRET;
+    return env.CASHIER_WX_SECRET!;
   }
 
   static get DATABASE_URL(): string {
@@ -103,6 +103,28 @@ class Env {
 
   static get SPUG_SMS_URL(): string {
     return env.SPUG_SMS_URL!;
+  }
+
+  static get ALQQ_API_BASE(): string {
+    return env.ALQQ_API_BASE || 'https://www.alqq.cn';
+  }
+
+  static get ALQQ_EXECUTOR(): string {
+    return env.ALQQ_EXECUTOR || 'desktop';
+  }
+
+  static get PUBLISHER_WX_APP_ID() {
+    return env.PUBLISHER_WX_APP_ID!;
+  }
+
+  static get PUBLISHER_WX_SECRET(): string {
+    return env.PUBLISHER_WX_SECRET!;
+  }
+
+  /** 一键发文每用户图片配额（MB） */
+  static get PUBLISHER_USER_IMAGE_QUOTA_MB(): number {
+    const n = Number(env.PUBLISHER_USER_IMAGE_QUOTA_MB);
+    return Number.isFinite(n) && n > 0 ? n : 20;
   }
 }
 
